@@ -54,6 +54,19 @@ export interface Event {
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
+  // Joined table data
+  locations?: {
+    id: string;
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
+  users?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface EventAttendee {
@@ -75,6 +88,15 @@ export interface Topic {
   view_count: number;
   created_at: string;
   updated_at: string;
+  // Additional properties for UI components
+  questions?: string[];
+  bibleReference?: string;
+  // Joined table data
+  users?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface Comment {
