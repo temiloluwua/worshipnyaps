@@ -1,6 +1,6 @@
-# Worship and Yapps - React Native App
+# Worship and Yapps - Calgary Bible Study Community
 
-A community website for Calgary Bible studies and fellowship events, built with React and TypeScript.
+A modern web application for Calgary Bible studies and fellowship events, built with React, TypeScript, and Supabase.
 
 ## 🚀 Features
 
@@ -10,178 +10,134 @@ A community website for Calgary Bible studies and fellowship events, built with 
 - **Volunteer Opportunities**: Sign up to host events or serve in various roles
 - **Mobile Responsive**: Works perfectly on desktop, tablet, and mobile devices
 
-## 🌐 Getting Started
+## 🛠️ Tech Stack
 
-### Prerequisites
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Icons**: Lucide React
+- **Notifications**: React Hot Toast
 
-- Node.js (v18 or higher)
-- npm or yarn package manager
-
-### Installation
+## 📦 Installation
 
 1. **Clone the repository:**
 ```bash
 git clone https://github.com/YOUR_USERNAME/worship-and-yapps.git
 cd worship-and-yapps
+```
+
+2. **Install dependencies:**
+```bash
 npm install
 ```
 
-2. **Configure Environment (Optional):**
-   - Update `src/lib/supabase.ts` with your Supabase URL and anon key
-   - Set up your database using the provided migration files
+3. **Set up environment variables:**
+```bash
+cp .env.example .env
+```
+Update `.env` with your Supabase credentials.
 
-3. **Run the development server:**
+4. **Run the development server:**
 ```bash
 npm run dev
 ```
 
-4. **Build for production:**
+5. **Build for production:**
 ```bash
 npm run build
 ```
 
+## 🌐 Environment Variables
+
+Create a `.env` file with:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+## 🗄️ Database Setup
+
+The project uses Supabase for the backend. Database migrations are included in the `supabase/migrations/` folder.
+
 ## 🚀 Deployment
 
-### **Netlify (Recommended)**
+### Netlify (Recommended)
 1. Connect your GitHub repository to Netlify
 2. Build command: `npm run build`
 3. Publish directory: `dist`
-4. Deploy automatically on every push
+4. Add environment variables in Netlify dashboard
 
-### **Other Platforms**
-- **Vercel**: Import from GitHub, auto-detects Vite
+### Other Platforms
+- **Vercel**: Auto-detects Vite configuration
 - **GitHub Pages**: Use `gh-pages` package
 - **Traditional Hosting**: Upload `dist` folder contents
+
+## 📱 Features Overview
+
+### Discussion Topics
+- Interactive cards with Bible study questions
+- Full-screen view with swipe navigation
+- Like, comment, and share functionality
+- Search and filter by category
+
+### Event Management
+- Create and host events (Bible studies, activities)
+- RSVP system with capacity management
+- Volunteer role coordination
+- Food coordination system
+- Real-time messaging between attendees
+
+### Community Networking
+- User profiles and connections
+- Connection requests and messaging
+- Search and filter community members
+- Interest-based matching
+
+### Volunteer System
+- Sign up for various serving roles
+- Event hosting capabilities
+- Skill and availability tracking
+- Opportunity notifications
 
 ## 🏗️ Project Structure
 
 ```
 src/
 ├── components/         # React components
-│   ├── topics/        # Discussion cards
+│   ├── auth/          # Authentication components
+│   ├── events/        # Event management
 │   ├── locations/     # Event discovery
 │   ├── network/       # Community networking
-│   └── signup/        # Volunteer signup
+│   ├── signup/        # Volunteer signup
+│   └── topics/        # Discussion cards
 ├── hooks/             # Custom React hooks
 ├── lib/               # Utilities and configurations
 ├── types/             # TypeScript definitions
+├── data/              # Sample data
 └── App.tsx            # Main app component
 ```
 
-## 🎨 Key Features
+## 🤝 Contributing
 
-### Discussion Cards
-- Interactive cards with Bible study questions
-- Navigation between different topics
-- Like, comment, and share functionality
-- Responsive design for all devices
-
-### Event Management
-- Filter events by type (House, Special Event, Activity)
-- RSVP functionality with capacity management
-- Location information and distance
-- Host and volunteer role management
-
-### Community Features
-- User connections and networking
-- Member profiles with interests and roles
-- Search and filter functionality
-- Connect and messaging features
-
-## 📦 Dependencies
-
-- **React**: Frontend framework
-- **TypeScript**: Type safety
-- **Vite**: Build tool and dev server
-- **Tailwind CSS**: Utility-first CSS framework
-- **Supabase**: Backend and authentication
-- **Lucide React**: Icon library
-- **React Hot Toast**: Notifications
-
-## 🔧 Configuration
-
-### Environment Variables
-Create a `.env.local` file with:
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-## 🚀 **Quick Setup Commands**
-
-### **Netlify CLI Method:**
-```bash
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Login to Netlify
-netlify login
-
-# Add custom domain
-netlify sites:create --name worshipandyaps
-netlify deploy --prod
-netlify domains:add worshipandyaps.com
-```
-
-## 🗄️ **Supabase Setup**
-
-### **1. Create Supabase Project**
-1. Go to [supabase.com](https://supabase.com)
-2. Click "New Project"
-3. Choose organization and enter project details:
-   - **Name**: `worship-and-yapps`
-   - **Database Password**: Create a strong password
-   - **Region**: Choose closest to Calgary (US West or Canada Central)
-4. Wait for project to be created (2-3 minutes)
-
-### **2. Get Your Supabase Credentials**
-1. In your Supabase dashboard, go to **Settings** → **API**
-2. Copy these values:
-   - **Project URL** (starts with `https://`)
-   - **Anon/Public Key** (starts with `eyJhbGciOiJIUzI1NiI...`)
-
-### **3. Set Environment Variables**
-Create a `.env` file in your project root:
-```env
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-### **4. Run Database Migrations**
-The database schema is already set up in the `supabase/migrations/` folder. Supabase will automatically run these when you connect.
-
-### **5. Enable Authentication**
-1. In Supabase dashboard, go to **Authentication** → **Settings**
-2. **Site URL**: Set to your domain (e.g., `https://worshipandyaps.com`)
-3. **Redirect URLs**: Add your domain
-4. **Email Templates**: Customize welcome emails (optional)
-
-### **6. Test Connection**
-1. Start your development server: `npm run dev`
-2. Try signing up with a test account
-3. Check Supabase dashboard → **Authentication** → **Users** to see new users
-
-### **Manual Method:**
-1. Build your app: `npm run build`
-2. Upload `dist` folder to your hosting provider
-3. Configure custom domain in hosting dashboard
-4. Update DNS records at your domain registrar
-
-## 🌐 Live Website
-
-Visit the live website at: [worshipandyaps.com](https://worshipandyaps.com)
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
 This project is licensed under the MIT License.
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
 ## 📞 Support
 
-For support and questions about the Calgary Bible Study community, please contact the development team.
+For support and questions about the Calgary Bible Study community, please create an issue in this repository.
+
+## 🎉 Live Website
+
+Visit: [worshipandyaps.com](https://worshipandyaps.com)
+
+---
+
+Built with ❤️ for the Calgary Bible Study community
