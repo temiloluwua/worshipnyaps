@@ -199,7 +199,7 @@ export function TopicsView() {
           <div className="space-y-2 mb-4">
             <p className="text-sm font-medium text-gray-700">Content:</p>
             <div className="max-h-24 overflow-hidden">
-              <p className="text-xs text-gray-600">{currentTopic.content.substring(0, 200)}...</p>
+              <p className="text-xs text-gray-600">{(currentTopic.content || (currentTopic.questions ? currentTopic.questions.join(' ') : '')).substring(0, 200)}...</p>
             </div>
           </div>
 
