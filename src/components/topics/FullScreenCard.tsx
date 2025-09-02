@@ -297,7 +297,7 @@ export const FullScreenCard: React.FC<FullScreenCardProps> = ({
                       type="text"
                       placeholder="Reply..."
                       value={newReply[comment.id] || ''}
-                      onChange={(e) => setNewReply({...newReply, [comment.id]: e.target.value})}
+                      onChange={(e) => setNewReply({...newReply, [comment.id]: e.currentTarget.value})}
                       className="flex-1 px-2 py-1 border rounded text-xs"
                       onKeyPress={(e) => e.key === 'Enter' && handleAddReply(comment.id)}
                     />

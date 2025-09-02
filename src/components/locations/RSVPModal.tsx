@@ -203,7 +203,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
               <input
                 type="text"
                 value={customFood}
-                onChange={(e) => setCustomFood(e.target.value)}
+                onChange={(e) => setCustomFood(e.currentTarget.value)}
                 placeholder="e.g., Homemade cookies, Fruit tray..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />

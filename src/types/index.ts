@@ -82,3 +82,14 @@ export interface Reply {
   authorId: string;
   createdAt: string;
 }
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: 'general' | 'event' | 'connection_request' | 'volunteer_opportunity';
+  title: string;
+  message: string;
+  event_id?: string;
+  is_read: boolean;
+  created_at: string;
+}

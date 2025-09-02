@@ -40,7 +40,7 @@ export const EventManagement: React.FC<EventManagementProps> = ({ event, onClose
   };
 
   const handleDeleteEvent = () => {
-    if (confirm('Are you sure you want to delete this event? This cannot be undone.')) {
+    if (window.confirm('Are you sure you want to delete this event? This cannot be undone.')) {
       toast.success('Event deleted');
       onClose();
     }

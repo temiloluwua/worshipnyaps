@@ -213,7 +213,7 @@ export const EventMessaging: React.FC<EventMessagingProps> = ({
           <div className="flex space-x-2">
             <textarea
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => setNewMessage(e.currentTarget.value)}
               onKeyPress={handleKeyPress}
               placeholder={isHost ? "Send a message to all attendees..." : "Send a message to the host..."}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

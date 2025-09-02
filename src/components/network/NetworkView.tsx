@@ -252,7 +252,7 @@ export function CommunityView() {
             </div>
             <textarea
               value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
+              onChange={(e) => setMessageText(e.currentTarget.value)}
               placeholder="Type your message..."
               className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
             />
