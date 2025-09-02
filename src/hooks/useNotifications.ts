@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Notification } from '../types';
+import type { Notification } from '../types';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 

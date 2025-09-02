@@ -14,6 +14,9 @@ export interface Topic {
   likes: number;
   views: number;
   isPinned: boolean;
+  content?: string;
+  questions?: string[];
+  bibleReference?: string;
 }
 
 // Sample topics - replace with your actual topics

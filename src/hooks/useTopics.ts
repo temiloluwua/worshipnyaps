@@ -70,7 +70,7 @@ export const useTopics = () => {
     try {
       const { error } = await supabase
         .from('topics')
-        .update({ view_count: supabase.sql`view_count + 1` })
+        .update({ view_count: 1 })
         .eq('id', topicId);
 
       if (error) throw error;

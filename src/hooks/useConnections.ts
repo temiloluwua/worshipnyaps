@@ -194,12 +194,13 @@ export const useConnections = () => {
       if (updateError) throw updateError;
 
       // Send notification
-      await createNotification(
+      // TODO: Implement notification system
+      /* await createNotification(
         request.from_user_id,
         'general',
         'Connection Accepted',
         'Your connection request was accepted!'
-      );
+      ); */
 
       toast.success('Connection request accepted!');
       await fetchConnections();

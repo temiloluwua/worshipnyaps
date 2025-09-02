@@ -182,12 +182,13 @@ export const useEvents = () => {
         .single();
 
       if (event) {
-        await createNotification(
+        // TODO: Implement notification system
+        /* await createNotification(
           event.host_id,
           'general',
           'New RSVP',
           `Someone just RSVP'd to your event: ${event.title}`
-        );
+        ); */
       }
 
       toast.success('RSVP confirmed!');
