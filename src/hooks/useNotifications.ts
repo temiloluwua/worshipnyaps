@@ -12,7 +12,7 @@ export const useNotifications = () => {
 
   // Request notification permission
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       const permission = await Notification.requestPermission();
       return permission === 'granted';
     }
@@ -21,7 +21,7 @@ export const useNotifications = () => {
 
   // Send browser notification
   const sendBrowserNotification = (title: string, message: string) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
         body: message,
         icon: '/favicon.ico',

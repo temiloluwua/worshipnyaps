@@ -195,12 +195,12 @@ export const useConnections = () => {
 
       // Send notification
       // TODO: Implement notification system
-      /* await createNotification(
-        request.from_user_id,
-        'general',
-        'Connection Accepted',
-        'Your connection request was accepted!'
-      ); */
+      // await createNotification(
+      //   request.from_user_id,
+      //   'general',
+      //   'Connection Accepted',
+      //   'Your connection request was accepted!'
+      // );
 
       toast.success('Connection request accepted!');
       await fetchConnections();

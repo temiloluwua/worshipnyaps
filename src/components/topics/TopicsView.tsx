@@ -236,7 +236,11 @@ export function TopicsView() {
         </button>
         
         <button 
-          onClick={() => window.open('https://www.openbible.info', '_blank')}
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.open('https://www.openbible.info', '_blank');
+            }
+          }}
           className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
         >
           <ExternalLink className="w-5 h-5" />

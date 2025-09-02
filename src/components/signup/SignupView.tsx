@@ -552,7 +552,7 @@ export function SignupView() {
               
               <select
                 value={item.category}
-                onChange={(e) => updateFoodItem(item.id, 'category', e.currentTarget.value as any)}
+                onChange={(e) => updateFoodItem(item.id, 'category', e.target.value as any)}
                 className="px-2 py-1 border border-gray-300 rounded text-xs"
               >
                 <option value="main">Main</option>
