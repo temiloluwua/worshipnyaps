@@ -69,14 +69,19 @@ export function LocationsView() {
       ? `Join us for ${event.title} on ${event.date} at ${event.time}. Invite code: ${event.inviteCode}. Location details provided after RSVP.`
       : `Join us for ${event.title} on ${event.date} at ${event.time}. RSVP through the Worship & Yapps app!`;
     
-    navigator.clipboard.writeText(inviteText);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(inviteText);
+    }
     toast.success('Invite copied to clipboard!');
   };
 
   const handleMapEventClick = (eventId: string) => {
     const event = events.find(e => e.id === eventId);
     if (event) {
-      document.getElementById(`event-${eventId}`)?.scrollIntoView({ behavior: 'smooth' });
+      const element = document.getElementById(`event-${eventId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 

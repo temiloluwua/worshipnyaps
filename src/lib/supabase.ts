@@ -49,6 +49,7 @@ export interface Event {
   location_id: string;
   host_id: string;
   capacity: number;
+  attendees?: number;
   is_private: boolean;
   invite_code?: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
