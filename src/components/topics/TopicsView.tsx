@@ -1,65 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share2, Search, Plus, Filter, Star, ExternalLink, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Filter, Star, ExternalLink, Eye, Bookmark, MoreHorizontal, Sparkles, Crown, Edit } from 'lucide-react';
 import { useTopics } from '../../hooks/useTopics';
 import { useAuth } from '../../hooks/useAuth';
-import { FullScreenCard } from './FullScreenCard';
 import { discussionTopics } from '../../data/topics';
+import { TopicCard } from './TopicCard';
+import { CreateTopicModal } from './CreateTopicModal';
+import { EditTopicModal } from './EditTopicModal';
+import { TopicOfTheDayCard } from './TopicOfTheDayCard';
 import toast from 'react-hot-toast';
-import type { Topic as UiTopic } from '../../data/topics';
-import type { Topic as DbTopic } from '../../lib/supabase';
 
 export function TopicsView() {
   const { user } = useAuth();
   const { topics, loading, toggleTopicLike, incrementViewCount } = useTopics();
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showFullScreen, setShowFullScreen] = useState(false);
-  const [topicOfTheDay, setTopicOfTheDay] = useState<any>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTopic, setEditingTopic] = useState<any>(null);
   const [likedTopics, setLikedTopics] = useState<Set<string>>(new Set());
-
-  // Map DB topics to UI topic shape when present
-  const mapDbToUi = (t: DbTopic): UiTopic => ({
-    id: t.id,
-    title: t.title,
-    category: t.category,
-    bibleReference: t.bibleReference || '',
-    questions: t.questions || [],
-    authorName: t.users?.name || 'Unknown',
-    createdAt: new Date(t.created_at).toLocaleString(),
-    comments: 0,
-    tags: t.tags || [],
-    likes: 0,
-    views: t.view_count ?? 0,
-    isPinned: t.is_pinned ?? false,
-    content: t.content,
-  });
+  const [bookmarkedTopics, setBookmarkedTopics] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'feed' | 'cards'>('cards');
 
   // Use fallback topics if database is empty
-  const displayTopicsSource: UiTopic[] = topics.length > 0 ? topics.map(mapDbToUi) : discussionTopics;
+  const displayTopicsSource = topics.length > 0 ? topics : discussionTopics;
+
+  // Get topic of the day (featured/pinned topic or most recent)
+  const topicOfTheDay = displayTopicsSource.find(topic => topic.isPinned || topic.is_pinned) || 
+                       displayTopicsSource[0];
+
+  // Get remaining topics (excluding topic of the day)
+  const remainingTopics = displayTopicsSource.filter(topic => topic.id !== topicOfTheDay?.id);
 
   // Get unique categories
   const categories = ['all', ...Array.from(new Set(displayTopicsSource.map(topic => topic.category)))];
 
-  // Set topic of the day (changes daily)
-  useEffect(() => {
-    const today = new Date().toDateString();
-    const savedDate = localStorage.getItem('topicOfTheDayDate');
-    const savedTopic = localStorage.getItem('topicOfTheDay');
-    
-    if (savedDate !== today || !savedTopic || displayTopicsSource.length === 0) {
-      const randomIndex = Math.floor(Math.random() * displayTopicsSource.length);
-      const todaysTopic = displayTopicsSource[randomIndex];
-      setTopicOfTheDay(todaysTopic);
-      localStorage.setItem('topicOfTheDayDate', today);
-      localStorage.setItem('topicOfTheDay', JSON.stringify(todaysTopic));
-    } else {
-      setTopicOfTheDay(JSON.parse(savedTopic));
-    }
-  }, [displayTopicsSource]);
-
   // Filter topics based on search and category
-  const filteredTopics = displayTopicsSource.filter(topic => {
+  const filteredTopics = remainingTopics.filter(topic => {
     const matchesSearch = topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (topic.content || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          topic.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -67,8 +43,7 @@ export function TopicsView() {
     return matchesSearch && matchesCategory;
   });
 
-  const displayTopics = filteredTopics.length > 0 ? filteredTopics : displayTopicsSource;
-  const currentTopic = displayTopics[currentIndex] || displayTopicsSource[0];
+  const displayTopics = filteredTopics.length > 0 ? filteredTopics : remainingTopics;
 
   const handleLike = (id: string) => {
     if (user) {
@@ -87,18 +62,57 @@ export function TopicsView() {
     }
   };
 
-  const nextTopic = () => {
-    setCurrentIndex((prev) => (prev + 1) % displayTopics.length);
+  const handleBookmark = (id: string) => {
+    if (user) {
+      setBookmarkedTopics(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+          toast.success('Removed from bookmarks');
+        } else {
+          newSet.add(id);
+          toast.success('Added to bookmarks');
+        }
+        return newSet;
+      });
+    } else {
+      toast.error('Please sign in to bookmark topics');
+    }
   };
 
-  const prevTopic = () => {
-    setCurrentIndex((prev) => (prev - 1 + displayTopics.length) % displayTopics.length);
+  const handleShare = (topic: any) => {
+    const shareText = `Check out this discussion topic: "${topic.title}" - ${topic.bibleReference || 'Bible Study Discussion'}`;
+    if (navigator.share) {
+      navigator.share({
+        title: topic.title,
+        text: shareText,
+        url: window.location.href
+      });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      toast.success('Topic link copied to clipboard!');
+    }
   };
 
-  // Reset current index when filters change
-  useEffect(() => {
-    setCurrentIndex(0);
-  }, [searchQuery, selectedCategory]);
+  const handleEdit = (topic: any) => {
+    if (!user) {
+      toast.error('Please sign in to edit topics');
+      return;
+    }
+    
+    // Check if user can edit (author or admin)
+    const canEdit = topic.author_id === user.id || 
+                   topic.authorId === user.id || 
+                   profile?.role === 'admin';
+    
+    if (!canEdit) {
+      toast.error('You can only edit your own topics');
+      return;
+    }
+
+    setEditingTopic(topic);
+    setShowEditModal(true);
+  };
 
   if (loading) {
     return (
@@ -111,175 +125,193 @@ export function TopicsView() {
     );
   }
 
-  if (!currentTopic) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-gray-600">No topics available</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Discussion Topics</h1>
-        <p className="text-gray-600">Swipe through thought-provoking questions for Bible study and fellowship</p>
-      </div>
-
-      {/* Topic of the Day */}
-      {topicOfTheDay && (
-        <div className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-          <div className="flex items-center mb-2">
-            <Star className="w-5 h-5 text-yellow-500 mr-2" />
-            <h3 className="font-semibold text-gray-800">Topic of the Day</h3>
+    <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
+      {/* Header */}
+      <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 p-4 z-10">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+              <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
+              Discussion Cards
+            </h1>
+            <p className="text-gray-600 text-sm">Bible study discussions for our community</p>
           </div>
-          <p className="text-sm text-gray-700 font-medium">{topicOfTheDay.title}</p>
-          <button 
-            onClick={() => {
-              const topicIndex = displayTopics.findIndex(t => t.id === topicOfTheDay.id);
-              if (topicIndex !== -1) {
-                setCurrentIndex(topicIndex);
-                setShowFullScreen(true);
-              }
-            }}
-            className="text-xs text-blue-600 hover:text-blue-700 mt-1"
-          >
-            View Topic →
-          </button>
+          
+          <div className="flex items-center space-x-2">
+            {/* View Mode Toggle */}
+            <div className="bg-gray-100 rounded-lg p-1 flex">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'cards'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600'
+                }`}
+              >
+                Cards
+              </button>
+              <button
+                onClick={() => setViewMode('feed')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'feed'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600'
+                }`}
+              >
+                Feed
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Search and Filter */}
-      <div className="mb-6 space-y-4">
-        <div className="relative">
+        {/* Search */}
+        <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Search topics, questions, or tags..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.currentTarget.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm"
           />
         </div>
 
+        {/* Category Filter */}
         <div className="flex space-x-2 overflow-x-auto pb-2">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
                 selectedCategory === category
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                  : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
               }`}
             >
               {category === 'all' ? 'All Topics' : category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </button>
           ))}
         </div>
+      </div>
 
-        {filteredTopics.length === 0 && searchQuery && (
-          <div className="text-center py-4">
-            <p className="text-gray-500">No topics found matching "{searchQuery}"</p>
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+      {/* Topic of the Day */}
+      {topicOfTheDay && (
+        <div className="p-4">
+          <TopicOfTheDayCard
+            topic={topicOfTheDay}
+            isLiked={likedTopics.has(topicOfTheDay.id)}
+            isBookmarked={bookmarkedTopics.has(topicOfTheDay.id)}
+            onLike={() => handleLike(topicOfTheDay.id)}
+            onBookmark={() => handleBookmark(topicOfTheDay.id)}
+            onShare={() => handleShare(topicOfTheDay)}
+            onEdit={() => handleEdit(topicOfTheDay)}
+            onView={() => incrementViewCount(topicOfTheDay.id)}
+          />
+        </div>
+      )}
+
+      {/* Topics Display */}
+      {viewMode === 'cards' ? (
+        /* Card Game Style */
+        <div className="p-4">
+          <div className="grid gap-6">
+            {displayTopics.map((topic, index) => (
+              <div
+                key={topic.id}
+                className="transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1"
+                style={{
+                  animationDelay: `${index * 100}ms`,
+                  animation: 'slideInUp 0.6s ease-out forwards'
+                }}
+              >
+                <TopicCard
+                  topic={topic}
+                  isLiked={likedTopics.has(topic.id)}
+                  isBookmarked={bookmarkedTopics.has(topic.id)}
+                  onLike={() => handleLike(topic.id)}
+                  onBookmark={() => handleBookmark(topic.id)}
+                  onShare={() => handleShare(topic)}
+                  onEdit={() => handleEdit(topic)}
+                  onView={() => incrementViewCount(topic.id)}
+                  cardStyle="game"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* Twitter Feed Style */
+        <div className="bg-white/80 backdrop-blur-sm">
+          <div className="divide-y divide-gray-100">
+            {displayTopics.map((topic) => (
+              <TopicCard
+                key={topic.id}
+                topic={topic}
+                isLiked={likedTopics.has(topic.id)}
+                isBookmarked={bookmarkedTopics.has(topic.id)}
+                onLike={() => handleLike(topic.id)}
+                onBookmark={() => handleBookmark(topic.id)}
+                onShare={() => handleShare(topic)}
+                onEdit={() => handleEdit(topic)}
+                onView={() => incrementViewCount(topic.id)}
+                cardStyle="feed"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {displayTopics.length === 0 && (
+        <div className="text-center py-12">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 mx-4 shadow-lg">
+            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No topics found</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 shadow-lg"
             >
-              Clear search
+              Create First Topic
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Topic Card Preview */}
-      <div className="relative mb-6">
-        <div 
-          className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-xl transition-shadow"
-          onClick={() => setShowFullScreen(true)}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-              {currentTopic.category.replace('-', ' ').toUpperCase()}
-            </span>
-            <span className="text-sm text-gray-500">
-              {currentIndex + 1} of {displayTopics.length}
-            </span>
-          </div>
-          
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 leading-relaxed">
-            {currentTopic.title}
-          </h2>
-          
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
-            <p className="text-xs font-medium text-gray-600 mb-1">Category:</p>
-            <p className="text-sm text-gray-800">{currentTopic.category}</p>
-          </div>
-          
-          <div className="space-y-2 mb-4">
-            <p className="text-sm font-medium text-gray-700">Content:</p>
-            <div className="max-h-24 overflow-hidden">
-              <p className="text-xs text-gray-600">{(currentTopic.content || (currentTopic.questions ? currentTopic.questions.join(' ') : '')).substring(0, 200)}...</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center pt-4 border-t border-gray-100">
-            <div className="flex items-center space-x-2 text-blue-600">
-              <Eye className="w-4 h-4" />
-              <span className="text-sm font-medium">Tap to view full card</span>
-            </div>
-          </div>
         </div>
-
-        {/* Navigation dots */}
-        <div className="flex justify-center mt-4 space-x-2">
-          {displayTopics.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === currentIndex ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="space-y-3">
-        <button 
-          onClick={() => user ? toast.success('Ask a Question feature coming soon!') : toast.error('Please sign in to ask questions')}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Ask a Question</span>
-        </button>
-        
-        <button 
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              window.open('https://www.openbible.info', '_blank');
-            }
-          }}
-          className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-        >
-          <ExternalLink className="w-5 h-5" />
-          <span>Bible Resources</span>
-        </button>
-      </div>
-
-      {/* Full Screen Card */}
-      {showFullScreen && (
-        <FullScreenCard
-          topic={currentTopic}
-          currentIndex={currentIndex}
-          totalTopics={displayTopics.length}
-          onClose={() => setShowFullScreen(false)}
-          onNext={nextTopic}
-          onPrevious={prevTopic}
-          onLike={handleLike}
-          isLiked={likedTopics.has(currentTopic.id)}
-        />
       )}
+
+      {/* Create Topic Modal */}
+      <CreateTopicModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
+
+      {/* Edit Topic Modal */}
+      <EditTopicModal
+        isOpen={showEditModal}
+        topic={editingTopic}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingTopic(null);
+        }}
+      />
+
+      <style jsx>{`
+        @keyframes slideInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

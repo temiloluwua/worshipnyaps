@@ -1,5 +1,19 @@
 # Worship and Yapps - Calgary Bible Study Community
 
+## Installation
+1. Clone the repository and `cd` into `worshipnyaps`
+2. Install dependencies: `npm install`
+3. Create environment file: copy `.env.example` to `.env`
+4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`
+5. Start the dev server: `npm run dev` and open http://localhost:5173
+
+Quickstart
+- Windows (first time): `npm run setup`
+- Windows (later): `npm run start:win`
+- Mac/Linux (first time): `chmod +x scripts/setup.sh && ./scripts/setup.sh`
+- Mac/Linux (later): `chmod +x scripts/start.sh && ./scripts/start.sh`
+
+
 A modern web application for Calgary Bible studies and fellowship events, built with React, TypeScript, and Supabase.
 
 ## 🚀 Features
@@ -48,15 +62,6 @@ npm run dev
 npm run build
 ```
 
-6. **Alternatively, use the setup/start scripts (Windows PowerShell):**
-```powershell
-# One-time setup: installs dependencies and ensures .env is present
-powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
-
-# Start the dev server (opens http://localhost:5173)
-powershell -ExecutionPolicy Bypass -File scripts\start.ps1
-```
-
 ## 🌐 Environment Variables
 
 Create a `.env` file with:
@@ -68,6 +73,19 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ## 🗄️ Database Setup
 
 The project uses Supabase for the backend. Database migrations are included in the `supabase/migrations/` folder.
+
+## 🚀 Deployment
+
+### Netlify (Recommended)
+1. Connect your GitHub repository to Netlify
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Add environment variables in Netlify dashboard
+
+### Other Platforms
+- **Vercel**: Auto-detects Vite configuration
+- **GitHub Pages**: Use `gh-pages` package
+- **Traditional Hosting**: Upload `dist` folder contents
 
 ## 📱 Features Overview
 
