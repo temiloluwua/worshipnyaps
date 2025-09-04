@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase, Connection, ConnectionRequest } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useNotifications } from './useNotifications';
 import toast from 'react-hot-toast';
 
 export const useConnections = () => {
   const { user } = useAuth();
-  const { createNotification } = useNotifications();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([]);
   const [loading, setLoading] = useState(false);

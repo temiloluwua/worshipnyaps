@@ -20,7 +20,7 @@ export interface Topic {
 // Sample topics - replace with your actual topics
 export const discussionTopics: Topic[] = [
   {
-    id: '1',
+    id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
     title: 'Is pretty privilege real?',
     category: 'life-questions',
     bibleReference: 'Ecclesiastes 9:8-11; 1 Peter 3:3-4; Ephesians 4:11',
@@ -41,7 +41,7 @@ export const discussionTopics: Topic[] = [
     isPinned: false,
   },
   {
-    id: '2',
+    id: 'b2c3d4e5-f6g7-8901-2345-678901bcdefg',
     title: 'How do we handle comparison?',
     category: 'life-questions',
     bibleReference: 'Galatians 6:4; 2 Corinthians 10:12; Philippians 2:3',
@@ -62,7 +62,7 @@ export const discussionTopics: Topic[] = [
     isPinned: true,
   },
   {
-    id: '3',
+    id: 'c3d4e5f6-g7h8-9012-3456-789012cdefgh',
     title: 'What does it mean to be a good yapper in faith?',
     category: 'community',
     bibleReference: 'Proverbs 27:17; Ecclesiastes 4:12; James 1:19',
