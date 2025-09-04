@@ -119,7 +119,7 @@ export const useEvents = () => {
   };
 
   // RSVP to event
-  const rsvpToEvent = async (eventId: string, volunteerRoles: string[] = [], foodItems: string[] = [], customFoodDetails?: { item: string; category: string; servingSize?: string; notes?: string }) => {
+  const rsvpToEvent = async (eventId: string, volunteerRoles: string[] = [], foodItems: string[] = []) => {
     if (!user) return false;
 
     try {
@@ -162,27 +162,12 @@ export const useEvents = () => {
 
       // Add food items if any
       if (foodItems.length > 0) {
-        const foodData = foodItems.map(item => {
-          // Check if it's a custom item with details
-          if (customFoodDetails && item.includes(customFoodDetails.item)) {
-            return {
-              event_id: eventId,
-              item: customFoodDetails.item,
-              category: customFoodDetails.category,
-              assigned_to: user.id,
-              completed: false,
-              notes: customFoodDetails.notes
-            };
-          }
-          
-          // Handle existing food items
-          return {
-            event_id: eventId,
-            item,
-            assigned_to: user.id,
-            completed: false
-          };
-        });
+        const foodData = foodItems.map(item => ({
+          event_id: eventId,
+          item,
+          assigned_to: user.id,
+          completed: false
+        }));
 
         await supabase
           .from('food_items')

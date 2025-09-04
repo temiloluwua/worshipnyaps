@@ -19,6 +19,21 @@ interface SetListSong {
   tempo?: string;
 }
 
+type MyEvent = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  role: 'host' | 'volunteer';
+  position?: string;
+  location: string;
+  attendees: number;
+  capacity: number;
+  status: 'upcoming' | 'completed' | 'cancelled';
+  unreadMessages: number;
+  attendeesList: { id: string; name: string; isHost?: boolean; rsvpDate: string }[];
+};
+
 export function SignupView() {
   const [activeTab, setActiveTab] = useState<'host' | 'volunteer' | 'my-events'>('host');
   const [formData, setFormData] = useState({
@@ -56,7 +71,7 @@ export function SignupView() {
   ]);
   
   // My Events data
-  const [myEvents, setMyEvents] = useState([
+  const [myEvents, setMyEvents] = useState<MyEvent[]>([
     {
       id: '1',
       title: 'Wednesday Bible Study',
@@ -100,74 +115,10 @@ export function SignupView() {
 
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showEventManagement, setShowEventManagement] = useState(false);
-  const [weeklyRoles, setWeeklyRoles] = useState<{[key: string]: string}>({});
-  const [roleAvailability, setRoleAvailability] = useState<{[key: string]: string[]}>({});
   const interests = [
     'Bible Study', 'Worship', 'Prayer', 'Community Service', 
     'Youth Ministry', 'Music', 'Teaching', 'Missions', 'Being a Yapper'
   ];
-
-  // Weekly roles configuration
-  const weeklyRoleOptions = [
-    {
-      id: 'prayer',
-      name: 'Prayer Leader',
-      description: 'Lead opening and closing prayers, pray for specific needs, create a welcoming atmosphere of worship',
-      icon: '🙏',
-      commitment: 'Weekly'
-    },
-    {
-      id: 'worship',
-      name: 'Worship Leader',
-      description: 'Lead music and singing, choose songs that fit the study theme, encourage participation',
-      icon: '🎵',
-      commitment: 'Weekly'
-    },
-    {
-      id: 'discussion',
-      name: 'Discussion Coordinator',
-      description: 'Guide group discussions, ask follow-up questions, ensure everyone participates, keep conversations on track',
-      icon: '💬',
-      commitment: 'Weekly'
-    },
-    {
-      id: 'hospitality',
-      name: 'Hospitality Coordinator',
-      description: 'Coordinate food, setup/cleanup, welcome newcomers, ensure everyone feels included',
-      icon: '☕',
-      commitment: 'Weekly'
-    },
-    {
-      id: 'tech',
-      name: 'Tech Coordinator',
-      description: 'Manage any tech needs, help with virtual attendees, handle music/audio setup',
-      icon: '💻',
-      commitment: 'As needed'
-    }
-  ];
-
-  const availabilityOptions = [
-    'Every week',
-    'Every other week',
-    'Once a month',
-    'As needed/backup',
-    'Special occasions only'
-  ];
-
-  const handleRoleSelection = (roleId: string, availability: string) => {
-    setWeeklyRoles(prev => ({
-      ...prev,
-      [roleId]: availability
-    }));
-  };
-
-  const removeRole = (roleId: string) => {
-    setWeeklyRoles(prev => {
-      const newRoles = { ...prev };
-      delete newRoles[roleId];
-      return newRoles;
-    });
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -262,15 +213,15 @@ export function SignupView() {
     if (activeTab === 'host') {
       toast.success('Host application submitted for approval!');
       // Add to my events
-      const newEvent = {
+      const newEvent: MyEvent = {
         id: Date.now().toString(),
         title: formData.eventTitle,
         date: formData.eventDate,
         time: formData.eventTime,
-        role: 'host' as const,
+        role: 'host',
         attendees: 0,
         capacity: formData.capacity,
-        status: 'upcoming' as const,
+        status: 'upcoming',
         location: 'My Home',
         unreadMessages: 0,
         attendeesList: []
@@ -646,92 +597,6 @@ export function SignupView() {
             <span>Add Food Item</span>
           </button>
         </div>
-      </div>
-
-      {/* Weekly Roles */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Calendar className="w-5 h-5 mr-2" />
-          Weekly Role Commitments
-        </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Sign up for ongoing roles to help make each gathering meaningful and well-organized.
-        </p>
-        
-        <div className="space-y-4">
-          {weeklyRoleOptions.map((role) => (
-            <div key={role.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-start space-x-3">
-                  <div className="text-2xl">{role.icon}</div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">{role.name}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{role.description}</p>
-                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                      {role.commitment}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              {weeklyRoles[role.id] ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="text-green-800 font-medium">
-                        You're committed: {weeklyRoles[role.id]}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeRole(role.id)}
-                      className="text-red-600 hover:text-red-700 text-sm"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">How often can you serve in this role?</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {availabilityOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => handleRoleSelection(role.id, option)}
-                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-left"
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        
-        {/* Role Summary */}
-        {Object.keys(weeklyRoles).length > 0 && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="font-medium text-blue-900 mb-3">Your Role Commitments:</h4>
-            <div className="space-y-2">
-              {Object.entries(weeklyRoles).map(([roleId, availability]) => {
-                const role = weeklyRoleOptions.find(r => r.id === roleId);
-                return role ? (
-                  <div key={roleId} className="flex items-center justify-between text-sm">
-                    <span className="text-blue-800">
-                      {role.icon} {role.name}
-                    </span>
-                    <span className="text-blue-600 font-medium">{availability}</span>
-                  </div>
-                ) : null;
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       <button
