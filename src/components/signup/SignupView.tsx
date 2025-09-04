@@ -19,6 +19,21 @@ interface SetListSong {
   tempo?: string;
 }
 
+type MyEvent = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  role: 'host' | 'volunteer';
+  position?: string;
+  location: string;
+  attendees: number;
+  capacity: number;
+  status: 'upcoming' | 'completed' | 'cancelled';
+  unreadMessages: number;
+  attendeesList: { id: string; name: string; isHost?: boolean; rsvpDate: string }[];
+};
+
 export function SignupView() {
   const [activeTab, setActiveTab] = useState<'host' | 'volunteer' | 'my-events'>('host');
   const [formData, setFormData] = useState({
@@ -56,7 +71,7 @@ export function SignupView() {
   ]);
   
   // My Events data
-  const [myEvents, setMyEvents] = useState([
+  const [myEvents, setMyEvents] = useState<MyEvent[]>([
     {
       id: '1',
       title: 'Wednesday Bible Study',
@@ -198,16 +213,18 @@ export function SignupView() {
     if (activeTab === 'host') {
       toast.success('Host application submitted for approval!');
       // Add to my events
-      const newEvent = {
+      const newEvent: MyEvent = {
         id: Date.now().toString(),
         title: formData.eventTitle,
         date: formData.eventDate,
         time: formData.eventTime,
-        role: 'host' as const,
+        role: 'host',
         attendees: 0,
         capacity: formData.capacity,
-        status: 'upcoming' as const,
-        location: 'My Home'
+        status: 'upcoming',
+        location: 'My Home',
+        unreadMessages: 0,
+        attendeesList: []
       };
       setMyEvents(prev => [newEvent, ...prev]);
       setActiveTab('my-events');

@@ -5,6 +5,7 @@ import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
 import { InteractiveMap } from './InteractiveMap';
 import { RSVPModal } from './RSVPModal';
+import type { Event as AppEvent } from '../../lib/supabase';
 
 export function LocationsView() {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ export function LocationsView() {
     setLikedEvents(newLiked);
   };
 
-  const handleRSVP = (event: Event) => {
+  const handleRSVP = (event: AppEvent) => {
     if (!user) {
       toast.error('Please sign in to RSVP');
       return;

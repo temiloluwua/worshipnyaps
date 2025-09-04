@@ -5,6 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { FullScreenCard } from './FullScreenCard';
 import { discussionTopics } from '../../data/topics';
 import toast from 'react-hot-toast';
+import type { Topic as UiTopic } from '../../data/topics';
+import type { Topic as DbTopic } from '../../lib/supabase';
 
 export function TopicsView() {
   const { user } = useAuth();
@@ -16,8 +18,25 @@ export function TopicsView() {
   const [topicOfTheDay, setTopicOfTheDay] = useState<any>(null);
   const [likedTopics, setLikedTopics] = useState<Set<string>>(new Set());
 
+  // Map DB topics to UI topic shape when present
+  const mapDbToUi = (t: DbTopic): UiTopic => ({
+    id: t.id,
+    title: t.title,
+    category: t.category,
+    bibleReference: t.bibleReference || '',
+    questions: t.questions || [],
+    authorName: t.users?.name || 'Unknown',
+    createdAt: new Date(t.created_at).toLocaleString(),
+    comments: 0,
+    tags: t.tags || [],
+    likes: 0,
+    views: t.view_count ?? 0,
+    isPinned: t.is_pinned ?? false,
+    content: t.content,
+  });
+
   // Use fallback topics if database is empty
-  const displayTopicsSource = topics.length > 0 ? topics : discussionTopics;
+  const displayTopicsSource: UiTopic[] = topics.length > 0 ? topics.map(mapDbToUi) : discussionTopics;
 
   // Get unique categories
   const categories = ['all', ...Array.from(new Set(displayTopicsSource.map(topic => topic.category)))];
@@ -259,7 +278,6 @@ export function TopicsView() {
           onPrevious={prevTopic}
           onLike={handleLike}
           isLiked={likedTopics.has(currentTopic.id)}
-          onView={() => incrementViewCount(currentTopic.id)}
         />
       )}
     </div>
