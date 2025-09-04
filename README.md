@@ -1,5 +1,19 @@
 # Worship and Yapps - Calgary Bible Study Community
 
+## Installation
+1. Clone the repository and `cd` into `worshipnyaps`
+2. Install dependencies: `npm install`
+3. Create environment file: copy `.env.example` to `.env`
+4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`
+5. Start the dev server: `npm run dev` and open http://localhost:5173
+
+Quickstart
+- Windows (first time): `npm run setup`
+- Windows (later): `npm run start:win`
+- Mac/Linux (first time): `chmod +x scripts/setup.sh && ./scripts/setup.sh`
+- Mac/Linux (later): `chmod +x scripts/start.sh && ./scripts/start.sh`
+
+
 A modern web application for Calgary Bible studies and fellowship events, built with React, TypeScript, and Supabase.
 
 ## 🚀 Features
