@@ -10,7 +10,7 @@
   # Keep secrets scan enabled, but omit scanning the built assets and .env.example
   # Use space-separated patterns per Netlify docs
   SECRETS_SCAN_OMIT_PATHS = "dist/** .env.example"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY VITE_SUPABASE_URL"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY VITE_SUPABASE_URL VITE_APP_NAME VITE_APP_DESCRIPTION"
 
 [[redirects]]
   from = "/*"
@@ -23,4 +23,4 @@
   NPM_FLAGS = "--include=dev"
   # Repeat in production context
   SECRETS_SCAN_OMIT_PATHS = "dist/** .env.example"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY VITE_SUPABASE_URL"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY VITE_SUPABASE_URL VITE_APP_NAME VITE_APP_DESCRIPTION"
