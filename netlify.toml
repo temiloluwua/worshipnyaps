@@ -7,6 +7,9 @@
   NPM_VERSION = "8"
   # Ensure devDependencies are installed so `tsc` is available
   NPM_FLAGS = "--include=dev"
+  # Allow public client-side keys in built assets without failing the build
+  SECRETS_SCAN_OMIT_PATHS = "dist/**"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY,VITE_SUPABASE_URL"
 
 [[redirects]]
   from = "/*"
@@ -17,3 +20,6 @@
   NODE_ENV = "production"
   # Redundant but safe: include dev deps in production context too
   NPM_FLAGS = "--include=dev"
+  # Repeat in production context
+  SECRETS_SCAN_OMIT_PATHS = "dist/**"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY,VITE_SUPABASE_URL"
