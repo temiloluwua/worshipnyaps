@@ -1,9 +1,5 @@
-import {MD3LightTheme} from 'react-native-paper';
-
 export const theme = {
-  ...MD3LightTheme,
   colors: {
-    ...MD3LightTheme.colors,
     primary: '#2563EB', // Blue-600
     primaryContainer: '#DBEAFE', // Blue-100
     secondary: '#0EA5E9', // Sky-500
@@ -20,7 +16,7 @@ export const theme = {
     onBackground: '#1F2937', // Gray-800
     outline: '#D1D5DB', // Gray-300
   },
-};
+} as const;
 
 export const colors = {
   blue: {

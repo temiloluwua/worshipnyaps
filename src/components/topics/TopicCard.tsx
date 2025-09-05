@@ -31,7 +31,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   const [showComments, setShowComments] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
-  const [commentCount, setCommentCount] = useState(topic.comments || 0);
+  const [commentCount, setCommentCount] = useState<number>(topic.comments || 0);
 
   const openBibleReference = (reference: string) => {
     const cleanRef = reference.replace(/[;,]/g, '').split(' ')[0];

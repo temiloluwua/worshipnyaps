@@ -5,6 +5,7 @@ import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
 import { InteractiveMap } from './InteractiveMap';
 import { RSVPModal } from './RSVPModal';
+import type { Event as DbEvent } from '../../lib/supabase';
 
 export function LocationsView() {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export function LocationsView() {
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [rsvpEvents, setRsvpEvents] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<DbEvent | null>(null);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
 
   const categories = ['All', 'bible-study', 'basketball-yap', 'hiking-yap', 'other'];
@@ -32,7 +33,7 @@ export function LocationsView() {
     setLikedEvents(newLiked);
   };
 
-  const handleRSVP = (event: Event) => {
+  const handleRSVP = (event: DbEvent) => {
     if (!user) {
       toast.error('Please sign in to RSVP');
       return;

@@ -10,7 +10,7 @@ import { TopicOfTheDayCard } from './TopicOfTheDayCard';
 import toast from 'react-hot-toast';
 
 export function TopicsView() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { topics, loading, toggleTopicLike, incrementViewCount } = useTopics();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -25,8 +25,8 @@ export function TopicsView() {
   const displayTopicsSource = topics.length > 0 ? topics : discussionTopics;
 
   // Get topic of the day (featured/pinned topic or most recent)
-  const topicOfTheDay = displayTopicsSource.find(topic => topic.isPinned || topic.is_pinned) || 
-                       displayTopicsSource[0];
+  const isPinned = (t: any) => Boolean((t && (t.isPinned || t.is_pinned)));
+  const topicOfTheDay = displayTopicsSource.find(isPinned) || displayTopicsSource[0];
 
   // Get remaining topics (excluding topic of the day)
   const remainingTopics = displayTopicsSource.filter(topic => topic.id !== topicOfTheDay?.id);
@@ -300,7 +300,7 @@ export function TopicsView() {
         }}
       />
 
-      <style jsx>{`
+      <style>{`
         @keyframes slideInUp {
           from {
             opacity: 0;

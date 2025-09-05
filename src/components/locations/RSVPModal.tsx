@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import { X, Users, Clock, MapPin, Music, Coffee, Heart, CheckCircle, Plus, Utensils, ChefHat } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface Event {
+type RSVPEvent = {
   id: string;
   title: string;
-  location: string;
   date: string;
   time: string;
-  attendees: number;
   capacity: number;
-  description: string;
-  hostName: string;
-}
+  attendees?: number;
+  // Support either a simple string or joined location object
+  location?: string;
+  locations?: { name?: string };
+};
 
 interface FoodItem {
   id: string;
@@ -25,7 +25,7 @@ interface FoodItem {
 }
 
 interface RSVPModalProps {
-  event: Event;
+  event: RSVPEvent;
   isOpen: boolean;
   onClose: () => void;
   onRSVP: (eventId: string, volunteerRoles: string[], foodItems: string[]) => void;
@@ -389,11 +389,11 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
             </div>
             <div className="flex items-center">
               <MapPin className="w-4 h-4 mr-2" />
-              {event.location}
+              {event.locations?.name || event.location || 'Location TBD'}
             </div>
             <div className="flex items-center">
               <Users className="w-4 h-4 mr-2" />
-              {event.attendees}/{event.capacity} attending
+              {(event.attendees || 0)}/{event.capacity} attending
             </div>
           </div>
         </div>

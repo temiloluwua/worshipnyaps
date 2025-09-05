@@ -178,6 +178,36 @@ export const useTopics = () => {
     }
   };
 
+  // Update topic (author or admin)
+  const updateTopic = async (
+    topicId: string,
+    updates: Partial<Pick<Topic, 'title' | 'category' | 'content' | 'tags'>> & {
+      bibleReference?: string;
+      is_pinned?: boolean;
+    }
+  ) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('topics')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', topicId);
+
+      if (error) throw error;
+
+      toast.success('Topic updated successfully!');
+      await fetchTopics();
+      return true;
+    } catch (error: any) {
+      toast.error(error.message);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchTopics();
   }, []);
@@ -191,6 +221,7 @@ export const useTopics = () => {
     getTopicComments,
     addComment,
     toggleTopicLike,
-    toggleTopicPin
+    toggleTopicPin,
+    updateTopic
   };
 };
