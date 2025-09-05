@@ -7,9 +7,10 @@
   NPM_VERSION = "8"
   # Ensure devDependencies are installed so `tsc` is available
   NPM_FLAGS = "--include=dev"
-  # Keep secrets scan enabled, but omit scanning .env.example only
-  SECRETS_SCAN_OMIT_PATHS = ".env.example"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY,VITE_SUPABASE_URL"
+  # Keep secrets scan enabled, but omit scanning the built assets and .env.example
+  # Use space-separated patterns per Netlify docs
+  SECRETS_SCAN_OMIT_PATHS = "dist/** .env.example"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY VITE_SUPABASE_URL"
 
 [[redirects]]
   from = "/*"
@@ -21,5 +22,5 @@
   # Redundant but safe: include dev deps in production context too
   NPM_FLAGS = "--include=dev"
   # Repeat in production context
-  SECRETS_SCAN_OMIT_PATHS = ".env.example"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY,VITE_SUPABASE_URL"
+  SECRETS_SCAN_OMIT_PATHS = "dist/** .env.example"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY VITE_SUPABASE_URL"
