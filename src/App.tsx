@@ -6,12 +6,15 @@ import { LocationsView } from './components/locations/LocationsView';
 import { CommunityView } from './components/network/NetworkView';
 import { SignupView } from './components/signup/SignupView';
 import { AuthModal } from './components/auth/AuthModal';
+import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { useAuth } from './hooks/useAuth';
+import { useOnboarding } from './hooks/useOnboarding';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'topics' | 'locations' | 'signup' | 'network'>('topics');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { loading } = useAuth();
+  const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
 
   console.log('App: Loading state:', loading);
 
@@ -47,6 +50,12 @@ function App() {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         initialMode="signin"
+      />
+      
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={skipOnboarding}
+        onComplete={completeOnboarding}
       />
     </div>
   );

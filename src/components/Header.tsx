@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, Bell, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useOnboarding } from '../hooks/useOnboarding';
 import { AuthModal } from './auth/AuthModal';
 
 interface HeaderProps {
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onShowAuth }) => {
   const { user, profile, signOut } = useAuth();
+  const { resetOnboarding } = useOnboarding();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -30,7 +32,11 @@ export const Header: React.FC<HeaderProps> = ({ onShowAuth }) => {
             <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative">
               <Bell size={20} />
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+            <button 
+              onClick={resetOnboarding}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Show Onboarding"
+            >
               <Settings size={20} />
             </button>
             
