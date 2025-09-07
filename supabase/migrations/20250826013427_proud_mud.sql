@@ -65,7 +65,7 @@ ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
-  type text NOT NULL CHECK (type IN ('bible-study', 'basketball-yap', 'hiking-yap', 'other')),
+  type text NOT NULL CHECK (type IN ('bible-study', 'basketball-yap', 'hiking-yap', 'evangelism'"')),
   description text NOT NULL,
   date date NOT NULL,
   time time NOT NULL,
