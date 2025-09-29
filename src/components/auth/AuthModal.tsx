@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Phone, MapPin, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Chrome } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import toast from 'react-hot-toast';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
     city: 'Calgary'
   });
 
-  const { signIn, signUp, loading } = useAuth();
+  const { signIn, signUp, signInWithGoogle, loading } = useAuth();
 
   if (!isOpen) return null;
 
@@ -53,6 +54,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await signInWithGoogle();
+    if (!error) {
+      onClose();
+    }
+  };
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-hidden">
@@ -92,6 +99,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Google Sign In Button */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center space-x-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Chrome className="w-5 h-5 text-red-500" />
+              <span className="font-medium text-gray-700">
+                {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
+              </span>
+            </button>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+              </div>
+            </div>
+
             {/* Name (signup only) */}
             {mode === 'signup' && (
               <div>
@@ -211,6 +241,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
+
+          {/* Terms for Google Sign-in */}
+          <div className="mt-4 text-center">
+            <p className="text-xs text-gray-500">
+              By signing in, you agree to our Terms of Service and Privacy Policy
+            </p>
+          </div>
 
           {/* Footer */}
           <div className="mt-6 text-center">
