@@ -1,4 +1,4 @@
-# Worship and Yapps - Calgary Bible Study Community
+# Worship and Yapps - Calgary Bible Study Community yay
 
 A modern web application for Calgary Bible studies and fellowship events, built with React, TypeScript, and Supabase.
 
