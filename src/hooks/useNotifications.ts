@@ -182,6 +182,28 @@ export const useNotifications = () => {
             .insert(notifications);
 
           if (error) throw error;
+        } else {
+          // Fallback: send to all users if no specific volunteers found
+          const { data: allUsers, error: usersError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('is_approved', true)
+            .limit(50); // Limit to prevent spam
+
+          if (!usersError && allUsers && allUsers.length > 0) {
+            const notifications = allUsers.map(user => ({
+              user_id: user.id,
+              type: 'volunteer_opportunity' as const,
+              title,
+              message,
+              event_id: eventId,
+              is_read: false
+            }));
+
+            await supabase
+              .from('notifications')
+              .insert(notifications);
+          }
         }
       }
 
@@ -189,6 +211,7 @@ export const useNotifications = () => {
       return true;
     } catch (error) {
       console.error('Error sending volunteer notification:', error);
+      // Don't show error to user, just log it
       return false;
     }
   };

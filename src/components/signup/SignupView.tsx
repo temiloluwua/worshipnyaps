@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, Phone, MapPin, Calendar, Heart, Users, Music, Coffee, CheckCircle, Plus, Minus, Clock, Eye, EyeOff } from 'lucide-react';
 import { EventManagement } from '../events/EventManagement';
+import { VolunteerDashboard } from '../volunteer/VolunteerDashboard';
+import { CreateOpportunityModal } from '../volunteer/CreateOpportunityModal';
+import { useVolunteers } from '../../hooks/useVolunteers';
 import toast from 'react-hot-toast';
 
 interface FoodItem {
@@ -20,7 +23,9 @@ interface SetListSong {
 }
 
 export function SignupView() {
-  const [activeTab, setActiveTab] = useState<'host' | 'volunteer' | 'my-events'>('host');
+  const { createOpportunity } = useVolunteers();
+  const [activeTab, setActiveTab] = useState<'host' | 'volunteer' | 'my-events' | 'volunteer-hub'>('volunteer-hub');
+  const [showCreateOpportunityModal, setShowCreateOpportunityModal] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -290,6 +295,13 @@ export function SignupView() {
     };
     setSelectedEvent(eventWithDetails);
     setShowEventManagement(true);
+  };
+
+  const handleCreateOpportunity = async (opportunityData: any) => {
+    const result = await createOpportunity(opportunityData);
+    if (result) {
+      setShowCreateOpportunityModal(false);
+    }
   };
 
   const renderMyEvents = () => (
@@ -837,6 +849,16 @@ export function SignupView() {
       <div className="flex justify-center mb-8">
         <div className="bg-gray-100 rounded-lg p-1 flex">
           <button
+            onClick={() => setActiveTab('volunteer-hub')}
+            className={`px-6 py-2 rounded-md font-medium transition-colors ${
+              activeTab === 'volunteer-hub'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Volunteer Hub
+          </button>
+          <button
             onClick={() => setActiveTab('host')}
             className={`px-6 py-2 rounded-md font-medium transition-colors ${
               activeTab === 'host'
@@ -870,6 +892,7 @@ export function SignupView() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {activeTab === 'volunteer-hub' && <VolunteerDashboard />}
         {activeTab === 'host' && renderHostForm()}
         {activeTab === 'volunteer' && renderVolunteerForm()}
         {activeTab === 'my-events' && renderMyEvents()}
@@ -885,6 +908,13 @@ export function SignupView() {
           }}
         />
       )}
+      
+      {/* Create Opportunity Modal */}
+      <CreateOpportunityModal
+        isOpen={showCreateOpportunityModal}
+        onClose={() => setShowCreateOpportunityModal(false)}
+        onCreateOpportunity={handleCreateOpportunity}
+      />
     </div>
   );
 }
