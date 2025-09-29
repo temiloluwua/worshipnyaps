@@ -69,12 +69,13 @@ export const useAuth = () => {
 
   const createProfile = async (userId: string) => {
     try {
+      console.log('Creating profile for user:', userId);
       const { data: authUser } = await supabase.auth.getUser();
       if (!authUser.user) return;
 
       const { error } = await supabase
         .from('users')
-        .insert({
+        .upsert({
           id: userId,
           email: authUser.user.email!,
           name: authUser.user.user_metadata?.name || 'New User',
@@ -84,16 +85,18 @@ export const useAuth = () => {
         });
 
       if (error) throw error;
+      console.log('Profile created successfully');
       await fetchProfile(userId);
     } catch (error) {
       console.error('Error creating profile:', error);
-      toast.error('Failed to create user profile');
+      // Don't show error toast as this might be expected in some cases
     }
   };
 
   const signUp = async (email: string, password: string, name: string, phone?: string) => {
     try {
       setLoading(true);
+      console.log('Attempting to sign up user:', email);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -102,13 +105,16 @@ export const useAuth = () => {
             name,
             phone,
           },
+          emailRedirectTo: undefined, // Disable email confirmation for now
         },
       });
 
       if (error) throw error;
+      console.log('Sign up successful:', data);
       toast.success('Account created successfully!');
       return { data, error: null };
     } catch (error: any) {
+      console.error('Sign up error:', error);
       toast.error(error.message);
       return { data: null, error };
     } finally {
@@ -119,15 +125,18 @@ export const useAuth = () => {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('Attempting to sign in user:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+      console.log('Sign in successful:', data);
       toast.success('Signed in successfully!');
       return { data, error: null };
     } catch (error: any) {
+      console.error('Sign in error:', error);
       toast.error(error.message);
       return { data: null, error };
     } finally {

@@ -13,10 +13,11 @@ import { useOnboarding } from './hooks/useOnboarding';
 function App() {
   const [activeTab, setActiveTab] = useState<'topics' | 'locations' | 'signup' | 'network'>('topics');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
 
   console.log('App: Loading state:', loading);
+  console.log('App: User state:', user ? 'Logged in' : 'Not logged in');
 
   if (loading) {
     return (

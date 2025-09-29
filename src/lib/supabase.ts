@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
   },
   realtime: {
     params: {
@@ -24,6 +24,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Test connection
 console.log('Supabase client initialized:', supabaseUrl);
+
+// Test the connection
+supabase.auth.getSession().then(({ data, error }) => {
+  if (error) {
+    console.error('Supabase connection error:', error);
+  } else {
+    console.log('Supabase connected successfully. Session:', data.session ? 'Active' : 'None');
+  }
+});
 
 // Database types
 export interface UserProfile {

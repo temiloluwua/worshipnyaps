@@ -39,6 +39,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
       }
     } else {
       if (formData.password !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters');
         return;
       }
       const { error } = await signUp(formData.email, formData.password, formData.name, formData.phone);
