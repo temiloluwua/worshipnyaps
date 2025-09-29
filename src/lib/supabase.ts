@@ -99,6 +99,7 @@ export interface Topic {
   view_count: number;
   created_at: string;
   updated_at: string;
+  bible_verse?: string;
   // Additional properties for UI components
   questions?: string[];
   bibleReference?: string;

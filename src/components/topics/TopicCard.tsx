@@ -124,6 +124,18 @@ export const TopicCard: React.FC<TopicCardProps> = ({
               <ExternalLink className="w-4 h-4" />
               <span className="font-medium">{topic.bibleReference}</span>
             </button>
+            
+            {/* Bible Verse Text */}
+            {topic.bible_verse && (
+              <div className="mt-3 bg-white/90 rounded-xl p-4 border border-blue-100">
+                <p className="text-blue-900 italic leading-relaxed">
+                  "{topic.bible_verse}"
+                </p>
+                <p className="text-blue-700 text-sm font-medium mt-2">
+                  — {topic.bibleReference}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -17,6 +17,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({ isOpen, onCl
     category: 'life-questions',
     content: '',
     bibleReference: '',
+    bibleVerse: '',
     tags: [] as string[],
     questions: ['']
   });
@@ -115,6 +116,25 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({ isOpen, onCl
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
             <X size={20} />
           </button>
+        </div>
+
+        {/* Bible Verse */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Book className="w-4 h-4 inline mr-1" />
+            Bible Verse Text (Optional)
+          </label>
+          <textarea
+            name="bibleVerse"
+            value={formData.bibleVerse || ''}
+            onChange={handleInputChange}
+            placeholder="Enter the full text of the Bible verse..."
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={3}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Add the actual verse text to display alongside the reference
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">

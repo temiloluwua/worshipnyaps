@@ -16,6 +16,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ isOpen, topic, o
     category: topic?.category || '',
     content: topic?.content || '',
     bibleReference: topic?.bibleReference || '',
+    bibleVerse: topic?.bible_verse || '',
     tags: Array.isArray(topic?.tags) ? topic.tags : (typeof topic?.tags === 'string' ? (topic.tags as string).split(',').map((t: string) => t.trim()).filter(Boolean) : []),
     is_pinned: Boolean(topic?.is_pinned || topic?.isPinned),
   }), [topic]);
@@ -24,6 +25,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ isOpen, topic, o
   const [category, setCategory] = useState(initial.category);
   const [content, setContent] = useState(initial.content);
   const [bibleReference, setBibleReference] = useState(initial.bibleReference);
+  const [bibleVerse, setBibleVerse] = useState(initial.bibleVerse);
   const [tagsInput, setTagsInput] = useState(initial.tags.join(', '));
   const [isPinned, setIsPinned] = useState(initial.is_pinned);
   const [saving, setSaving] = useState(false);
@@ -33,6 +35,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ isOpen, topic, o
     setCategory(initial.category);
     setContent(initial.content);
     setBibleReference(initial.bibleReference);
+    setBibleVerse(initial.bibleVerse);
     setTagsInput(initial.tags.join(', '));
     setIsPinned(initial.is_pinned);
   }, [initial]);
@@ -60,6 +63,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ isOpen, topic, o
       category: category.trim(),
       content: content,
       bibleReference: bibleReference.trim() || undefined,
+      bible_verse: bibleVerse.trim() || undefined,
       tags,
       is_pinned: isPinned,
     });
@@ -108,6 +112,17 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ isOpen, topic, o
               onChange={(e) => setBibleReference(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., John 3:16"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bible Verse Text (optional)</label>
+            <textarea
+              value={bibleVerse}
+              onChange={(e) => setBibleVerse(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter the full text of the Bible verse..."
             />
           </div>
 

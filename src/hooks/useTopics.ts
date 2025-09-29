@@ -38,6 +38,7 @@ export const useTopics = () => {
     title: string;
     category: string;
     content: string;
+    bibleVerse?: string;
     tags: string[];
   }) => {
     if (!user) return null;
@@ -47,6 +48,7 @@ export const useTopics = () => {
         .from('topics')
         .insert({
           ...topicData,
+          bible_verse: topicData.bibleVerse,
           author_id: user.id,
           view_count: 0,
           is_pinned: false
@@ -191,7 +193,7 @@ export const useTopics = () => {
   // Update topic (author or admin)
   const updateTopic = async (
     topicId: string,
-    updates: Partial<Pick<Topic, 'title' | 'category' | 'content' | 'tags'>> & {
+    updates: Partial<Pick<Topic, 'title' | 'category' | 'content' | 'tags' | 'bible_verse'>> & {
       bibleReference?: string;
       is_pinned?: boolean;
     }
