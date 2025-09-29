@@ -50,12 +50,28 @@ export function TopicsView() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
-      setIsScrolled(scrollTop > 100);
+      const shouldBeScrolled = scrollTop > 120;
+      if (shouldBeScrolled !== isScrolled) {
+        setIsScrolled(shouldBeScrolled);
+      }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Throttle scroll events for better performance
+    let ticking = false;
+    const throttledHandleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', throttledHandleScroll);
   }, []);
+
   const handleLike = (id: string) => {
     if (user) {
       toggleTopicLike(id);
@@ -139,11 +155,13 @@ export function TopicsView() {
   return (
     <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
       {/* Header */}
-      <div className={`sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-10 transition-all duration-300 ${
-        isScrolled ? 'py-2 px-4' : 'p-4'
+      <div className={`sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-10 transition-all duration-200 ease-out ${
+        isScrolled ? 'py-3 px-4 shadow-md' : 'p-4'
       }`}>
-        {!isScrolled && (
-          <div className="flex items-center justify-between mb-4">
+        <div className={`transition-all duration-200 ease-out ${
+          isScrolled ? 'opacity-0 max-h-0 overflow-hidden mb-0' : 'opacity-100 max-h-32 mb-4'
+        }`}>
+          <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center">
                 <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
@@ -185,7 +203,7 @@ export function TopicsView() {
               </button>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Search - always visible */}
         <div className={`flex items-center space-x-3 ${isScrolled ? 'mb-0' : 'mb-4'}`}>
@@ -196,7 +214,7 @@ export function TopicsView() {
               placeholder={isScrolled ? "Search..." : "Search topics, questions, or tags..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm transition-all ${
+              className={`w-full pl-10 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/90 backdrop-blur-sm shadow-sm transition-all duration-200 ${
                 isScrolled ? 'py-2' : 'py-3'
               }`}
             />
@@ -213,7 +231,9 @@ export function TopicsView() {
         </div>
 
         {/* Category Filter - only show when not scrolled */}
-        {!isScrolled && (
+        <div className={`transition-all duration-200 ease-out ${
+          isScrolled ? 'opacity-0 max-h-0 overflow-hidden' : 'opacity-100 max-h-16'
+        }`}>
           <div className="flex space-x-2 overflow-x-auto pb-2">
             {categories.map((category) => (
               <button
@@ -229,7 +249,7 @@ export function TopicsView() {
               </button>
             ))}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Topic of the Day */}
