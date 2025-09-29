@@ -20,6 +20,7 @@ export function TopicsView() {
   const [likedTopics, setLikedTopics] = useState<Set<string>>(new Set());
   const [bookmarkedTopics, setBookmarkedTopics] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'feed' | 'cards'>('cards');
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Use fallback topics if database is empty
   const displayTopicsSource = topics.length > 0 ? topics : discussionTopics;
@@ -45,6 +46,16 @@ export function TopicsView() {
 
   const displayTopics = filteredTopics.length > 0 ? filteredTopics : remainingTopics;
 
+  // Handle scroll to show simplified header
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const handleLike = (id: string) => {
     if (user) {
       toggleTopicLike(id);
@@ -128,78 +139,97 @@ export function TopicsView() {
   return (
     <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
       {/* Header */}
-      <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 p-4 z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
-              Discussion Cards
-            </h1>
-            <p className="text-gray-600 text-sm">Bible study discussions for our community</p>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            {/* View Mode Toggle */}
-            <div className="bg-gray-100 rounded-lg p-1 flex">
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'cards'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600'
-                }`}
-              >
-                Cards
-              </button>
-              <button
-                onClick={() => setViewMode('feed')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'feed'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600'
-                }`}
-              >
-                Feed
-              </button>
+      <div className={`sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-10 transition-all duration-300 ${
+        isScrolled ? 'py-2 px-4' : 'p-4'
+      }`}>
+        {!isScrolled && (
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
+                Discussion Cards
+              </h1>
+              <p className="text-gray-600 text-sm">Bible study discussions for our community</p>
             </div>
             
+            <div className="flex items-center space-x-2">
+              {/* View Mode Toggle */}
+              <div className="bg-gray-100 rounded-lg p-1 flex">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'cards'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Cards
+                </button>
+                <button
+                  onClick={() => setViewMode('feed')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'feed'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Feed
+                </button>
+              </div>
+              
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Search - always visible */}
+        <div className={`flex items-center space-x-3 ${isScrolled ? 'mb-0' : 'mb-4'}`}>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder={isScrolled ? "Search..." : "Search topics, questions, or tags..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full pl-10 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm transition-all ${
+                isScrolled ? 'py-2' : 'py-3'
+              }`}
+            />
+          </div>
+          
+          {isScrolled && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg flex-shrink-0"
             >
               <Plus className="w-5 h-5" />
             </button>
+          )}
+        </div>
+
+        {/* Category Filter - only show when not scrolled */}
+        {!isScrolled && (
+          <div className="flex space-x-2 overflow-x-auto pb-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
+                  selectedCategory === category
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                    : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
+                }`}
+              >
+                {category === 'all' ? 'All Topics' : category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </button>
+            ))}
           </div>
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search topics, questions, or tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm"
-          />
-        </div>
-
-        {/* Category Filter */}
-        <div className="flex space-x-2 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
-                selectedCategory === category
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
-                  : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
-              }`}
-            >
-              {category === 'all' ? 'All Topics' : category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </button>
-          ))}
-        </div>
+        )}
       </div>
 
       {/* Topic of the Day */}
