@@ -127,6 +127,12 @@ export function TopicsView() {
       return;
     }
     
+    // Skip editing for sample data
+    if (!topic.id || topic.id.length !== 36) {
+      toast.error('Cannot edit sample topics. Please create your own topics to edit.');
+      return;
+    }
+    
     // Check if user can edit (author or admin)
     const canEdit = topic.author_id === user.id || 
                    topic.authorId === user.id || 

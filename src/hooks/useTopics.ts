@@ -67,15 +67,25 @@ export const useTopics = () => {
 
   // Update topic view count
   const incrementViewCount = async (topicId: string) => {
+    // Skip if using fallback data (not real database IDs)
+    if (!user || !topicId || topicId.length !== 36) {
+      return;
+    }
+    
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('topics')
-        .update({ view_count: 1 })
+        .update({ 
+          view_count: supabase.sql`view_count + 1`
+        })
         .eq('id', topicId);
 
-      if (error) throw error;
+      if (error) {
+        console.log('View count update skipped:', error.message);
+        return;
+      }
     } catch (error) {
-      console.error('Error updating view count:', error);
+      console.log('View count update skipped:', error);
     }
   };
 
