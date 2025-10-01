@@ -18,6 +18,8 @@ A modern web application for Calgary Bible studies and fellowship events, built 
 - **Authentication**: Supabase Auth
 - **Icons**: Lucide React
 - **Notifications**: React Hot Toast
+- **Version Control**: Git
+- **Deployment**: Netlify (configured)
 
 ## 📦 Installation
 
@@ -46,6 +48,19 @@ npm run dev
 5. **Build for production:**
 ```bash
 npm run build
+```
+
+## 🚀 Git Setup
+
+This project is ready for Git version control. To initialize Git in a local environment:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit: Worship and Yapps Calgary Bible Study Community"
+git branch -M main
+git remote add origin <your-repository-url>
+git push -u origin main
 ```
 
 6. **Alternatively, use the setup/start scripts (Windows PowerShell):**
