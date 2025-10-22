@@ -135,6 +135,34 @@ export const useAuth = () => {
     }
   };
 
+  const signInAsGuest = async () => {
+    try {
+      setLoading(true);
+      const guestEmail = `guest-${Date.now()}@worshipandyapps.local`;
+      const guestPassword = Math.random().toString(36).slice(-12);
+
+      const { data, error } = await supabase.auth.signUp({
+        email: guestEmail,
+        password: guestPassword,
+        options: {
+          data: {
+            name: `Guest ${Math.floor(Math.random() * 9999)}`,
+            is_guest: true,
+          },
+        },
+      });
+
+      if (error) throw error;
+      toast.success('Welcome as guest!');
+      return { data, error: null };
+    } catch (error: any) {
+      toast.error(error.message);
+      return { data: null, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -169,6 +197,7 @@ export const useAuth = () => {
     loading,
     signUp,
     signIn,
+    signInAsGuest,
     signOut,
     updateProfile,
   };

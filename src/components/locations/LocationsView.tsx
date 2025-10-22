@@ -65,15 +65,38 @@ export function LocationsView() {
     }
   };
 
-  const copyInvite = (event: any) => {
-    const inviteText = event.is_private 
-      ? `Join us for ${event.title} on ${event.date} at ${event.time}. Invite code: ${event.inviteCode}. Location details provided after RSVP.`
-      : `Join us for ${event.title} on ${event.date} at ${event.time}. RSVP through the Worship & Yapps app!`;
-    
+  const shareEvent = async (event: any) => {
+    const shareUrl = `${window.location.origin}/event/${event.id}`;
+    const shareText = `Join us for ${event.title} on ${event.date} at ${event.time}!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success('Event shared!');
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          copyEventLink(event);
+        }
+      }
+    } else {
+      copyEventLink(event);
+    }
+  };
+
+  const copyEventLink = (event: any) => {
+    const shareUrl = `${window.location.origin}/event/${event.id}`;
+    const inviteText = event.is_private
+      ? `${event.title}\n${event.date} at ${event.time}\nInvite code: ${event.invite_code}\n\n${shareUrl}`
+      : `${event.title}\n${event.date} at ${event.time}\n\n${shareUrl}`;
+
     if (navigator.clipboard) {
       navigator.clipboard.writeText(inviteText);
+      toast.success('Event link copied to clipboard!');
     }
-    toast.success('Invite copied to clipboard!');
   };
 
   const handleMapEventClick = (eventId: string) => {
@@ -228,12 +251,12 @@ export function LocationsView() {
                     <Heart className={`w-4 h-4 ${likedEvents.has(event.id) ? 'fill-current' : ''}`} />
                     <span>Interested</span>
                   </button>
-                  <button 
-                    onClick={() => copyInvite(event)}
+                  <button
+                    onClick={() => shareEvent(event)}
                     className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 text-sm transition-colors"
                   >
-                    <Copy className="w-4 h-4" />
-                    <span>Invite</span>
+                    <Share2 className="w-4 h-4" />
+                    <span>Share</span>
                   </button>
                 </div>
                 

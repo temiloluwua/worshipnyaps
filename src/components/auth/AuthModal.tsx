@@ -20,7 +20,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
     city: 'Calgary'
   });
 
-  const { signIn, signUp, loading } = useAuth();
+  const { signIn, signUp, signInAsGuest, loading } = useAuth();
 
   if (!isOpen) return null;
 
@@ -206,6 +206,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
+
+          {/* Guest Login */}
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await signInAsGuest();
+                onClose();
+              }}
+              disabled={loading}
+              className="mt-4 w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Continue as Guest
+            </button>
+          </div>
 
           {/* Footer */}
           <div className="mt-6 text-center">
