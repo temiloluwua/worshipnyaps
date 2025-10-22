@@ -31,11 +31,18 @@ export const useEvents = () => {
         .eq('status', 'upcoming')
         .order('date', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching events:', error);
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          toast.error('Unable to connect to database. Please check your internet connection.');
+        } else {
+          toast.error('Failed to load events. Please try again.');
+        }
+        throw error;
+      }
       setEvents(data || []);
     } catch (error) {
       console.error('Error fetching events:', error);
-      toast.error('Failed to load events');
     } finally {
       setLoading(false);
     }

@@ -6,7 +6,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Validate configuration
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase configuration');
+  console.error('Missing Supabase configuration. Please check your .env file.');
+  throw new Error('Supabase configuration is missing. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -20,10 +21,28 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       eventsPerSecond: 10,
     },
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'worship-and-yapps',
+    },
+  },
 });
 
-// Test connection
-console.log('Supabase client initialized:', supabaseUrl);
+// Test connection with better error handling
+export const testConnection = async () => {
+  try {
+    const { error } = await supabase.from('users').select('count').limit(1).single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Database connection test failed:', error);
+      return false;
+    }
+    console.log('Supabase client initialized successfully:', supabaseUrl);
+    return true;
+  } catch (err) {
+    console.error('Failed to connect to Supabase:', err);
+    return false;
+  }
+};
 
 // Database types
 export interface UserProfile {
