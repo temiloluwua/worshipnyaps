@@ -31,8 +31,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Test connection with better error handling
 export const testConnection = async () => {
   try {
-    const { error } = await supabase.from('users').select('count').limit(1).single();
-    if (error && error.code !== 'PGRST116') {
+    const { error } = await supabase.from('users').select('count').limit(1).maybeSingle();
+    if (error) {
       console.error('Database connection test failed:', error);
       return false;
     }

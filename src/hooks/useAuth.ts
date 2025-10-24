@@ -46,17 +46,19 @@ export const useAuth = () => {
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.log('useAuth: Profile fetch error:', error);
-        // If profile doesn't exist, create it
-        if (error.code === 'PGRST116') {
-          await createProfile(userId);
-          return;
-        }
         throw error;
       }
+
+      if (!data) {
+        console.log('useAuth: Profile not found, creating...');
+        await createProfile(userId);
+        return;
+      }
+
       console.log('useAuth: Profile loaded:', data);
       setProfile(data);
     } catch (error) {
