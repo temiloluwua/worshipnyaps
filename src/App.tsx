@@ -15,27 +15,41 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
   const { loading } = useAuth();
+  const [checkingConnection, setCheckingConnection] = useState(true);
 
   useEffect(() => {
     const checkConnection = async () => {
-      const isConnected = await testConnection();
-      if (!isConnected) {
+      console.log('App: Checking database connection...');
+      try {
+        const isConnected = await testConnection();
+        console.log('App: Connection test result:', isConnected);
+        if (!isConnected) {
+          setConnectionError(true);
+          toast.error('Unable to connect to database. Some features may not work.', {
+            duration: 5000,
+          });
+        }
+      } catch (error) {
+        console.error('App: Connection test error:', error);
         setConnectionError(true);
-        toast.error('Unable to connect to database. Some features may not work.', {
-          duration: 5000,
-        });
+      } finally {
+        setCheckingConnection(false);
       }
     };
     checkConnection();
   }, []);
 
-  if (loading) {
+  console.log('App: Render state - loading:', loading, 'checkingConnection:', checkingConnection);
+
+  if (loading || checkingConnection) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading Worship and Yapps...</p>
-          <p className="text-xs text-gray-500 mt-2">Connecting to database...</p>
+          <p className="text-xs text-gray-500 mt-2">
+            {loading ? 'Checking authentication...' : 'Connecting to database...'}
+          </p>
         </div>
       </div>
     );

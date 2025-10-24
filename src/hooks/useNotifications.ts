@@ -195,8 +195,12 @@ export const useNotifications = () => {
 
   // Set up real-time notifications
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log('useNotifications: No user, skipping setup');
+      return;
+    }
 
+    console.log('useNotifications: Setting up for user:', user.id);
     fetchNotifications();
 
     // Set up real-time subscription
@@ -208,19 +212,23 @@ export const useNotifications = () => {
         table: 'notifications',
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
+        console.log('useNotifications: Received new notification:', payload);
         const newNotification = payload.new as Notification;
         setNotifications(prev => [newNotification, ...prev]);
         setUnreadCount(prev => prev + 1);
-        
+
         // Show browser notification
         sendBrowserNotification(newNotification.title, newNotification.message);
-        
+
         // Show toast
         toast.success(newNotification.title);
       })
       .subscribe();
 
+    console.log('useNotifications: Subscription created');
+
     return () => {
+      console.log('useNotifications: Cleaning up subscription');
       subscription.unsubscribe();
     };
   }, [user]);
