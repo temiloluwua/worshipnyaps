@@ -11,19 +11,27 @@ export const useAuth = () => {
   useEffect(() => {
     console.log('useAuth: Initializing...');
 
+    // Safety timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.log('useAuth: Timeout reached, forcing loading to false');
+      setLoading(false);
+    }, 5000);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('useAuth: Session check:', session ? 'Found' : 'None');
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id).finally(() => clearTimeout(timeout));
       } else {
         console.log('useAuth: No session, setting loading to false');
         setLoading(false);
+        clearTimeout(timeout);
       }
     }).catch((error) => {
       console.error('useAuth: Error getting session:', error);
       setLoading(false);
+      clearTimeout(timeout);
     });
 
     // Listen for auth changes
@@ -42,7 +50,10 @@ export const useAuth = () => {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -78,7 +89,10 @@ export const useAuth = () => {
   const createProfile = async (userId: string) => {
     try {
       const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser.user) return;
+      if (!authUser.user) {
+        setLoading(false);
+        return;
+      }
 
       const { error } = await supabase
         .from('users')
@@ -96,6 +110,7 @@ export const useAuth = () => {
     } catch (error) {
       console.error('Error creating profile:', error);
       toast.error('Failed to create user profile');
+      setLoading(false);
     }
   };
 
