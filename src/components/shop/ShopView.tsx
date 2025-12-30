@@ -3,6 +3,7 @@ import { ShoppingCart, Plus, Minus, X, Package, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
+import { SquareCheckout } from './SquareCheckout';
 
 interface Product {
   id: string;
@@ -23,11 +24,12 @@ interface CartItem {
   color?: string;
 }
 
-export function MerchView() {
+export function ShopView() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
@@ -115,7 +117,30 @@ export function MerchView() {
       return;
     }
 
-    toast.success('Checkout coming soon! This is a demo store.');
+    setShowCart(false);
+    setShowCheckout(true);
+  };
+
+  const handlePaymentSuccess = async (paymentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user!.id,
+          status: 'processing',
+          total_amount: getTotalPrice(),
+          shipping_address: {}
+        });
+
+      if (error) throw error;
+
+      setCart([]);
+      setShowCheckout(false);
+      toast.success('Order placed successfully!');
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast.error('Order created but failed to save. Please contact support.');
+    }
   };
 
   const filteredProducts = activeCategory === 'all'
@@ -149,7 +174,7 @@ export function MerchView() {
       <div className="max-w-6xl mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Community Merch</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Community Shop</h1>
             <p className="text-gray-600">Support our community with official merchandise</p>
           </div>
           <button
@@ -357,6 +382,14 @@ export function MerchView() {
             </div>
           </div>
         </div>
+      )}
+
+      {showCheckout && (
+        <SquareCheckout
+          amount={getTotalPrice()}
+          onClose={() => setShowCheckout(false)}
+          onSuccess={handlePaymentSuccess}
+        />
       )}
     </>
   );

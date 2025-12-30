@@ -5,14 +5,14 @@ import { TopicsView } from './components/topics/TopicsView';
 import { LocationsView } from './components/locations/LocationsView';
 import { CommunityView } from './components/network/NetworkView';
 import { SignupView } from './components/signup/SignupView';
-import { MerchView } from './components/merch/MerchView';
+import { ShopView } from './components/shop/ShopView';
 import { AuthModal } from './components/auth/AuthModal';
 import { useAuth } from './hooks/useAuth';
 import { testConnection } from './lib/supabase';
 import toast from 'react-hot-toast';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'topics' | 'locations' | 'signup' | 'network' | 'merch'>('topics');
+  const [activeTab, setActiveTab] = useState<'topics' | 'locations' | 'signup' | 'network' | 'shop'>('topics');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { loading } = useAuth();
 
@@ -36,7 +36,7 @@ function App() {
         {activeTab === 'locations' && <LocationsView />}
         {activeTab === 'network' && <CommunityView />}
         {activeTab === 'signup' && <SignupView />}
-        {activeTab === 'merch' && <MerchView />}
+        {activeTab === 'shop' && <ShopView />}
       </main>
       
       <BottomNavigation 

@@ -2,8 +2,8 @@ import React from 'react';
 import { MessageSquare, MapPin, Users, UserPlus, ShoppingBag } from 'lucide-react';
 
 interface BottomNavigationProps {
-  activeTab: 'topics' | 'locations' | 'signup' | 'network' | 'merch';
-  onTabChange: (tab: 'topics' | 'locations' | 'signup' | 'network' | 'merch') => void;
+  activeTab: 'topics' | 'locations' | 'signup' | 'network' | 'shop';
+  onTabChange: (tab: 'topics' | 'locations' | 'signup' | 'network' | 'shop') => void;
 }
 
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({
@@ -27,8 +27,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       icon: Users,
     },
     {
-      id: 'merch' as const,
-      name: 'Merch',
+      id: 'shop' as const,
+      name: 'Shop',
       icon: ShoppingBag,
     },
     {
