@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { MessageSquare, MapPin, Users, ShoppingBag, Heart, BookOpen, Sparkles, ArrowRight, Bell } from 'lucide-react';
+import { MessageSquare, MapPin, Users, ShoppingBag, Heart, BookOpen, Sparkles, ArrowRight, Bell, Eye } from 'lucide-react';
 import { WaitlistModal } from './WaitlistModal';
+import { useAuth } from '../../hooks/useAuth';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -9,6 +10,7 @@ interface LandingPageProps {
 
 export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
   const [showWaitlist, setShowWaitlist] = useState(false);
+  const { signInAsGuest } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -116,14 +118,26 @@ export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
         </div>
 
         {/* CTA Section */}
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <button
             onClick={onEnter}
             className="px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-bold text-xl hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl"
           >
             Enter Community
           </button>
-          <p className="mt-4 text-gray-600">
+          <div>
+            <button
+              onClick={async () => {
+                await signInAsGuest();
+                onEnter();
+              }}
+              className="px-8 py-3 bg-white text-gray-700 border-2 border-gray-300 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-md flex items-center space-x-2 mx-auto"
+            >
+              <Eye className="w-5 h-5" />
+              <span>Browse as Guest</span>
+            </button>
+          </div>
+          <p className="text-gray-600">
             Join hundreds of believers growing together in faith
           </p>
         </div>

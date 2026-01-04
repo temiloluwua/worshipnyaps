@@ -5,6 +5,7 @@ import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
 import { InteractiveMap } from './InteractiveMap';
 import { RSVPModal } from './RSVPModal';
+import { AuthModal } from '../auth/AuthModal';
 import type { Event as DbEvent } from '../../lib/supabase';
 
 export function LocationsView() {
@@ -16,6 +17,7 @@ export function LocationsView() {
   const [showMap, setShowMap] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DbEvent | null>(null);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const categories = ['All', 'bible-study', 'basketball-yap', 'hiking-yap', 'other'];
 
@@ -35,14 +37,14 @@ export function LocationsView() {
 
   const handleRSVP = (event: DbEvent) => {
     if (!user) {
-      toast.error('Please sign in to RSVP');
+      setShowAuthModal(true);
       return;
     }
     if (event.attendees && event.attendees >= event.capacity) {
       toast.error('Event is at full capacity');
       return;
     }
-    
+
     setSelectedEvent(event);
     setShowRSVPModal(true);
   };
@@ -132,8 +134,8 @@ export function LocationsView() {
 
       {/* Host Event CTA */}
       <div className="p-4 bg-gradient-to-r from-green-500 to-blue-500">
-        <button 
-          onClick={() => user ? toast.success('Host Event feature coming soon!') : toast.error('Please sign in to host events')}
+        <button
+          onClick={() => user ? toast.success('Host Event feature coming soon!') : setShowAuthModal(true)}
           className="w-full bg-white text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all shadow-md flex items-center justify-center space-x-2"
         >
           <Plus className="w-5 h-5" />
@@ -298,6 +300,13 @@ export function LocationsView() {
           onRSVP={confirmRSVP}
         />
       )}
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="signin"
+      />
     </div>
   );
 }

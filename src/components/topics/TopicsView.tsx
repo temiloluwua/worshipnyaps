@@ -7,6 +7,7 @@ import { TopicCard } from './TopicCard';
 import { CreateTopicModal } from './CreateTopicModal';
 import { EditTopicModal } from './EditTopicModal';
 import { TopicOfTheDayCard } from './TopicOfTheDayCard';
+import { AuthModal } from '../auth/AuthModal';
 import toast from 'react-hot-toast';
 
 export function TopicsView() {
@@ -16,6 +17,7 @@ export function TopicsView() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<any>(null);
   const [likedTopics, setLikedTopics] = useState<Set<string>>(new Set());
   const [bookmarkedTopics, setBookmarkedTopics] = useState<Set<string>>(new Set());
@@ -58,7 +60,7 @@ export function TopicsView() {
         return newSet;
       });
     } else {
-      toast.error('Please sign in to like topics');
+      setShowAuthModal(true);
     }
   };
 
@@ -76,7 +78,7 @@ export function TopicsView() {
         return newSet;
       });
     } else {
-      toast.error('Please sign in to bookmark topics');
+      setShowAuthModal(true);
     }
   };
 
@@ -96,15 +98,15 @@ export function TopicsView() {
 
   const handleEdit = (topic: any) => {
     if (!user) {
-      toast.error('Please sign in to edit topics');
+      setShowAuthModal(true);
       return;
     }
-    
+
     // Check if user can edit (author or admin)
-    const canEdit = topic.author_id === user.id || 
-                   topic.authorId === user.id || 
+    const canEdit = topic.author_id === user.id ||
+                   topic.authorId === user.id ||
                    profile?.role === 'admin';
-    
+
     if (!canEdit) {
       toast.error('You can only edit your own topics');
       return;
@@ -112,6 +114,14 @@ export function TopicsView() {
 
     setEditingTopic(topic);
     setShowEditModal(true);
+  };
+
+  const handleCreateTopic = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    setShowCreateModal(true);
   };
 
   if (loading) {
@@ -162,9 +172,9 @@ export function TopicsView() {
                 Feed
               </button>
             </div>
-            
+
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleCreateTopic}
               className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
             >
               <Plus className="w-5 h-5" />
@@ -275,7 +285,7 @@ export function TopicsView() {
             <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 mb-4">No topics found</p>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleCreateTopic}
               className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 shadow-lg"
             >
               Create First Topic
@@ -298,6 +308,13 @@ export function TopicsView() {
           setShowEditModal(false);
           setEditingTopic(null);
         }}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="signin"
       />
 
       <style>{`
