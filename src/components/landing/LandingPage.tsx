@@ -1,5 +1,6 @@
-import React from 'react';
-import { MessageSquare, MapPin, Users, ShoppingBag, Heart, BookOpen, Sparkles, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageSquare, MapPin, Users, ShoppingBag, Heart, BookOpen, Sparkles, ArrowRight, Bell } from 'lucide-react';
+import { WaitlistModal } from './WaitlistModal';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -7,6 +8,8 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
+  const [showWaitlist, setShowWaitlist] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Hero Section */}
@@ -43,19 +46,28 @@ export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
               youth ministries, and family devotions. Each card sparks meaningful conversations
               about faith, life, and Scripture.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button
-                onClick={onPreOrder}
-                className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg flex items-center space-x-2"
-              >
-                <ShoppingBag className="w-6 h-6" />
-                <span>Pre-Order Your Deck</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-amber-600">$29.99</p>
-                <p className="text-sm text-gray-600">Limited Early Bird Price</p>
+            <div className="flex flex-col gap-4 items-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
+                <button
+                  onClick={onPreOrder}
+                  className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg flex items-center space-x-2"
+                >
+                  <ShoppingBag className="w-6 h-6" />
+                  <span>Pre-Order Your Deck</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-600">$29.99</p>
+                  <p className="text-sm text-gray-600">Limited Early Bird Price</p>
+                </div>
               </div>
+              <button
+                onClick={() => setShowWaitlist(true)}
+                className="px-6 py-3 bg-white border-2 border-amber-400 text-amber-700 rounded-xl font-semibold hover:bg-amber-50 transition-all flex items-center space-x-2"
+              >
+                <Bell className="w-5 h-5" />
+                <span>Join Waitlist - Get Notified</span>
+              </button>
             </div>
           </div>
         </div>
@@ -121,6 +133,12 @@ export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
           <p>Based in Calgary, AB • Building community through faith</p>
         </div>
       </div>
+
+      <WaitlistModal
+        isOpen={showWaitlist}
+        onClose={() => setShowWaitlist(false)}
+        productType="card_game"
+      />
     </div>
   );
 }
