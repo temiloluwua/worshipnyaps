@@ -1,7 +1,7 @@
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'general' | 'event' | 'connection_request' | 'volunteer_opportunity';
+  type: 'general' | 'event_reminder' | 'connection_request' | 'volunteer_opportunity' | 'event_update' | 'event';
   title: string;
   message: string;
   event_id?: string;
@@ -92,15 +92,4 @@ export interface Reply {
   content: string;
   authorId: string;
   createdAt: string;
-}
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  type: 'general' | 'event' | 'connection_request' | 'volunteer_opportunity';
-  title: string;
-  message: string;
-  event_id?: string;
-  is_read: boolean;
-  created_at: string;
 }
