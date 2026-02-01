@@ -7,6 +7,7 @@ import { CommunityView } from './components/network/NetworkView';
 import { ShopView } from './components/shop/ShopView';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
+import { SkipLinks } from './components/ui/SkipLinks';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 
@@ -33,9 +34,16 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
+      <div
+        className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors"
+        role="status"
+        aria-label="Loading application"
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"
+            aria-hidden="true"
+          />
           <p className="text-gray-600 dark:text-gray-400">Loading Worship and Yapps...</p>
         </div>
       </div>
@@ -48,9 +56,16 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <SkipLinks
+        links={[
+          { id: 'main-content', label: 'Skip to main content' },
+          { id: 'main-navigation', label: 'Skip to navigation' },
+        ]}
+      />
+
       <Header onShowAuth={() => setShowAuthModal(true)} />
 
-      <main className="pb-16">
+      <main id="main-content" tabIndex={-1} className="pb-16 focus:outline-none">
         {activeTab === 'topics' && <TopicsView />}
         {activeTab === 'locations' && <LocationsView />}
         {activeTab === 'network' && <CommunityView />}
