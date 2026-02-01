@@ -9,11 +9,12 @@ export const useEvents = () => {
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch all public events
+  // Fetch all visible events (public + friends-only for connected users)
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get public events
+      const { data: publicEvents, error: publicError } = await supabase
         .from('events')
         .select(`
           *,
@@ -27,22 +28,63 @@ export const useEvents = () => {
             name
           )
         `)
-        .eq('is_private', false)
+        .or('visibility.eq.public,visibility.is.null')
         .eq('status', 'upcoming')
         .order('date', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching events:', error);
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          toast.error('Unable to connect to database. Please check your internet connection.');
-        } else {
-          toast.error('Failed to load events. Please try again.');
-        }
-        throw error;
+      if (publicError) {
+        console.error('Error fetching public events:', publicError);
+        throw publicError;
       }
-      setEvents(data || []);
-    } catch (error) {
+
+      let allEvents = publicEvents || [];
+
+      // If user is logged in, also fetch friends-only events from connections
+      if (user) {
+        const { data: connections } = await supabase
+          .from('connections')
+          .select('connected_user_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+
+        const friendIds = connections?.map(c => c.connected_user_id) || [];
+
+        if (friendIds.length > 0) {
+          const { data: friendEvents, error: friendError } = await supabase
+            .from('events')
+            .select(`
+              *,
+              locations (
+                name,
+                address,
+                latitude,
+                longitude
+              ),
+              users!events_host_id_fkey (
+                name
+              )
+            `)
+            .eq('visibility', 'friends_only')
+            .in('host_id', friendIds)
+            .eq('status', 'upcoming')
+            .order('date', { ascending: true });
+
+          if (!friendError && friendEvents) {
+            const existingIds = new Set(allEvents.map(e => e.id));
+            const uniqueFriendEvents = friendEvents.filter(e => !existingIds.has(e.id));
+            allEvents = [...allEvents, ...uniqueFriendEvents];
+          }
+        }
+      }
+
+      // Sort by date
+      allEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setEvents(allEvents);
+    } catch (error: any) {
       console.error('Error fetching events:', error);
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        toast.error('Unable to connect to database. Please check your internet connection.');
+      }
     } finally {
       setLoading(false);
     }

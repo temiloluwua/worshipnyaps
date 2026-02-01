@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X } from 'lucide-react';
+import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Globe, Lock, UserCheck } from 'lucide-react';
 import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
 import { RSVPModal } from './RSVPModal';
@@ -187,12 +187,19 @@ export function LocationsView() {
                       <EyeOff className="w-4 h-4 text-gray-500" />
                     )}
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-1">
                     <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
                       {event.type?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </span>
-                    {event.is_private && (
-                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                    {event.visibility === 'friends_only' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                        <UserCheck className="w-3 h-3" />
+                        Friends Only
+                      </span>
+                    )}
+                    {event.visibility === 'private' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                        <Lock className="w-3 h-3" />
                         Private
                       </span>
                     )}
@@ -317,6 +324,8 @@ export function LocationsView() {
 }
 
 function HostEventModal({ onClose }: { onClose: () => void }) {
+  const { createEvent } = useEvents();
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     eventTitle: '',
     eventType: 'bible-study',
@@ -324,24 +333,42 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
     eventTime: '',
     capacity: 12,
     description: '',
-    isPrivate: false
+    visibility: 'public' as 'public' | 'private' | 'friends_only'
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const eventData = {
+      title: formData.eventTitle,
+      type: formData.eventType as any,
+      date: formData.eventDate,
+      time: formData.eventTime,
+      capacity: formData.capacity,
+      description: formData.description,
+      visibility: formData.visibility,
+      is_private: formData.visibility === 'private'
+    };
+
+    const result = await createEvent(eventData);
+    setSubmitting(false);
+
+    if (result) {
+      onClose();
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success('Host application submitted for approval!');
-    onClose();
-  };
+  const visibilityOptions = [
+    { value: 'public', label: 'Public', description: 'Anyone can see and join this event' },
+    { value: 'friends_only', label: 'Friends Only', description: 'Only your connections can see this event' },
+    { value: 'private', label: 'Private', description: 'Invite only - share via link or direct invite' }
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -382,8 +409,6 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
                 <option value="bible-study">Bible Study</option>
                 <option value="basketball-yap">Basketball & Yap</option>
                 <option value="hiking-yap">Hiking & Yap</option>
-                <option value="prayer-meeting">Prayer Meeting</option>
-                <option value="worship-night">Worship Night</option>
                 <option value="other">Other</option>
               </select>
             </div>
@@ -440,22 +465,41 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="isPrivate"
-              checked={formData.isPrivate}
-              onChange={handleInputChange}
-              className="mr-2"
-            />
-            <label className="text-sm text-gray-700">Make this a private event (invite only)</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Who can see this event?</label>
+            <div className="space-y-2">
+              {visibilityOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex items-start p-3 border rounded-lg cursor-pointer transition-all ${
+                    formData.visibility === option.value
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value={option.value}
+                    checked={formData.visibility === option.value}
+                    onChange={handleInputChange}
+                    className="mt-1 mr-3"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-900">{option.label}</div>
+                    <div className="text-sm text-gray-500">{option.description}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            disabled={submitting}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit Host Application
+            {submitting ? 'Creating Event...' : 'Create Event'}
           </button>
         </form>
       </div>

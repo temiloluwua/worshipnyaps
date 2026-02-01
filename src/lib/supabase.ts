@@ -70,6 +70,7 @@ export interface Event {
   capacity: number;
   attendees?: number;
   is_private: boolean;
+  visibility: 'public' | 'private' | 'friends_only';
   invite_code?: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_at: string;
@@ -148,4 +149,32 @@ export interface ConnectionRequest {
   event_id?: string;
   created_at: string;
   responded_at?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender_id: string;
+  recipient_id?: string;
+  channel: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender?: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+  };
+}
+
+export interface EventInvitation {
+  id: string;
+  event_id: string;
+  inviter_id: string;
+  invitee_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  message?: string;
+  created_at: string;
+  responded_at?: string;
+  event?: Event;
+  inviter?: UserProfile;
 }
