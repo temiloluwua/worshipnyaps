@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, ExternalLink, ChevronDown, ChevronUp, Edit, Eye, Crown } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, ExternalLink, ChevronDown, ChevronUp, Edit, Crown, BookOpen } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { CommentThread } from './CommentThread';
 import toast from 'react-hot-toast';
@@ -34,8 +34,12 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   const [commentCount, setCommentCount] = useState<number>(topic.comments || 0);
 
   const openBibleReference = (reference: string) => {
-    const cleanRef = reference.replace(/[;,]/g, '').split(' ')[0];
-    const url = `https://www.biblegateway.com/passage/?search=${encodeURIComponent(reference)}&version=NIV`;
+    const url = `https://www.openbible.info/labs/cross-references/search?q=${encodeURIComponent(reference)}`;
+    window.open(url, '_blank');
+  };
+
+  const openESV = (reference: string) => {
+    const url = `https://www.esv.org/${encodeURIComponent(reference.replace(/\s+/g, '+'))}/`;
     window.open(url, '_blank');
   };
 
@@ -114,16 +118,35 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         {/* Bible Reference */}
         {topic.bibleReference && (
           <div className="mb-4 relative z-10">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openBibleReference(topic.bibleReference);
-              }}
-              className="inline-flex items-center space-x-2 bg-white/80 text-blue-700 px-4 py-2 rounded-xl hover:bg-white hover:shadow-md transition-all border border-blue-200"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span className="font-medium">{topic.bibleReference}</span>
-            </button>
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200 shadow-sm">
+              <div className="flex items-center space-x-2 mb-2">
+                <BookOpen className="w-5 h-5 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-800">Scripture Reference</span>
+              </div>
+              <p className="text-lg font-bold text-amber-900 mb-3">{topic.bibleReference}</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openESV(topic.bibleReference);
+                  }}
+                  className="inline-flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-all text-sm font-medium shadow-sm"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Read ESV</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openBibleReference(topic.bibleReference);
+                  }}
+                  className="inline-flex items-center space-x-2 bg-white text-amber-700 px-4 py-2 rounded-lg hover:bg-amber-50 transition-all border border-amber-300 text-sm font-medium"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Cross References</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -329,24 +352,45 @@ export const TopicCard: React.FC<TopicCardProps> = ({
             {topic.title}
           </h2>
 
-          {/* Category and Bible Reference */}
+          {/* Category */}
           <div className="flex items-center space-x-3 mb-3">
             <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
               {topic.category.replace('-', ' ').toUpperCase()}
             </span>
-            {topic.bibleReference && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openBibleReference(topic.bibleReference);
-                }}
-                className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>{topic.bibleReference}</span>
-              </button>
-            )}
           </div>
+
+          {/* Bible Reference */}
+          {topic.bibleReference && (
+            <div className="mb-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
+              <div className="flex items-center space-x-2 mb-2">
+                <BookOpen className="w-4 h-4 text-amber-600" />
+                <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Scripture</span>
+              </div>
+              <p className="font-bold text-amber-900 mb-2">{topic.bibleReference}</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openESV(topic.bibleReference);
+                  }}
+                  className="inline-flex items-center space-x-1.5 bg-amber-600 text-white px-3 py-1.5 rounded-md hover:bg-amber-700 transition-all text-xs font-medium"
+                >
+                  <BookOpen className="w-3 h-3" />
+                  <span>Read ESV</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openBibleReference(topic.bibleReference);
+                  }}
+                  className="inline-flex items-center space-x-1.5 bg-white text-amber-700 px-3 py-1.5 rounded-md hover:bg-amber-50 transition-all border border-amber-300 text-xs font-medium"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Cross References</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Content Preview */}
           <div className="mb-3">
