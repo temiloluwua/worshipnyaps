@@ -123,7 +123,6 @@ Deno.serve(async (req) => {
       sessionConfig.line_items = line_items;
     } else {
       sessionConfig.line_items = [{ price: price_id, quantity: 1 }];
-      sessionConfig.allow_promotion_codes = true;
     }
 
     if (customerId) {
