@@ -101,48 +101,27 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         </div>
 
         {/* Topic Title */}
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-8 leading-tight relative z-10" style={{ fontFamily: 'Georgia, serif' }}>
+        <h2 className="text-2xl font-bold text-center text-gray-900 mb-4 leading-tight relative z-10" style={{ fontFamily: 'Georgia, serif' }}>
           {topic.title}
         </h2>
 
-        {/* Open Book with Bible References */}
-        <div className="mb-8 relative z-10 flex justify-center">
-          <div className="relative w-full max-w-md">
-            {/* Book Pages */}
-            <div className="bg-white rounded-lg shadow-inner p-8 border-2 border-gray-300 relative">
-              {/* Book Spine */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-400 transform -translate-x-1/2"></div>
-
-              {/* Left Page */}
-              <div className="absolute left-0 top-0 bottom-0 right-1/2 border-r border-gray-300"></div>
-
-              {/* Bible References */}
-              {topic.bibleReference && (
-                <div className="text-center relative z-10">
-                  <div className="text-lg font-semibold text-gray-800 mb-4 italic leading-relaxed whitespace-pre-line">
-                    {topic.bibleReference.split(';').map((ref: string, index: number) => (
-                      <div key={index} className="mb-1">
-                        {ref.trim()}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Book Shadow */}
-            <div className="absolute -bottom-2 left-4 right-4 h-4 bg-gray-400/30 blur-md rounded-full"></div>
+        {/* Bible Reference */}
+        {topic.bibleReference && (
+          <div className="text-center mb-6 relative z-10">
+            <p className="text-base text-gray-700 italic">
+              {topic.bibleReference}
+            </p>
           </div>
-        </div>
+        )}
 
         {/* Discussion Questions */}
         {topic.questions && topic.questions.length > 0 && (
           <div className="mb-6 relative z-10">
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(showAllQuestions ? topic.questions : topic.questions.slice(0, 3)).map((question: string, index: number) => (
                 <div key={index} className="flex items-start space-x-2">
-                  <span className="text-gray-900 font-bold mt-1">•</span>
-                  <p className="text-gray-800 text-base leading-relaxed flex-1">{question}</p>
+                  <span className="text-gray-600 text-sm mt-0.5">•</span>
+                  <p className="text-gray-700 text-sm leading-relaxed flex-1">{question}</p>
                 </div>
               ))}
 
@@ -152,16 +131,16 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                     e.stopPropagation();
                     setShowAllQuestions(!showAllQuestions);
                   }}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 text-sm font-medium w-full justify-center py-2 hover:bg-white/50 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 text-xs font-medium w-full justify-center py-2 hover:bg-white/50 rounded-lg transition-colors"
                 >
                   {showAllQuestions ? (
                     <>
-                      <ChevronUp className="w-4 h-4" />
+                      <ChevronUp className="w-3 h-3" />
                       <span>Show Less</span>
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-3 h-3" />
                       <span>Show {topic.questions.length - 3} More</span>
                     </>
                   )}
