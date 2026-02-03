@@ -312,7 +312,7 @@ export function LocationsView() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        initialMode="signin"
+        initialMode="login"
       />
 
       {/* Host Event Modal */}
