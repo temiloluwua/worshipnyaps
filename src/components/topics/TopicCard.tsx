@@ -171,13 +171,6 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           </div>
         )}
 
-        {/* Prayer Prompt */}
-        <div className="text-center mb-6 relative z-10">
-          <p className="text-gray-800 text-base italic">
-            • Pray for _____
-          </p>
-        </div>
-
         {/* Tags */}
         {topic.tags && topic.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 relative z-10 justify-center">
