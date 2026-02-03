@@ -19,14 +19,20 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        toast.error(error.message);
-      } else {
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          toast.error('Please confirm your email address before signing in. Check your inbox for a confirmation link.');
+        } else if (error.message.toLowerCase().includes('invalid')) {
+          toast.error('Invalid email or password. Please check your credentials and try again.');
+        } else {
+          toast.error(error.message);
+        }
+      } else if (data.session) {
         toast.success('Welcome back!');
         onSuccess?.();
       }

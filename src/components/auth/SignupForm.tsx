@@ -20,13 +20,9 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
     setIsLoading(true);
 
     try {
-      // Sign up the user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: undefined, // Disable email confirmation
-        },
       });
 
       if (authError) {
@@ -35,7 +31,11 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       }
 
       if (authData.user) {
-        // Create user profile
+        if (authData.user.identities && authData.user.identities.length === 0) {
+          toast.error('An account with this email already exists. Please sign in instead.');
+          return;
+        }
+
         const { error: profileError } = await supabase
           .from('users')
           .insert({
@@ -45,12 +45,21 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           });
 
         if (profileError) {
-          toast.error('Failed to create user profile');
+          if (profileError.code === '23505') {
+            toast.error('This account already exists. Please sign in instead.');
+          } else {
+            toast.error('Failed to create user profile');
+          }
           return;
         }
 
-        toast.success('Account created successfully!');
-        onSuccess?.();
+        if (authData.session) {
+          toast.success('Account created successfully!');
+          onSuccess?.();
+        } else {
+          toast.success('Account created! Please check your email to confirm your account before signing in.');
+          setTimeout(() => onSuccess?.(), 2000);
+        }
       }
     } catch (error) {
       toast.error('An unexpected error occurred');
