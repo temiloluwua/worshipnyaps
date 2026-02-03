@@ -77,6 +77,8 @@ export interface Topic {
   createdAt: string;
   comments: Comment[];
   tags: string[];
+  topic_type?: 'preselected' | 'community';
+  bible_verse?: string;
 }
 
 export interface Comment {

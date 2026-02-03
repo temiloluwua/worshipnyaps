@@ -15,6 +15,8 @@ export interface Topic {
   views: number;
   isPinned: boolean;
   content?: string;
+  topic_type?: 'preselected' | 'community';
+  bible_verse?: string;
 }
 
 // Sample topics - replace with your actual topics
