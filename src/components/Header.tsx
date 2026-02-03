@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bell, Settings, LogOut, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Settings, LogOut, User, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -7,6 +7,7 @@ interface HeaderProps {
   onShowAuth?: () => void;
   onViewProfile?: () => void;
   onViewNotifications?: () => void;
+  onViewNetwork?: () => void;
   unreadNotifications?: number;
 }
 
@@ -14,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({
   onShowAuth,
   onViewProfile,
   onViewNotifications,
+  onViewNetwork,
   unreadNotifications = 0
 }) => {
   const { user, profile, signOut } = useAuth();
@@ -34,6 +36,17 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="flex items-center space-x-2 sm:space-x-4">
             <ThemeToggle size="md" />
+
+            {user && (
+              <button
+                onClick={onViewNetwork}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                title="Friends & Network"
+              >
+                <Users size={20} />
+                <span className="sr-only">Network</span>
+              </button>
+            )}
 
             <button
               onClick={onViewNotifications}

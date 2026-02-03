@@ -39,9 +39,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       badge: unreadMessages,
     },
     {
-      id: 'network' as const,
-      name: 'Network',
-      icon: Users,
+      id: 'shop' as const,
+      name: 'Shop',
+      icon: ShoppingBag,
     },
   ];
 

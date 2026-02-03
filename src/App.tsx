@@ -21,7 +21,7 @@ import { useNotifications } from './hooks/useNotifications';
 import { Topic } from './lib/supabase';
 
 interface ViewState {
-  type: 'main' | 'profile' | 'hashtag';
+  type: 'main' | 'profile' | 'hashtag' | 'network';
   userId?: string;
   hashtagName?: string;
   initialChatUserId?: string;
@@ -97,6 +97,10 @@ function App() {
     setViewState({ type: 'main' });
   };
 
+  const handleViewNetwork = () => {
+    setViewState({ type: 'network' });
+  };
+
   if (loading) {
     return (
       <div
@@ -145,6 +149,35 @@ function App() {
     );
   }
 
+  if (viewState.type === 'network') {
+    return (
+      <>
+        <Header
+          onShowAuth={() => setShowAuthModal(true)}
+          onViewProfile={user ? () => handleViewProfile(user.id) : undefined}
+          onViewNotifications={() => setActiveTab('notifications')}
+          onViewNetwork={handleViewNetwork}
+          unreadNotifications={unreadNotifications}
+        />
+        <main className="pb-16">
+          <CommunityView
+            onViewProfile={handleViewProfile}
+            onStartChat={handleStartChat}
+          />
+        </main>
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setViewState({ type: 'main' });
+          }}
+          unreadMessages={unreadMessages}
+          unreadNotifications={unreadNotifications}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <SkipLinks
@@ -158,6 +191,7 @@ function App() {
         onShowAuth={() => setShowAuthModal(true)}
         onViewProfile={user ? () => handleViewProfile(user.id) : undefined}
         onViewNotifications={() => setActiveTab('notifications')}
+        onViewNetwork={handleViewNetwork}
         unreadNotifications={unreadNotifications}
       />
 
@@ -181,12 +215,6 @@ function App() {
           <MessagesView
             onBack={() => setActiveTab('topics')}
             initialUserId={viewState.initialChatUserId}
-          />
-        )}
-        {activeTab === 'network' && (
-          <CommunityView
-            onViewProfile={handleViewProfile}
-            onStartChat={handleStartChat}
           />
         )}
         {activeTab === 'notifications' && (
