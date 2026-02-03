@@ -54,8 +54,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   };
 
   const canEdit = user && (
-    topic.author_id === user.id || 
-    topic.authorId === user.id || 
+    topic.author_id === user.id ||
+    topic.authorId === user.id ||
     (profile?.role === 'admin')
   );
 
@@ -65,165 +65,126 @@ export const TopicCard: React.FC<TopicCardProps> = ({
 
   if (cardStyle === 'game') {
     return (
-      <div 
-        className="bg-gradient-to-br from-white via-blue-50 to-purple-50 rounded-2xl shadow-xl border border-gray-200 p-6 cursor-pointer transform transition-all duration-300 hover:shadow-2xl relative overflow-hidden"
+      <div
+        className="bg-gradient-to-br from-amber-50 via-white to-amber-50 rounded-3xl shadow-2xl border-4 border-gray-800 p-8 cursor-pointer transform transition-all duration-300 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] relative overflow-hidden"
         onClick={onView}
+        style={{
+          fontFamily: 'Georgia, serif',
+        }}
       >
-        {/* Card Game Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-4 right-4 w-8 h-8 border-2 border-blue-300 rounded-full"></div>
-          <div className="absolute bottom-4 left-4 w-6 h-6 border-2 border-purple-300 rounded-full"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 border border-gray-300 rounded-lg rotate-45"></div>
-        </div>
+        {/* Decorative Corner Elements */}
+        <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-gray-800 rounded-tl-2xl"></div>
+        <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-gray-800 rounded-tr-2xl"></div>
+        <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-gray-800 rounded-bl-2xl"></div>
+        <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-gray-800 rounded-br-2xl"></div>
 
-        {/* Card Header */}
-        <div className="flex items-center justify-between mb-4 relative z-10">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-              {(topic.authorName || topic.users?.name || 'A').charAt(0)}
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900">
-                {topic.authorName || topic.users?.name || 'Anonymous'}
-              </div>
-              <div className="text-sm text-blue-600 font-medium">
-                {topic.category.replace('-', ' ').toUpperCase()}
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            {(topic.isPinned || topic.is_pinned) && (
-              <Crown className="w-5 h-5 text-yellow-500" />
-            )}
-            {canEdit && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-                className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-white/50 transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+        {/* Decorative Inner Border */}
+        <div className="absolute top-4 left-4 right-4 bottom-4 border-2 border-dashed border-gray-300 rounded-2xl pointer-events-none"></div>
+
+        {/* Card Header with Edit Button */}
+        <div className="flex items-center justify-between mb-6 relative z-10">
+          {(topic.isPinned || topic.is_pinned) && (
+            <Crown className="w-6 h-6 text-yellow-600" />
+          )}
+          <div className="flex-1"></div>
+          {canEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-white/50 transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Topic Title */}
-        <h2 className="text-xl font-bold text-gray-900 mb-4 leading-tight relative z-10">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-8 leading-tight relative z-10" style={{ fontFamily: 'Georgia, serif' }}>
           {topic.title}
         </h2>
 
-        {/* Bible Reference */}
-        {topic.bibleReference && (
-          <div className="mb-4 relative z-10">
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200 shadow-sm">
-              <div className="flex items-center space-x-2 mb-2">
-                <BookOpen className="w-5 h-5 text-amber-600" />
-                <span className="text-sm font-semibold text-amber-800">Scripture Reference</span>
-              </div>
-              <p className="text-lg font-bold text-amber-900 mb-3">{topic.bibleReference}</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openESV(topic.bibleReference);
-                  }}
-                  className="inline-flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-all text-sm font-medium shadow-sm"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Read ESV</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openBibleReference(topic.bibleReference);
-                  }}
-                  className="inline-flex items-center space-x-2 bg-white text-amber-700 px-4 py-2 rounded-lg hover:bg-amber-50 transition-all border border-amber-300 text-sm font-medium"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Cross References</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Open Book with Bible References */}
+        <div className="mb-8 relative z-10 flex justify-center">
+          <div className="relative w-full max-w-md">
+            {/* Book Pages */}
+            <div className="bg-white rounded-lg shadow-inner p-8 border-2 border-gray-300 relative">
+              {/* Book Spine */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-400 transform -translate-x-1/2"></div>
 
-        {/* Content Preview */}
-        {topic.content && (
-          <div className="mb-4 relative z-10">
-            <div className="bg-white/60 rounded-xl p-4 border border-white/50">
-              <p className="text-gray-700 leading-relaxed">
-                {showFullContent ? topic.content : topic.content.substring(0, 150)}
-                {topic.content.length > 150 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowFullContent(!showFullContent);
-                    }}
-                    className="text-blue-600 hover:text-blue-700 ml-1 font-medium"
-                  >
-                    {showFullContent ? ' Show less' : '... Show more'}
-                  </button>
-                )}
-              </p>
+              {/* Left Page */}
+              <div className="absolute left-0 top-0 bottom-0 right-1/2 border-r border-gray-300"></div>
+
+              {/* Bible References */}
+              {topic.bibleReference && (
+                <div className="text-center relative z-10">
+                  <div className="text-lg font-semibold text-gray-800 mb-4 italic leading-relaxed whitespace-pre-line">
+                    {topic.bibleReference.split(';').map((ref: string, index: number) => (
+                      <div key={index} className="mb-1">
+                        {ref.trim()}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Book Shadow */}
+            <div className="absolute -bottom-2 left-4 right-4 h-4 bg-gray-400/30 blur-md rounded-full"></div>
           </div>
-        )}
+        </div>
 
         {/* Discussion Questions */}
         {topic.questions && topic.questions.length > 0 && (
-          <div className="mb-4 relative z-10">
-            <div className="bg-white/80 rounded-xl p-4 border border-white/50 shadow-sm">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-                <MessageCircle className="w-5 h-5 mr-2 text-purple-600" />
-                Discussion Questions
-              </h3>
-              
-              <div className="space-y-3">
-                {(showAllQuestions ? topic.questions : topic.questions.slice(0, 2)).map((question: string, index: number) => (
-                  <div key={index} className="flex items-start space-x-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-                    <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <p className="text-gray-800 text-sm leading-relaxed">{question}</p>
-                  </div>
-                ))}
-                
-                {topic.questions.length > 2 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowAllQuestions(!showAllQuestions);
-                    }}
-                    className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 text-sm font-medium w-full justify-center py-2 hover:bg-white/50 rounded-lg transition-colors"
-                  >
-                    {showAllQuestions ? (
-                      <>
-                        <ChevronUp className="w-4 h-4" />
-                        <span>Show Less</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4" />
-                        <span>Show {topic.questions.length - 2} More Questions</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+          <div className="mb-6 relative z-10">
+            <div className="space-y-3">
+              {(showAllQuestions ? topic.questions : topic.questions.slice(0, 3)).map((question: string, index: number) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <span className="text-gray-900 font-bold mt-1">•</span>
+                  <p className="text-gray-800 text-base leading-relaxed flex-1">{question}</p>
+                </div>
+              ))}
+
+              {topic.questions.length > 3 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAllQuestions(!showAllQuestions);
+                  }}
+                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 text-sm font-medium w-full justify-center py-2 hover:bg-white/50 rounded-lg transition-colors"
+                >
+                  {showAllQuestions ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      <span>Show Less</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      <span>Show {topic.questions.length - 3} More</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}
 
+        {/* Prayer Prompt */}
+        <div className="text-center mb-6 relative z-10">
+          <p className="text-gray-800 text-base italic">
+            • Pray for _____
+          </p>
+        </div>
+
         {/* Tags */}
         {topic.tags && topic.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4 relative z-10">
+          <div className="flex flex-wrap gap-2 mb-6 relative z-10 justify-center">
             {topic.tags.map((tag: string, index: number) => (
               <span
                 key={index}
-                className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200 hover:from-blue-200 hover:to-purple-200 transition-colors cursor-pointer"
+                className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 #{tag}
               </span>
@@ -232,67 +193,65 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-white/50 relative z-10">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowComments(!showComments);
-              }}
-              className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors group"
-            >
-              <div className="p-2 rounded-full group-hover:bg-blue-100 transition-colors">
-                <MessageCircle className="w-5 h-5" />
-              </div>
-              <span className="font-medium">{commentCount}</span>
-            </button>
+        <div className="flex items-center justify-center space-x-6 pt-6 border-t-2 border-gray-200 relative z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowComments(!showComments);
+            }}
+            className="flex flex-col items-center space-y-1 text-gray-600 hover:text-blue-600 transition-colors group"
+          >
+            <div className="p-2 rounded-full group-hover:bg-blue-100 transition-colors">
+              <MessageCircle className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-medium">{commentCount}</span>
+          </button>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onLike();
-              }}
-              className={`flex items-center space-x-2 transition-colors group ${
-                isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
-              }`}
-            >
-              <div className="p-2 rounded-full group-hover:bg-red-100 transition-colors">
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-              </div>
-              <span className="font-medium">{topic.likes || 0}</span>
-            </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onLike();
+            }}
+            className={`flex flex-col items-center space-y-1 transition-colors group ${
+              isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
+            }`}
+          >
+            <div className="p-2 rounded-full group-hover:bg-red-100 transition-colors">
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+            </div>
+            <span className="text-xs font-medium">{topic.likes || 0}</span>
+          </button>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare();
-              }}
-              className="flex items-center space-x-2 text-gray-600 hover:text-green-600 transition-colors group"
-            >
-              <div className="p-2 rounded-full group-hover:bg-green-100 transition-colors">
-                <Share2 className="w-5 h-5" />
-              </div>
-            </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare();
+            }}
+            className="flex flex-col items-center space-y-1 text-gray-600 hover:text-green-600 transition-colors group"
+          >
+            <div className="p-2 rounded-full group-hover:bg-green-100 transition-colors">
+              <Share2 className="w-5 h-5" />
+            </div>
+          </button>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onBookmark();
-              }}
-              className={`flex items-center space-x-2 transition-colors group ${
-                isBookmarked ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
-              }`}
-            >
-              <div className="p-2 rounded-full group-hover:bg-blue-100 transition-colors">
-                <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
-              </div>
-            </button>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onBookmark();
+            }}
+            className={`flex flex-col items-center space-y-1 transition-colors group ${
+              isBookmarked ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
+            }`}
+          >
+            <div className="p-2 rounded-full group-hover:bg-blue-100 transition-colors">
+              <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
+            </div>
+          </button>
         </div>
 
         {/* Comments Section */}
         {showComments && (
-          <div className="mt-6 pt-6 border-t border-white/50 relative z-10" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-8 pt-6 border-t-2 border-gray-200 relative z-10" onClick={(e) => e.stopPropagation()}>
             <CommentThread
               topicId={topic.id}
               onCommentAdded={handleCommentAdded}
@@ -333,7 +292,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                 </div>
               )}
             </div>
-            
+
             {canEdit && (
               <button
                 onClick={(e) => {
