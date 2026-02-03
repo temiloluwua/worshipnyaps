@@ -65,14 +65,9 @@ export const useTopics = () => {
     }
   };
 
-  // Update topic view count
   const incrementViewCount = async (topicId: string) => {
     try {
-      const { error } = await supabase
-        .from('topics')
-        .update({ view_count: 1 })
-        .eq('id', topicId);
-
+      const { error } = await supabase.rpc('increment_view_count', { topic_id: topicId });
       if (error) throw error;
     } catch (error) {
       console.error('Error updating view count:', error);
