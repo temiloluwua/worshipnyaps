@@ -4,9 +4,7 @@ import { BottomNavigation } from './components/BottomNavigation';
 import { TopicsView } from './components/topics/TopicsView';
 import { LocationsView } from './components/locations/LocationsView';
 import { CommunityView } from './components/network/NetworkView';
-import { ShopView } from './components/shop/ShopView';
 import { ShopPage } from './components/shop/ShopPage';
-import { SuccessPage } from './components/shop/SuccessPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { SkipLinks } from './components/ui/SkipLinks';
@@ -71,7 +69,7 @@ function App() {
         {activeTab === 'topics' && <TopicsView />}
         {activeTab === 'locations' && <LocationsView />}
         {activeTab === 'network' && <CommunityView />}
-        {activeTab === 'shop' && <ShopView />}
+        {activeTab === 'shop' && <ShopPage />}
       </main>
 
       <BottomNavigation
@@ -82,7 +80,7 @@ function App() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        initialMode="signin"
+        initialMode="login"
       />
     </div>
   );
