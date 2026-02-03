@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, X, Package, Check } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, X, Package, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
-import { SquareCheckout } from './SquareCheckout';
 
 interface Product {
   id: string;
@@ -25,15 +24,15 @@ interface CartItem {
 }
 
 export function ShopView() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   useEffect(() => {
@@ -107,39 +106,66 @@ export function ShopView() {
   };
 
   const checkout = async () => {
-    if (!user) {
-      toast.error('Please sign in to checkout');
-      return;
-    }
-
     if (cart.length === 0) {
       toast.error('Your cart is empty');
       return;
     }
 
-    setShowCart(false);
-    setShowCheckout(true);
-  };
+    setCheckoutLoading(true);
 
-  const handlePaymentSuccess = async (paymentId: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user!.id,
-          status: 'processing',
-          total_amount: getTotalPrice(),
-          shipping_address: {}
-        });
+      const lineItems = cart.map(item => ({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: item.product.name,
+            description: [item.size, item.color].filter(Boolean).join(' - ') || item.product.description,
+            images: item.product.image_url ? [item.product.image_url] : undefined,
+          },
+          unit_amount: Math.round(item.product.price * 100),
+        },
+        quantity: item.quantity,
+      }));
 
-      if (error) throw error;
+      const baseUrl = window.location.origin;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      };
 
-      setCart([]);
-      setShowCheckout(false);
-      toast.success('Order placed successfully!');
-    } catch (error) {
-      console.error('Error creating order:', error);
-      toast.error('Order created but failed to save. Please contact support.');
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            line_items: lineItems,
+            success_url: `${baseUrl}/shop/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/shop`,
+            mode: 'payment',
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast.error(error.message || 'Failed to start checkout');
+      setCheckoutLoading(false);
     }
   };
 
@@ -371,11 +397,21 @@ export function ShopView() {
                     </div>
                     <button
                       onClick={checkout}
-                      className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center space-x-2"
+                      disabled={checkoutLoading}
+                      className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Check className="w-5 h-5" />
-                      <span>Proceed to Checkout</span>
+                      {checkoutLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Redirecting...</span>
+                        </>
+                      ) : (
+                        <span>Checkout</span>
+                      )}
                     </button>
+                    <p className="text-xs text-gray-500 text-center mt-3">
+                      Apple Pay, Google Pay, and cards accepted
+                    </p>
                   </div>
                 </>
               )}
@@ -384,13 +420,6 @@ export function ShopView() {
         </div>
       )}
 
-      {showCheckout && (
-        <SquareCheckout
-          amount={getTotalPrice()}
-          onClose={() => setShowCheckout(false)}
-          onSuccess={handlePaymentSuccess}
-        />
-      )}
     </>
   );
 }

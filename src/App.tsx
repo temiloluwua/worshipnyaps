@@ -5,6 +5,7 @@ import { TopicsView } from './components/topics/TopicsView';
 import { LocationsView } from './components/locations/LocationsView';
 import { CommunityView } from './components/network/NetworkView';
 import { ShopPage } from './components/shop/ShopPage';
+import { SuccessPage } from './components/shop/SuccessPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { SkipLinks } from './components/ui/SkipLinks';
@@ -15,6 +16,7 @@ function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [activeTab, setActiveTab] = useState<'topics' | 'locations' | 'network' | 'shop'>('topics');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSuccessPage, setShowSuccessPage] = useState(false);
   const { loading } = useAuth();
   const { theme } = useTheme();
 
@@ -23,6 +25,17 @@ function App() {
     document.documentElement.classList.add(theme);
   }, [theme]);
 
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/shop/success') {
+      setShowLanding(false);
+      setShowSuccessPage(true);
+    } else if (path === '/shop') {
+      setShowLanding(false);
+      setActiveTab('shop');
+    }
+  }, []);
+
   const handleEnterApp = () => {
     setShowLanding(false);
   };
@@ -30,6 +43,18 @@ function App() {
   const handlePreOrder = () => {
     setShowLanding(false);
     setActiveTab('shop');
+  };
+
+  const handleBackToShop = () => {
+    setShowSuccessPage(false);
+    setActiveTab('shop');
+    window.history.pushState({}, '', '/shop');
+  };
+
+  const handleBackToHome = () => {
+    setShowSuccessPage(false);
+    setActiveTab('topics');
+    window.history.pushState({}, '', '/');
   };
 
   if (loading) {
@@ -48,6 +73,10 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  if (showSuccessPage) {
+    return <SuccessPage onBackToShop={handleBackToShop} onBackToHome={handleBackToHome} />;
   }
 
   if (showLanding) {
