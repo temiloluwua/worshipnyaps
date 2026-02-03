@@ -172,78 +172,78 @@ export function TopicsView() {
 
   return (
     <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 min-h-screen">
-      <div className="sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 z-10 transition-all duration-300">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-              {activeTab === 'topics' ? (
-                <>
-                  <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
-                  Discussion Cards
-                </>
-              ) : (
-                <>
-                  <Users className="w-6 h-6 mr-2 text-blue-500" />
-                  Community Feed
-                </>
-              )}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
-              {activeTab === 'topics'
-                ? 'Bible study discussions for our community'
-                : 'Share your thoughts and questions with the community'}
-            </p>
+      <div
+        className={`sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-10 transition-all duration-300 ease-in-out ${
+          showSearch ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                {activeTab === 'topics' ? (
+                  <>
+                    <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
+                    Discussion Cards
+                  </>
+                ) : (
+                  <>
+                    <Users className="w-6 h-6 mr-2 text-blue-500" />
+                    Community Feed
+                  </>
+                )}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                {activeTab === 'topics'
+                  ? 'Bible study discussions for our community'
+                  : 'Share your thoughts and questions with the community'}
+              </p>
+            </div>
+
+            {activeTab === 'community' && (
+              <button
+                onClick={handleCreateTopic}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+                aria-label="Create new post"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
-          {activeTab === 'community' && (
+          <div className="flex space-x-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <button
-              onClick={handleCreateTopic}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
-              aria-label="Create new post"
+              onClick={() => {
+                setActiveTab('topics');
+                setSearchQuery('');
+                setSelectedCategory('all');
+              }}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'topics'
+                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
             >
-              <Plus className="w-5 h-5" />
+              <Sparkles className="w-4 h-4 inline mr-1" />
+              Topics
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => {
+                setActiveTab('community');
+                setSearchQuery('');
+                setSelectedCategory('all');
+              }}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'community'
+                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <Users className="w-4 h-4 inline mr-1" />
+              Community
+            </button>
+          </div>
 
-        <div className="flex space-x-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-          <button
-            onClick={() => {
-              setActiveTab('topics');
-              setSearchQuery('');
-              setSelectedCategory('all');
-            }}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'topics'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 inline mr-1" />
-            Topics
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('community');
-              setSearchQuery('');
-              setSelectedCategory('all');
-            }}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'community'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <Users className="w-4 h-4 inline mr-1" />
-            Community
-          </button>
-        </div>
-
-        <div
-          className={`transition-all duration-300 overflow-hidden ${
-            showSearch ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -255,7 +255,7 @@ export function TopicsView() {
             />
           </div>
 
-          <div className="flex space-x-2 overflow-x-auto pb-2">
+          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => (
               <button
                 key={category}
