@@ -286,6 +286,17 @@ export const useConnections = () => {
     }
   };
 
+  const isConnected = (userId: string): boolean => {
+    return connections.some(c => c.connected_user_id === userId);
+  };
+
+  const hasPendingRequest = (userId: string): boolean => {
+    return connectionRequests.some(
+      r => (r.from_user_id === user?.id && r.to_user_id === userId) ||
+           (r.to_user_id === user?.id && r.from_user_id === userId)
+    );
+  };
+
   useEffect(() => {
     if (user) {
       fetchConnections();
@@ -303,6 +314,8 @@ export const useConnections = () => {
     acceptConnectionRequest,
     declineConnectionRequest,
     removeConnection,
-    blockUser
+    blockUser,
+    isConnected,
+    hasPendingRequest
   };
 };

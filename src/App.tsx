@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { BottomNavigation } from './components/BottomNavigation';
+import { BottomNavigation, TabType } from './components/BottomNavigation';
 import { TopicsView } from './components/topics/TopicsView';
 import { LocationsView } from './components/locations/LocationsView';
 import { CommunityView } from './components/network/NetworkView';
@@ -9,16 +9,34 @@ import { SuccessPage } from './components/shop/SuccessPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { SkipLinks } from './components/ui/SkipLinks';
+import { ProfilePage } from './components/profile/ProfilePage';
+import { SearchPage } from './components/search/SearchPage';
+import { MessagesView } from './components/messages/MessagesView';
+import { NotificationsPage } from './components/notifications/NotificationsPage';
+import { HashtagPage } from './components/hashtags/HashtagPage';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
+import { useDirectMessages } from './hooks/useDirectMessages';
+import { useNotifications } from './hooks/useNotifications';
+import { Topic } from './lib/supabase';
+
+interface ViewState {
+  type: 'main' | 'profile' | 'hashtag';
+  userId?: string;
+  hashtagName?: string;
+  initialChatUserId?: string;
+}
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
-  const [activeTab, setActiveTab] = useState<'topics' | 'locations' | 'network' | 'shop'>('topics');
+  const [activeTab, setActiveTab] = useState<TabType>('topics');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
-  const { loading } = useAuth();
+  const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
+  const { loading, user } = useAuth();
   const { theme } = useTheme();
+  const { totalUnread: unreadMessages } = useDirectMessages();
+  const { unreadCount: unreadNotifications } = useNotifications();
 
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
@@ -57,6 +75,28 @@ function App() {
     window.history.pushState({}, '', '/');
   };
 
+  const handleViewProfile = (userId: string) => {
+    setViewState({ type: 'profile', userId });
+  };
+
+  const handleViewHashtag = (hashtagName: string) => {
+    setViewState({ type: 'hashtag', hashtagName });
+  };
+
+  const handleBackToMain = () => {
+    setViewState({ type: 'main' });
+  };
+
+  const handleStartChat = (userId: string) => {
+    setViewState({ type: 'main', initialChatUserId: userId });
+    setActiveTab('messages');
+  };
+
+  const handleViewTopic = (topic: Topic) => {
+    setActiveTab('topics');
+    setViewState({ type: 'main' });
+  };
+
   if (loading) {
     return (
       <div
@@ -83,6 +123,28 @@ function App() {
     return <LandingPage onEnter={handleEnterApp} onPreOrder={handlePreOrder} />;
   }
 
+  if (viewState.type === 'profile' && viewState.userId) {
+    return (
+      <ProfilePage
+        userId={viewState.userId}
+        onBack={handleBackToMain}
+        onStartChat={handleStartChat}
+        onViewTopic={handleViewTopic}
+      />
+    );
+  }
+
+  if (viewState.type === 'hashtag' && viewState.hashtagName) {
+    return (
+      <HashtagPage
+        hashtagName={viewState.hashtagName}
+        onBack={handleBackToMain}
+        onViewTopic={handleViewTopic}
+        onViewProfile={handleViewProfile}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <SkipLinks
@@ -92,18 +154,60 @@ function App() {
         ]}
       />
 
-      <Header onShowAuth={() => setShowAuthModal(true)} />
+      <Header
+        onShowAuth={() => setShowAuthModal(true)}
+        onViewProfile={user ? () => handleViewProfile(user.id) : undefined}
+        onViewNotifications={() => setActiveTab('notifications')}
+        unreadNotifications={unreadNotifications}
+      />
 
       <main id="main-content" tabIndex={-1} className="pb-16 focus:outline-none">
-        {activeTab === 'topics' && <TopicsView />}
+        {activeTab === 'topics' && (
+          <TopicsView
+            onViewProfile={handleViewProfile}
+            onViewHashtag={handleViewHashtag}
+          />
+        )}
+        {activeTab === 'search' && (
+          <SearchPage
+            onViewProfile={handleViewProfile}
+            onViewTopic={handleViewTopic}
+            onViewHashtag={handleViewHashtag}
+            onStartChat={handleStartChat}
+          />
+        )}
         {activeTab === 'locations' && <LocationsView />}
-        {activeTab === 'network' && <CommunityView />}
+        {activeTab === 'messages' && (
+          <MessagesView
+            onBack={() => setActiveTab('topics')}
+            initialUserId={viewState.initialChatUserId}
+          />
+        )}
+        {activeTab === 'network' && (
+          <CommunityView
+            onViewProfile={handleViewProfile}
+            onStartChat={handleStartChat}
+          />
+        )}
+        {activeTab === 'notifications' && (
+          <NotificationsPage
+            onViewProfile={handleViewProfile}
+            onViewTopic={(topicId) => setActiveTab('topics')}
+          />
+        )}
         {activeTab === 'shop' && <ShopPage />}
       </main>
 
       <BottomNavigation
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          if (viewState.initialChatUserId && tab !== 'messages') {
+            setViewState({ type: 'main' });
+          }
+        }}
+        unreadMessages={unreadMessages}
+        unreadNotifications={unreadNotifications}
       />
 
       <AuthModal

@@ -2,25 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users } from 'lucide-react';
 import { useTopics } from '../../hooks/useTopics';
 import { useAuth } from '../../hooks/useAuth';
+import { useLikes } from '../../hooks/useLikes';
+import { useBookmarks } from '../../hooks/useBookmarks';
 import { discussionTopics } from '../../data/topics';
 import { TopicCard } from './TopicCard';
 import { CreateTopicModal } from './CreateTopicModal';
 import { EditTopicModal } from './EditTopicModal';
 import { TopicOfTheDayCard } from './TopicOfTheDayCard';
 import { AuthModal } from '../auth/AuthModal';
+import { ShareModal } from '../social/ShareModal';
+import { Topic } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
-export function TopicsView() {
+interface TopicsViewProps {
+  onViewProfile?: (userId: string) => void;
+  onViewHashtag?: (hashtagName: string) => void;
+}
+
+export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
-  const { topics, loading, toggleTopicLike, incrementViewCount } = useTopics();
+  const { topics, loading, incrementViewCount } = useTopics();
+  const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
+  const { isBookmarked, toggleBookmark } = useBookmarks();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharingTopic, setSharingTopic] = useState<Topic | null>(null);
   const [editingTopic, setEditingTopic] = useState<any>(null);
-  const [likedTopics, setLikedTopics] = useState<Set<string>>(new Set());
-  const [bookmarkedTopics, setBookmarkedTopics] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'topics' | 'community'>('topics');
   const [showSearch, setShowSearch] = useState(true);
   const lastScrollY = useRef(0);
@@ -82,18 +93,15 @@ export function TopicsView() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (topics.length > 0) {
+      fetchLikeCounts('topic', topics.map(t => t.id));
+    }
+  }, [topics, fetchLikeCounts]);
+
   const handleLike = (id: string) => {
     if (user) {
-      toggleTopicLike(id);
-      setLikedTopics((prev) => {
-        const newSet = new Set(prev);
-        if (newSet.has(id)) {
-          newSet.delete(id);
-        } else {
-          newSet.add(id);
-        }
-        return newSet;
-      });
+      toggleLike('topic', id);
     } else {
       setShowAuthModal(true);
     }
@@ -101,36 +109,15 @@ export function TopicsView() {
 
   const handleBookmark = (id: string) => {
     if (user) {
-      setBookmarkedTopics((prev) => {
-        const newSet = new Set(prev);
-        if (newSet.has(id)) {
-          newSet.delete(id);
-          toast.success('Removed from bookmarks');
-        } else {
-          newSet.add(id);
-          toast.success('Added to bookmarks');
-        }
-        return newSet;
-      });
+      toggleBookmark(id);
     } else {
       setShowAuthModal(true);
     }
   };
 
   const handleShare = (topic: any) => {
-    const shareText = `Check out this discussion topic: "${topic.title}" - ${
-      topic.bibleReference || 'Bible Study Discussion'
-    }`;
-    if (navigator.share) {
-      navigator.share({
-        title: topic.title,
-        text: shareText,
-        url: window.location.href,
-      });
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareText);
-      toast.success('Topic link copied to clipboard!');
-    }
+    setSharingTopic(topic);
+    setShowShareModal(true);
   };
 
   const handleEdit = (topic: any) => {
@@ -278,9 +265,12 @@ export function TopicsView() {
       {activeTab === 'topics' && topicOfTheDay && (
         <div className="p-4">
           <TopicOfTheDayCard
-            topic={topicOfTheDay}
-            isLiked={likedTopics.has(topicOfTheDay.id)}
-            isBookmarked={bookmarkedTopics.has(topicOfTheDay.id)}
+            topic={{
+              ...topicOfTheDay,
+              likes: getLikeCount('topic', topicOfTheDay.id)
+            }}
+            isLiked={isLiked('topic', topicOfTheDay.id)}
+            isBookmarked={isBookmarked(topicOfTheDay.id)}
             onLike={() => handleLike(topicOfTheDay.id)}
             onBookmark={() => handleBookmark(topicOfTheDay.id)}
             onShare={() => handleShare(topicOfTheDay)}
@@ -303,9 +293,12 @@ export function TopicsView() {
                 }}
               >
                 <TopicCard
-                  topic={topic}
-                  isLiked={likedTopics.has(topic.id)}
-                  isBookmarked={bookmarkedTopics.has(topic.id)}
+                  topic={{
+                    ...topic,
+                    likes: getLikeCount('topic', topic.id)
+                  }}
+                  isLiked={isLiked('topic', topic.id)}
+                  isBookmarked={isBookmarked(topic.id)}
                   onLike={() => handleLike(topic.id)}
                   onBookmark={() => handleBookmark(topic.id)}
                   onShare={() => handleShare(topic)}
@@ -323,9 +316,12 @@ export function TopicsView() {
             {displayTopics.map((topic) => (
               <TopicCard
                 key={topic.id}
-                topic={topic}
-                isLiked={likedTopics.has(topic.id)}
-                isBookmarked={bookmarkedTopics.has(topic.id)}
+                topic={{
+                  ...topic,
+                  likes: getLikeCount('topic', topic.id)
+                }}
+                isLiked={isLiked('topic', topic.id)}
+                isBookmarked={isBookmarked(topic.id)}
                 onLike={() => handleLike(topic.id)}
                 onBookmark={() => handleBookmark(topic.id)}
                 onShare={() => handleShare(topic)}
@@ -375,6 +371,16 @@ export function TopicsView() {
       />
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode="login" />
+
+      {showShareModal && sharingTopic && (
+        <ShareModal
+          topic={sharingTopic}
+          onClose={() => {
+            setShowShareModal(false);
+            setSharingTopic(null);
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes slideInUp {

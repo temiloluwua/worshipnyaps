@@ -11,7 +11,12 @@ import toast from 'react-hot-toast';
 
 type TabType = 'discover' | 'friends' | 'chat' | 'invitations';
 
-export function CommunityView() {
+interface CommunityViewProps {
+  onViewProfile?: (userId: string) => void;
+  onStartChat?: (userId: string) => void;
+}
+
+export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps = {}) {
   const { user, profile } = useAuth();
   const { connections, connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, loading: connectionsLoading } = useConnections();
   const { invitations, sentInvitations, respondToInvitation, cancelInvitation } = useEventInvitations();

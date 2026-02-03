@@ -1,20 +1,31 @@
 import React from 'react';
-import { MessageSquare, MapPin, Users, ShoppingBag } from 'lucide-react';
+import { MessageSquare, MapPin, Users, ShoppingBag, Search, Mail, Bell } from 'lucide-react';
+
+export type TabType = 'topics' | 'locations' | 'network' | 'shop' | 'search' | 'messages' | 'notifications';
 
 interface BottomNavigationProps {
-  activeTab: 'topics' | 'locations' | 'network' | 'shop';
-  onTabChange: (tab: 'topics' | 'locations' | 'network' | 'shop') => void;
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+  unreadMessages?: number;
+  unreadNotifications?: number;
 }
 
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   activeTab,
   onTabChange,
+  unreadMessages = 0,
+  unreadNotifications = 0,
 }) => {
   const tabs = [
     {
       id: 'topics' as const,
-      name: 'Topics',
+      name: 'Home',
       icon: MessageSquare,
+    },
+    {
+      id: 'search' as const,
+      name: 'Search',
+      icon: Search,
     },
     {
       id: 'locations' as const,
@@ -22,14 +33,15 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       icon: MapPin,
     },
     {
-      id: 'network' as const,
-      name: 'Community',
-      icon: Users,
+      id: 'messages' as const,
+      name: 'Messages',
+      icon: Mail,
+      badge: unreadMessages,
     },
     {
-      id: 'shop' as const,
-      name: 'Shop',
-      icon: ShoppingBag,
+      id: 'network' as const,
+      name: 'Network',
+      icon: Users,
     },
   ];
 
@@ -44,18 +56,27 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
 
+          const badge = (tab as any).badge;
+
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
+              className={`relative flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
                 isActive
                   ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
-              <Icon size={20} aria-hidden="true" />
+              <div className="relative">
+                <Icon size={20} aria-hidden="true" />
+                {badge > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </div>
               <span className="text-xs mt-1 font-medium">{tab.name}</span>
             </button>
           );
