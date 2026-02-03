@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Store } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import { AuthModal } from '../auth/AuthModal';
 import { stripeProducts } from '../../stripe-config';
 
 export function ShopPage() {
-  const [showAuthModal, setShowAuthModal] = useState(false);
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="text-center mb-10">
@@ -24,7 +21,6 @@ export function ShopPage() {
           <ProductCard
             key={product.id}
             product={product}
-            onAuthRequired={() => setShowAuthModal(true)}
           />
         ))}
       </div>
@@ -35,12 +31,6 @@ export function ShopPage() {
           <p className="text-gray-400 dark:text-gray-500 mt-2">Check back soon for new items!</p>
         </div>
       )}
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode="signup"
-      />
     </div>
   );
 }

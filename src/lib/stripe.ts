@@ -19,19 +19,21 @@ export async function createCheckoutSession({
   cancelUrl,
 }: CreateCheckoutSessionParams): Promise<CheckoutSessionResponse> {
   const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.access_token) {
-    throw new Error('User not authenticated');
-  }
 
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+  };
+
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+
   const response = await fetch(apiUrl, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       price_id: priceId,
       mode,

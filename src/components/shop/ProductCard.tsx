@@ -1,25 +1,17 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Loader2 } from 'lucide-react';
 import { StripeProduct } from '../../stripe-config';
-import { useAuth } from '../../hooks/useAuth';
 import { createCheckoutSession } from '../../lib/stripe';
 import toast from 'react-hot-toast';
 
 interface ProductCardProps {
   product: StripeProduct;
-  onAuthRequired: () => void;
 }
 
-export function ProductCard({ product, onAuthRequired }: ProductCardProps) {
-  const { user } = useAuth();
+export function ProductCard({ product }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePurchase = async () => {
-    if (!user) {
-      onAuthRequired();
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { url } = await createCheckoutSession({
