@@ -374,7 +374,7 @@ export function TopicsView() {
         }}
       />
 
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode="signin" />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode="login" />
 
       <style>{`
         @keyframes slideInUp {
