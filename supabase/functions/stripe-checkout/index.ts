@@ -117,13 +117,13 @@ Deno.serve(async (req) => {
       phone_number_collection: {
         enabled: true,
       },
-      allow_promotion_codes: true,
     };
 
     if (hasLineItems) {
       sessionConfig.line_items = line_items;
     } else {
       sessionConfig.line_items = [{ price: price_id, quantity: 1 }];
+      sessionConfig.allow_promotion_codes = true;
     }
 
     if (customerId) {
