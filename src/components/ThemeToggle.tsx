@@ -13,7 +13,7 @@ export function ThemeToggle({
   size = 'md',
   variant = 'button'
 }: ThemeToggleProps) {
-  const { theme, toggleTheme, resetToSystem, isSystemPreference, isDark } = useTheme();
+  const { theme, setTheme, toggleTheme, resetToSystem, isSystemPreference, isDark } = useTheme();
 
   const sizeClasses = {
     sm: 'p-1.5',
@@ -70,10 +70,7 @@ export function ThemeToggle({
           icon={<Sun className={iconSizes[size]} />}
           label="Light theme"
           isActive={theme === 'light' && !isSystemPreference}
-          onClick={() => {
-            const { setTheme } = useTheme();
-            setTheme('light');
-          }}
+          onClick={() => setTheme('light')}
           sizeClass={sizeClasses[size]}
         />
         <ThemeOption
@@ -87,10 +84,7 @@ export function ThemeToggle({
           icon={<Moon className={iconSizes[size]} />}
           label="Dark theme"
           isActive={theme === 'dark' && !isSystemPreference}
-          onClick={() => {
-            const { setTheme } = useTheme();
-            setTheme('dark');
-          }}
+          onClick={() => setTheme('dark')}
           sizeClass={sizeClasses[size]}
         />
       </div>
