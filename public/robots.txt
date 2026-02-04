@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://worshipandyaps.com/sitemap.xml
+Sitemap: https://worshipnyaps.com/sitemap.xml
 
 # Disallow admin areas (if any)
 Disallow: /admin/

@@ -147,7 +147,7 @@ For support and questions about the Calgary Bible Study community, please create
 
 ## 🎉 Live Website
 
-Visit: [worshipandyaps.com](https://worshipandyaps.com)
+Visit: [worshipnyaps.com](https://worshipnyaps.com)
 
 ---
 
