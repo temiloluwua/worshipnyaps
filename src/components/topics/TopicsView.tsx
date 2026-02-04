@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle } from 'lucide-react';
 import { useTopics } from '../../hooks/useTopics';
 import { useAuth } from '../../hooks/useAuth';
 import { useLikes } from '../../hooks/useLikes';
@@ -34,6 +34,7 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
   const [editingTopic, setEditingTopic] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'topics' | 'community'>('topics');
   const [showSearch, setShowSearch] = useState(true);
+  const [randomTopic, setRandomTopic] = useState<Topic | null>(null);
   const lastScrollY = useRef(0);
 
   const displayTopicsSource = topics.length > 0 ? topics : discussionTopics;
@@ -45,12 +46,26 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
     (topic: any) => topic.topic_type === 'community'
   );
 
-  const isPinned = (t: any) => Boolean(t && (t.isPinned || t.is_pinned));
-  const topicOfTheDay = topicsFiltered.find(isPinned) || topicsFiltered[0];
+  const getTopicOfTheDay = () => {
+    if (topicsFiltered.length === 0) return null;
+    const today = new Date().toDateString();
+    const dateHash = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const selectedIndex = dateHash % topicsFiltered.length;
+    return topicsFiltered[selectedIndex];
+  };
+
+  const topicOfTheDay = getTopicOfTheDay();
 
   const remainingTopics = topicsFiltered.filter(
     (topic) => topic.id !== topicOfTheDay?.id
   );
+
+  const pickRandomTopic = () => {
+    if (topicsFiltered.length > 0) {
+      const randomIndex = Math.floor(Math.random() * topicsFiltered.length);
+      setRandomTopic(topicsFiltered[randomIndex] as Topic);
+    }
+  };
 
   const categories = [
     'all',
@@ -187,15 +202,27 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
               </p>
             </div>
 
-            {activeTab === 'community' && (
-              <button
-                onClick={handleCreateTopic}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
-                aria-label="Create new post"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {activeTab === 'topics' && (
+                <button
+                  onClick={pickRandomTopic}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
+                  aria-label="Pick random topic"
+                  title="Pick a random topic"
+                >
+                  <Shuffle className="w-5 h-5" />
+                </button>
+              )}
+              {activeTab === 'community' && (
+                <button
+                  onClick={handleCreateTopic}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+                  aria-label="Create new post"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex space-x-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -262,8 +289,13 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
         </div>
       </div>
 
-      {activeTab === 'topics' && topicOfTheDay && (
+      {activeTab === 'topics' && topicOfTheDay && !randomTopic && (
         <div className="p-4">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Topic of the Day</span>
+            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+          </div>
           <TopicOfTheDayCard
             topic={{
               ...topicOfTheDay,
@@ -280,34 +312,75 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
         </div>
       )}
 
+      {activeTab === 'topics' && randomTopic && (
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Shuffle className="w-5 h-5 text-amber-500" />
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Random Pick</span>
+            </div>
+            <button
+              onClick={() => setRandomTopic(null)}
+              className="text-xs px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+          <TopicOfTheDayCard
+            topic={{
+              ...randomTopic,
+              likes: getLikeCount('topic', randomTopic.id)
+            }}
+            isLiked={isLiked('topic', randomTopic.id)}
+            isBookmarked={isBookmarked(randomTopic.id)}
+            onLike={() => handleLike(randomTopic.id)}
+            onBookmark={() => handleBookmark(randomTopic.id)}
+            onShare={() => handleShare(randomTopic)}
+            onEdit={() => handleEdit(randomTopic)}
+            onView={() => incrementViewCount(randomTopic.id)}
+          />
+        </div>
+      )}
+
       {activeTab === 'topics' ? (
         <div className="p-4">
           <div className="grid gap-6">
-            {displayTopics.map((topic, index) => (
-              <div
-                key={topic.id}
-                className="transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1"
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                  animation: 'slideInUp 0.6s ease-out forwards',
-                }}
-              >
-                <TopicCard
-                  topic={{
-                    ...topic,
-                    likes: getLikeCount('topic', topic.id)
+            {displayTopics.map((topic, index) => {
+              const isTopicOfDay = topicOfTheDay?.id === topic.id;
+              return (
+                <div
+                  key={topic.id}
+                  className={`transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 relative ${
+                    isTopicOfDay ? 'ring-2 ring-amber-400 dark:ring-amber-500 rounded-2xl' : ''
+                  }`}
+                  style={{
+                    animationDelay: `${index * 100}ms`,
+                    animation: 'slideInUp 0.6s ease-out forwards',
                   }}
-                  isLiked={isLiked('topic', topic.id)}
-                  isBookmarked={isBookmarked(topic.id)}
-                  onLike={() => handleLike(topic.id)}
-                  onBookmark={() => handleBookmark(topic.id)}
-                  onShare={() => handleShare(topic)}
-                  onEdit={() => handleEdit(topic)}
-                  onView={() => incrementViewCount(topic.id)}
-                  cardStyle="game"
-                />
-              </div>
-            ))}
+                >
+                  {isTopicOfDay && (
+                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-amber-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                      <Star className="w-3 h-3 fill-white" />
+                      Today
+                    </div>
+                  )}
+                  <TopicCard
+                    topic={{
+                      ...topic,
+                      likes: getLikeCount('topic', topic.id)
+                    }}
+                    isLiked={isLiked('topic', topic.id)}
+                    isBookmarked={isBookmarked(topic.id)}
+                    onLike={() => handleLike(topic.id)}
+                    onBookmark={() => handleBookmark(topic.id)}
+                    onShare={() => handleShare(topic)}
+                    onEdit={() => handleEdit(topic)}
+                    onView={() => incrementViewCount(topic.id)}
+                    cardStyle="game"
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (
