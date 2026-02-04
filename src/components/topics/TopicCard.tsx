@@ -73,10 +73,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         }}
       >
         {/* Decorative Corner Elements */}
-        <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-gray-800 rounded-tl-2xl"></div>
-        <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-gray-800 rounded-tr-2xl"></div>
-        <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-gray-800 rounded-bl-2xl"></div>
-        <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-gray-800 rounded-br-2xl"></div>
+        <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-gray-800 rounded-tl-2xl pointer-events-none"></div>
+        <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-gray-800 rounded-tr-2xl pointer-events-none"></div>
+        <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-gray-800 rounded-bl-2xl pointer-events-none"></div>
+        <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-gray-800 rounded-br-2xl pointer-events-none"></div>
 
         {/* Decorative Inner Border */}
         <div className="absolute top-4 left-4 right-4 bottom-4 border-2 border-dashed border-gray-300 rounded-2xl pointer-events-none"></div>
