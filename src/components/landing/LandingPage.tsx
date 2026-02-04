@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircle, Calendar } from 'lucide-react';
+import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircle, Calendar, Star } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
 import { supabase } from '../../lib/supabase';
@@ -15,26 +15,35 @@ interface Topic {
   category: string;
   bible_verse?: string;
   tags: string[];
+  content?: string;
 }
 
 export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
-  const [featuredTopics, setFeaturedTopics] = useState<Topic[]>([]);
+  const [topicOfTheDay, setTopicOfTheDay] = useState<Topic | null>(null);
+  const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeaturedTopics = async () => {
+    const fetchTopics = async () => {
       try {
         const { data, error } = await supabase
           .from('topics')
-          .select('id, title, category, bible_verse, tags')
-          .eq('topic_type', 'preselected')
-          .order('created_at', { ascending: false })
-          .limit(6);
+          .select('id, title, category, bible_verse, tags, content')
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setFeaturedTopics(data || []);
+
+        const topicList = data || [];
+        setAllTopics(topicList);
+
+        if (topicList.length > 0) {
+          const today = new Date().toDateString();
+          const dateHash = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const selectedIndex = dateHash % topicList.length;
+          setTopicOfTheDay(topicList[selectedIndex]);
+        }
       } catch (error) {
         console.error('Error fetching topics:', error);
       } finally {
@@ -42,7 +51,7 @@ export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
       }
     };
 
-    fetchFeaturedTopics();
+    fetchTopics();
   }, []);
 
   return (
@@ -106,51 +115,74 @@ export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
 
         <div className="mb-12">
           <div className="flex items-center justify-center space-x-2 mb-8">
-            <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <Star className="w-6 h-6 text-amber-500" />
             <h2 className="text-3xl font-bold text-slate-800 dark:text-white">
-              Featured Discussion Topics
+              Topic of the Day
             </h2>
+            <Star className="w-6 h-6 text-amber-500" />
           </div>
 
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-              <p className="text-slate-600 dark:text-slate-400">Loading topics...</p>
+              <p className="text-slate-600 dark:text-slate-400">Loading topic...</p>
+            </div>
+          ) : topicOfTheDay ? (
+            <div className="max-w-2xl mx-auto">
+              <div
+                className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-8 shadow-2xl border-2 border-amber-400 dark:border-amber-500 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-105"
+                onClick={onEnter}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
+                    <span className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm font-semibold">
+                      {topicOfTheDay.category}
+                    </span>
+                  </div>
+                  <MessageCircle className="w-6 h-6 text-slate-400" />
+                </div>
+                <h3 className="text-3xl font-bold text-slate-800 dark:text-white mb-4">
+                  {topicOfTheDay.title}
+                </h3>
+                {topicOfTheDay.bible_verse && (
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 italic border-l-4 border-amber-500 pl-4">
+                    {topicOfTheDay.bible_verse.split(';')[0]}
+                  </p>
+                )}
+                {topicOfTheDay.content && (
+                  <p className="text-slate-700 dark:text-slate-200 mb-6 leading-relaxed">
+                    {topicOfTheDay.content.substring(0, 200)}...
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {topicOfTheDay.tags && topicOfTheDay.tags.slice(0, 4).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEnter();
+                  }}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all inline-flex items-center justify-center space-x-2"
+                >
+                  <span>Join Discussion</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-center text-slate-600 dark:text-slate-400 mt-6 text-sm">
+                This topic changes daily at midnight UTC
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredTopics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer border border-gray-200 dark:border-gray-700 hover:scale-105"
-                  onClick={onEnter}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-                      {topic.category}
-                    </span>
-                    <MessageCircle className="w-5 h-5 text-slate-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-3">
-                    {topic.title}
-                  </h3>
-                  {topic.bible_verse && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                      {topic.bible_verse.split(';')[0]}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {topic.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 rounded text-xs"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-12">
+              <p className="text-slate-600 dark:text-slate-400">No topics available yet</p>
             </div>
           )}
         </div>
