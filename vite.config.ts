@@ -9,6 +9,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'terser',
+    target: ['es2015', 'chrome63', 'firefox67', 'safari12', 'edge79'],
     rollupOptions: {
       output: {
         manualChunks: {
