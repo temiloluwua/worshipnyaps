@@ -23,6 +23,11 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name,
+          },
+        },
       });
 
       if (authError) {
@@ -33,23 +38,6 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       if (authData.user) {
         if (authData.user.identities && authData.user.identities.length === 0) {
           toast.error('An account with this email already exists. Please sign in instead.');
-          return;
-        }
-
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email,
-            name,
-          });
-
-        if (profileError) {
-          if (profileError.code === '23505') {
-            toast.error('This account already exists. Please sign in instead.');
-          } else {
-            toast.error('Failed to create user profile');
-          }
           return;
         }
 
