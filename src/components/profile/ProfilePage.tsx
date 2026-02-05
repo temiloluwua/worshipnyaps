@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Camera, MapPin, Calendar, Settings, MessageCircle,
   UserPlus, UserMinus, ArrowLeft, Heart, Bookmark,
-  Repeat, Link as LinkIcon, Grid, List
+  Repeat, Link as LinkIcon, Grid, List, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
@@ -318,6 +318,27 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   {interest}
                 </span>
               ))}
+            </div>
+          )}
+
+          {viewingProfile.spiritual_gifts && viewingProfile.spiritual_gifts.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Spiritual Gifts
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {viewingProfile.spiritual_gifts.map((gift, idx) => (
+                  <span
+                    key={idx}
+                    className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-full text-sm font-medium border border-amber-200 dark:border-amber-800"
+                  >
+                    {gift}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 

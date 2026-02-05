@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserPlus, UserMinus, MessageCircle } from 'lucide-react';
+import { UserPlus, UserMinus, MessageCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useConnections } from '../../hooks/useConnections';
 
@@ -11,6 +11,7 @@ interface ProfileCardProps {
     avatar_url?: string;
     bio?: string;
     interests?: string[];
+    spiritual_gifts?: string[];
   };
   onViewProfile?: () => void;
   onStartChat?: () => void;
@@ -153,6 +154,27 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 +{user.interests.length - 3} more
               </span>
             )}
+          </div>
+        )}
+
+        {user.spiritual_gifts && user.spiritual_gifts.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-1 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Spiritual Gifts
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {user.spiritual_gifts.map((gift, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-full text-xs border border-amber-200 dark:border-amber-800"
+                >
+                  {gift}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

@@ -16,6 +16,15 @@ const SUGGESTED_INTERESTS = [
   'Basketball', 'Hiking', 'Reading', 'Cooking', 'Art'
 ];
 
+const SPIRITUAL_GIFTS = [
+  'Connection',
+  'Hosting',
+  'Worship',
+  'Teaching',
+  'Evangelism',
+  'Creative'
+];
+
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   profile,
   onClose,
@@ -27,6 +36,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [location, setLocation] = useState(profile.location_text || '');
   const [interests, setInterests] = useState<string[]>(profile.interests || []);
   const [newInterest, setNewInterest] = useState('');
+  const [spiritualGifts, setSpiritualGifts] = useState<string[]>(profile.spiritual_gifts || []);
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(profile.avatar_url || '');
   const [coverPreview, setCoverPreview] = useState(profile.cover_photo_url || '');
@@ -64,6 +74,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setInterests(interests.filter(i => i !== interest));
   };
 
+  const toggleSpiritualGift = (gift: string) => {
+    if (spiritualGifts.includes(gift)) {
+      setSpiritualGifts(spiritualGifts.filter(g => g !== gift));
+    } else {
+      setSpiritualGifts([...spiritualGifts, gift]);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error('Name is required');
@@ -90,6 +108,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         bio: bio.trim(),
         location_text: location.trim(),
         interests,
+        spiritual_gifts: spiritualGifts,
         avatar_url: avatarUrl,
         cover_photo_url: coverUrl
       });
@@ -277,6 +296,31 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 {interests.length}/10 interests
               </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Spiritual Gifts
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select the spiritual gifts you identify with or feel called to use in ministry
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {SPIRITUAL_GIFTS.map((gift) => (
+                  <button
+                    key={gift}
+                    type="button"
+                    onClick={() => toggleSpiritualGift(gift)}
+                    className={`px-4 py-2.5 rounded-lg border-2 transition-all text-sm font-medium ${
+                      spiritualGifts.includes(gift)
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'
+                    }`}
+                  >
+                    {gift}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

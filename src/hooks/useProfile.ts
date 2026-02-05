@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 export interface ExtendedProfile extends UserProfile {
   cover_photo_url?: string;
   interests?: string[];
+  spiritual_gifts?: string[];
   location_text?: string;
   stats?: {
     posts_count: number;
@@ -89,6 +90,7 @@ export const useProfile = () => {
           avatar_url: updates.avatar_url,
           cover_photo_url: updates.cover_photo_url,
           interests: updates.interests,
+          spiritual_gifts: updates.spiritual_gifts,
           location_text: updates.location_text,
           updated_at: new Date().toISOString()
         })
