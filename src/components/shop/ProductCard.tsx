@@ -10,10 +10,12 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handlePurchase = async () => {
     setIsLoading(true);
     try {
+      console.log('Starting checkout for product:', product.name);
       const { url } = await createCheckoutSession({
         priceId: product.priceId,
         mode: product.mode,
@@ -22,11 +24,14 @@ export function ProductCard({ product }: ProductCardProps) {
       });
 
       if (url) {
+        console.log('Redirecting to checkout:', url);
         window.location.href = url;
+      } else {
+        throw new Error('No checkout URL returned');
       }
     } catch (error) {
-      toast.error('Failed to start checkout process');
-    } finally {
+      console.error('Checkout error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to start checkout process');
       setIsLoading(false);
     }
   };
@@ -34,11 +39,18 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700">
       <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-700">
-        <img
-          src="https://images.pexels.com/photos/4705997/pexels-photo-4705997.jpeg"
-          alt={product.name}
-          className="w-full h-48 object-cover"
-        />
+        {!imageError ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="w-full h-48 object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-600">
+            <ShoppingCart className="w-16 h-16 text-blue-300 dark:text-gray-500" />
+          </div>
+        )}
       </div>
 
       <div className="p-5">

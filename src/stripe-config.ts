@@ -6,6 +6,7 @@ export interface StripeProduct {
   price: number;
   currency: string;
   mode: 'payment' | 'subscription';
+  imageUrl: string;
 }
 
 export const stripeProducts: StripeProduct[] = [
@@ -16,7 +17,8 @@ export const stripeProducts: StripeProduct[] = [
     description: 'Transform your Bible study with our engaging card game! Perfect for small groups, youth ministries, and family devotions. Each card sparks meaningful conversations about faith, life, and Scripture.',
     price: 29.99,
     currency: 'CAD',
-    mode: 'payment'
+    mode: 'payment',
+    imageUrl: 'https://images.pexels.com/photos/4705997/pexels-photo-4705997.jpeg'
   }
 ];
 

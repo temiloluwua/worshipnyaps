@@ -18,36 +18,67 @@ export async function createCheckoutSession({
   successUrl,
   cancelUrl,
 }: CreateCheckoutSessionParams): Promise<CheckoutSessionResponse> {
-  const { data: { session } } = await supabase.auth.getSession();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
 
-  const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
+    console.log('Creating checkout session at:', apiUrl);
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-  };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+    };
 
-  if (session?.access_token) {
-    headers['Authorization'] = `Bearer ${session.access_token}`;
-  }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+      console.log('Using authenticated session');
+    } else {
+      console.log('Creating checkout as guest');
+    }
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
+    const requestBody = {
       price_id: priceId,
       mode,
       success_url: successUrl,
       cancel_url: cancelUrl,
-    }),
-  });
+    };
+    console.log('Request body:', requestBody);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create checkout session');
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Checkout error response:', errorText);
+
+      let errorMessage = 'Failed to create checkout session';
+      try {
+        const error = JSON.parse(errorText);
+        errorMessage = error.error || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('Checkout session created:', result);
+
+    if (!result.url) {
+      throw new Error('No checkout URL returned from server');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in createCheckoutSession:', error);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function getUserSubscription() {
