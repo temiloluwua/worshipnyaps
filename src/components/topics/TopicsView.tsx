@@ -14,6 +14,61 @@ import { ShareModal } from '../social/ShareModal';
 import { Topic } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
+const DEFAULT_VISIBLE_TOPICS = 6;
+
+const sanitizeTopic = (topic: any) => {
+  const title = typeof topic.title === 'string' ? topic.title.trim() : '';
+  const content = typeof topic.content === 'string' ? topic.content.trim() : '';
+  const category = typeof topic.category === 'string' ? topic.category.trim() : '';
+  const tags = Array.isArray(topic.tags)
+    ? topic.tags.filter((tag: any) => typeof tag === 'string' && tag.trim().length > 0)
+    : [];
+  const questions = Array.isArray(topic.questions)
+    ? topic.questions.filter((question: any) => typeof question === 'string' && question.trim().length > 0)
+    : [];
+  const hasReadableContent = Boolean(title || content || questions.length || tags.length);
+  const commentCount =
+    typeof topic.comment_count === 'number'
+      ? topic.comment_count
+      : typeof topic.comments === 'number'
+        ? topic.comments
+        : Array.isArray(topic.comments)
+          ? topic.comments.length
+          : 0;
+
+  if (!hasReadableContent) {
+    return null;
+  }
+
+  return {
+    ...topic,
+    title: title || 'Untitled Topic',
+    content,
+    category: category || 'general',
+    tags,
+    questions,
+    bibleReference: topic.bibleReference || topic.bible_reference || '',
+    likes:
+      typeof topic.likes === 'number'
+        ? topic.likes
+        : typeof topic.like_count === 'number'
+          ? topic.like_count
+          : 0,
+    view_count:
+      typeof topic.view_count === 'number'
+        ? topic.view_count
+        : typeof topic.views === 'number'
+          ? topic.views
+          : 0,
+    commentCount,
+    authorName: topic.authorName || topic.users?.name || 'Anonymous',
+  };
+};
+
+const isValidTopic = (
+  topic: ReturnType<typeof sanitizeTopic>
+): topic is NonNullable<ReturnType<typeof sanitizeTopic>> => Boolean(topic);
+
 interface TopicsViewProps {
   onViewProfile?: (userId: string) => void;
   onViewHashtag?: (hashtagName: string) => void;
@@ -35,9 +90,18 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
   const [activeTab, setActiveTab] = useState<'topics' | 'community'>('topics');
   const [showSearch, setShowSearch] = useState(true);
   const [randomTopic, setRandomTopic] = useState<Topic | null>(null);
+  const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_TOPICS);
   const lastScrollY = useRef(0);
 
-  const displayTopicsSource = topics.length > 0 ? topics : discussionTopics;
+  const sanitizedSupabaseTopics = topics
+    .map(sanitizeTopic)
+    .filter(isValidTopic);
+  const sanitizedSeedTopics = discussionTopics
+    .map(sanitizeTopic)
+    .filter(isValidTopic);
+
+  const displayTopicsSource =
+    sanitizedSupabaseTopics.length > 0 ? sanitizedSupabaseTopics : sanitizedSeedTopics;
 
   const topicsFiltered = displayTopicsSource.filter(
     (topic: any) => (topic.topic_type === 'preselected' || !topic.topic_type)
@@ -56,10 +120,6 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
 
   const topicOfTheDay = getTopicOfTheDay();
 
-  const remainingTopics = topicsFiltered.filter(
-    (topic) => topic.id !== topicOfTheDay?.id
-  );
-
   const pickRandomTopic = () => {
     if (topicsFiltered.length > 0) {
       const randomIndex = Math.floor(Math.random() * topicsFiltered.length);
@@ -71,25 +131,56 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
     'all',
     ...Array.from(
       new Set(
-        (activeTab === 'topics' ? topicsFiltered : communityTopics).map(
-          (topic) => topic.category
-        )
+        (activeTab === 'topics' ? topicsFiltered : communityTopics)
+          .map((topic) => topic.category)
+          .filter((category) => typeof category === 'string' && category.trim().length > 0)
       )
     ),
   ];
 
-  const currentFeedTopics = activeTab === 'topics' ? remainingTopics : communityTopics;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const shouldShowFeaturedCard =
+    activeTab === 'topics' && selectedCategory === 'all' && normalizedQuery.length === 0;
+  const showTopicOfTheDayCard = shouldShowFeaturedCard && Boolean(topicOfTheDay) && !randomTopic;
+  const showRandomCard = shouldShowFeaturedCard && Boolean(randomTopic);
+
+  const featuredExclusions = new Set<string>();
+  if (showTopicOfTheDayCard && topicOfTheDay?.id) {
+    featuredExclusions.add(topicOfTheDay.id);
+  }
+  if (showRandomCard && randomTopic?.id) {
+    featuredExclusions.add(randomTopic.id);
+  }
+
+  const primaryTopics = topicsFiltered.filter((topic) => !featuredExclusions.has(topic.id));
+  const currentFeedTopics = activeTab === 'topics' ? primaryTopics : communityTopics;
 
   const filteredTopics = currentFeedTopics.filter((topic) => {
+    const title = (topic.title ?? '').toLowerCase();
+    const content = (topic.content ?? '').toLowerCase();
+    const tags = Array.isArray(topic.tags) ? (topic.tags as string[]) : [];
+
     const matchesSearch =
-      topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (topic.content || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      topic.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      title.includes(normalizedQuery) ||
+      content.includes(normalizedQuery) ||
+      tags.some((tag: string) => (tag ?? '').toLowerCase().includes(normalizedQuery));
     const matchesCategory = selectedCategory === 'all' || topic.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const displayTopics = filteredTopics.length > 0 ? filteredTopics : currentFeedTopics;
+  const visibleTopics = displayTopics.slice(0, visibleCount);
+  const hasMoreTopics = displayTopics.length > visibleTopics.length;
+
+  useEffect(() => {
+    setVisibleCount(DEFAULT_VISIBLE_TOPICS);
+  }, [activeTab, selectedCategory, searchQuery, displayTopicsSource.length]);
+
+  useEffect(() => {
+    if (!shouldShowFeaturedCard && randomTopic) {
+      setRandomTopic(null);
+    }
+  }, [shouldShowFeaturedCard, randomTopic]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -159,6 +250,10 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
       return;
     }
     setShowCreateModal(true);
+  };
+
+  const handleShowMoreTopics = () => {
+    setVisibleCount((prev) => prev + DEFAULT_VISIBLE_TOPICS);
   };
 
   if (loading) {
@@ -282,14 +377,14 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
               >
                 {category === 'all'
                   ? 'All Topics'
-                  : category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  : category.replace('-', ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {activeTab === 'topics' && topicOfTheDay && !randomTopic && (
+      {showTopicOfTheDayCard && topicOfTheDay && (
         <div className="p-4">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
@@ -312,7 +407,7 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
         </div>
       )}
 
-      {activeTab === 'topics' && randomTopic && (
+      {showRandomCard && randomTopic && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -345,7 +440,7 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
       {activeTab === 'topics' ? (
         <div className="p-4">
           <div className="grid gap-6">
-            {displayTopics.map((topic, index) => {
+            {visibleTopics.map((topic, index) => {
               const isTopicOfDay = topicOfTheDay?.id === topic.id;
               return (
                 <div
@@ -386,7 +481,7 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
       ) : (
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {displayTopics.map((topic) => (
+            {visibleTopics.map((topic) => (
               <TopicCard
                 key={topic.id}
                 topic={{
@@ -404,6 +499,17 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {hasMoreTopics && (
+        <div className="flex justify-center py-6 px-4">
+          <button
+            onClick={handleShowMoreTopics}
+            className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+          >
+            Show more topics
+          </button>
         </div>
       )}
 

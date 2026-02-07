@@ -31,7 +31,21 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   const [showComments, setShowComments] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
-  const [commentCount, setCommentCount] = useState<number>(topic.comments || 0);
+  const initialCommentCount =
+    typeof topic.commentCount === 'number'
+      ? topic.commentCount
+      : typeof topic.comments === 'number'
+        ? topic.comments
+        : Array.isArray(topic.comments)
+          ? topic.comments.length
+          : 0;
+  const [commentCount, setCommentCount] = useState<number>(initialCommentCount);
+  const safeTitle =
+    typeof topic.title === 'string' && topic.title.trim().length > 0 ? topic.title : 'Untitled Topic';
+  const safeCategory =
+    typeof topic.category === 'string' && topic.category.trim().length > 0 ? topic.category : 'general';
+  const safeContent = typeof topic.content === 'string' ? topic.content.trim() : '';
+  const hasQuestions = Array.isArray(topic.questions) && topic.questions.length > 0;
 
   const openBibleReference = (reference: string) => {
     const url = `https://www.openbible.info/labs/cross-references/search?q=${encodeURIComponent(reference)}`;
@@ -102,7 +116,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
 
         {/* Topic Title */}
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-4 leading-tight relative z-10" style={{ fontFamily: 'Georgia, serif' }}>
-          {topic.title}
+          {safeTitle}
         </h2>
 
         {/* Bible Reference */}
@@ -114,8 +128,20 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           </div>
         )}
 
+        {(safeContent || !hasQuestions) && (
+          <div className="text-center mb-6 relative z-10">
+            {safeContent ? (
+              <p className="text-base text-gray-700 leading-relaxed">{safeContent}</p>
+            ) : (
+              <p className="text-base text-gray-500 italic">
+                Discussion details coming soon. Share your insights below.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Discussion Questions */}
-        {topic.questions && topic.questions.length > 0 && (
+        {hasQuestions && (
           <div className="mb-6 relative z-10">
             <div className="space-y-2">
               {(showAllQuestions ? topic.questions : topic.questions.slice(0, 3)).map((question: string, index: number) => (
@@ -280,13 +306,13 @@ export const TopicCard: React.FC<TopicCardProps> = ({
 
           {/* Topic Title */}
           <h2 className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
-            {topic.title}
+            {safeTitle}
           </h2>
 
           {/* Category */}
           <div className="flex items-center space-x-3 mb-3">
             <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-              {topic.category.replace('-', ' ').toUpperCase()}
+              {safeCategory.replace('-', ' ').toUpperCase()}
             </span>
           </div>
 
@@ -325,10 +351,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({
 
           {/* Content Preview */}
           <div className="mb-3">
-            {topic.content && (
+            {safeContent ? (
               <p className="text-gray-700 mb-3">
-                {showFullContent ? topic.content : topic.content.substring(0, 200)}
-                {topic.content.length > 200 && (
+                {showFullContent ? safeContent : safeContent.substring(0, 200)}
+                {safeContent.length > 200 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -340,10 +366,14 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                   </button>
                 )}
               </p>
+            ) : (
+              <p className="text-gray-500 italic">
+                No description provided yet. Jump into the questions or comments to start the discussion.
+              </p>
             )}
 
             {/* Questions Preview */}
-            {topic.questions && topic.questions.length > 0 && (
+            {hasQuestions && (
               <div className="bg-blue-50 rounded-lg p-3 mb-3">
                 <p className="text-sm font-medium text-blue-900 mb-2">Discussion Questions:</p>
                 <div className="space-y-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, Topic, Comment } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
@@ -9,7 +9,7 @@ export const useTopics = () => {
   const [loading, setLoading] = useState(false);
 
   // Fetch all topics
-  const fetchTopics = async () => {
+  const fetchTopics = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -31,10 +31,10 @@ export const useTopics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Create new topic
-  const createTopic = async (topicData: {
+  const createTopic = useCallback(async (topicData: {
     title: string;
     category: string;
     content: string;
@@ -63,19 +63,19 @@ export const useTopics = () => {
       toast.error(error.message);
       return null;
     }
-  };
+  }, [user, fetchTopics]);
 
-  const incrementViewCount = async (topicId: string) => {
+  const incrementViewCount = useCallback(async (topicId: string) => {
     try {
       const { error } = await supabase.rpc('increment_view_count', { topic_id: topicId });
       if (error) throw error;
     } catch (error) {
       console.error('Error updating view count:', error);
     }
-  };
+  }, []);
 
   // Get topic comments
-  const getTopicComments = async (topicId: string) => {
+  const getTopicComments = useCallback(async (topicId: string) => {
     try {
       const { data, error } = await supabase
         .from('comments')
@@ -95,10 +95,10 @@ export const useTopics = () => {
       console.error('Error fetching comments:', error);
       return [];
     }
-  };
+  }, []);
 
   // Add comment to topic
-  const addComment = async (topicId: string, content: string, parentId?: string) => {
+  const addComment = useCallback(async (topicId: string, content: string, parentId?: string) => {
     if (!user) return null;
 
     try {
@@ -127,10 +127,10 @@ export const useTopics = () => {
       toast.error(error.message);
       return null;
     }
-  };
+  }, [user]);
 
   // Like/unlike topic (using view_count as a proxy for likes)
-  const toggleTopicLike = async (topicId: string) => {
+  const toggleTopicLike = useCallback(async (topicId: string) => {
     if (!user) return;
 
     try {
@@ -149,10 +149,10 @@ export const useTopics = () => {
     } catch (error) {
       console.error('Error toggling like:', error);
     }
-  };
+  }, [user, incrementViewCount]);
 
   // Pin/unpin topic (admin only)
-  const toggleTopicPin = async (topicId: string) => {
+  const toggleTopicPin = useCallback(async (topicId: string) => {
     if (!user) return;
 
     try {
@@ -171,10 +171,10 @@ export const useTopics = () => {
     } catch (error: any) {
       toast.error(error.message);
     }
-  };
+  }, [user, topics, fetchTopics]);
 
   // Update topic (author or admin)
-  const updateTopic = async (
+  const updateTopic = useCallback(async (
     topicId: string,
     updates: Partial<Pick<Topic, 'title' | 'category' | 'content' | 'tags'>> & {
       bibleReference?: string;
@@ -201,11 +201,11 @@ export const useTopics = () => {
       toast.error(error.message);
       return false;
     }
-  };
+  }, [user, fetchTopics]);
 
   useEffect(() => {
     fetchTopics();
-  }, []);
+  }, [fetchTopics]);
 
   return {
     topics,
