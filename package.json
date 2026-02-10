@@ -16,6 +16,7 @@
     "deploy": "npm run build && echo 'Build complete! Upload dist/ folder to your hosting provider.'"
   },
   "dependencies": {
+    "@hcaptcha/react-hcaptcha": "^2.0.2",
     "@supabase/supabase-js": "^2.39.0",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",

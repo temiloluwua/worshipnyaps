@@ -63,6 +63,11 @@ function App() {
     setActiveTab('shop');
   };
 
+  const handleViewEvents = () => {
+    setShowLanding(false);
+    setActiveTab('locations');
+  };
+
   const handleBackToShop = () => {
     setShowSuccessPage(false);
     setActiveTab('shop');
@@ -124,7 +129,13 @@ function App() {
   }
 
   if (showLanding) {
-    return <LandingPage onEnter={handleEnterApp} onPreOrder={handlePreOrder} />;
+    return (
+      <LandingPage
+        onEnter={handleEnterApp}
+        onPreOrder={handlePreOrder}
+        onViewEvents={handleViewEvents}
+      />
+    );
   }
 
   if (viewState.type === 'profile' && viewState.userId) {

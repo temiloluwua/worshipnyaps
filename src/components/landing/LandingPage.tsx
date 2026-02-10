@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 interface LandingPageProps {
   onEnter: () => void;
   onPreOrder: () => void;
+  onViewEvents?: () => void;
 }
 
 interface Topic {
@@ -18,7 +19,7 @@ interface Topic {
   content?: string;
 }
 
-export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [topicOfTheDay, setTopicOfTheDay] = useState<Topic | null>(null);
@@ -196,7 +197,9 @@ export function LandingPage({ onEnter, onPreOrder }: LandingPageProps) {
             Connect in person at our weekly Bible study gatherings, worship nights, and community events throughout Calgary.
           </p>
           <button
-            onClick={onEnter}
+            onClick={() => {
+              (onViewEvents ?? onEnter)();
+            }}
             className="px-8 py-3 bg-white text-blue-700 rounded-lg font-semibold hover:bg-blue-50 transition-all inline-flex items-center space-x-2"
           >
             <span>View Events</span>
