@@ -33,6 +33,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
+  const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
   const { loading, user } = useAuth();
   const { theme } = useTheme();
   const { totalUnread: unreadMessages } = useDirectMessages();
@@ -53,6 +54,14 @@ function App() {
       setActiveTab('shop');
     }
   }, []);
+
+  const focusTopicById = (topicId: string) => {
+    setShowLanding(false);
+    setShowSuccessPage(false);
+    setActiveTab('topics');
+    setViewState({ type: 'main' });
+    setFocusedTopicId(topicId);
+  };
 
   const handleEnterApp = () => {
     setShowLanding(false);
@@ -98,8 +107,7 @@ function App() {
   };
 
   const handleViewTopic = (topic: Topic) => {
-    setActiveTab('topics');
-    setViewState({ type: 'main' });
+    focusTopicById(topic.id);
   };
 
   const handleViewNetwork = () => {
@@ -134,6 +142,7 @@ function App() {
         onEnter={handleEnterApp}
         onPreOrder={handlePreOrder}
         onViewEvents={handleViewEvents}
+        onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
       />
     );
   }
@@ -211,6 +220,8 @@ function App() {
           <TopicsView
             onViewProfile={handleViewProfile}
             onViewHashtag={handleViewHashtag}
+            focusTopicId={focusedTopicId}
+            onFocusedTopicHandled={() => setFocusedTopicId(null)}
           />
         )}
         {activeTab === 'search' && (
@@ -231,7 +242,7 @@ function App() {
         {activeTab === 'notifications' && (
           <NotificationsPage
             onViewProfile={handleViewProfile}
-            onViewTopic={(topicId) => setActiveTab('topics')}
+            onViewTopic={(topicId) => focusTopicById(topicId)}
           />
         )}
         {activeTab === 'shop' && <ShopPage />}

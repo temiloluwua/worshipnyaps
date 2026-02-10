@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+import type { HCaptcha as HCaptchaInstance } from '@hcaptcha/react-hcaptcha';
 import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTheme } from '../../hooks/useTheme';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -13,15 +16,32 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptchaInstance | null>(null);
+  const { isDark } = useTheme();
+
+  const captchaSiteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
+  const isCaptchaEnabled = Boolean(captchaSiteKey);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isCaptchaEnabled && !captchaToken) {
+      toast.error('Please complete the captcha verification.');
+      setCaptchaError('Please verify that you are human before signing in.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          captchaToken: isCaptchaEnabled ? captchaToken ?? undefined : undefined,
+        },
       });
 
       if (error) {
@@ -29,12 +49,23 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
           toast.error('Please confirm your email address before signing in. Check your inbox for a confirmation link.');
         } else if (error.message.toLowerCase().includes('invalid')) {
           toast.error('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.toLowerCase().includes('captcha')) {
+          toast.error('Captcha verification failed. Please try again.');
+          setCaptchaError('Captcha verification failed. Please try again.');
+          if (isCaptchaEnabled) {
+            captchaRef.current?.resetCaptcha();
+            setCaptchaToken(null);
+          }
         } else {
           toast.error(error.message);
         }
       } else if (data.session) {
         toast.success('Welcome back!');
         onSuccess?.();
+        if (isCaptchaEnabled) {
+          captchaRef.current?.resetCaptcha();
+          setCaptchaToken(null);
+        }
       }
     } catch (error) {
       toast.error('An unexpected error occurred');
@@ -98,7 +129,7 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || (isCaptchaEnabled && !captchaToken)}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? (
@@ -107,6 +138,43 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
               'Sign In'
             )}
           </button>
+
+          {isCaptchaEnabled ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Security Check
+              </label>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <HCaptcha
+                  ref={captchaRef}
+                  sitekey={captchaSiteKey as string}
+                  theme={isDark ? 'dark' : 'light'}
+                  onVerify={(token) => {
+                    setCaptchaToken(token);
+                    setCaptchaError(null);
+                  }}
+                  onError={(event) => {
+                    console.error('hCaptcha error:', event);
+                    setCaptchaToken(null);
+                    setCaptchaError('Captcha failed to load. Please refresh and try again.');
+                  }}
+                  onExpire={() => {
+                    setCaptchaToken(null);
+                    captchaRef.current?.resetCaptcha();
+                  }}
+                />
+              </div>
+              {captchaError && (
+                <p className="mt-2 text-sm text-red-600">
+                  {captchaError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Captcha is currently disabled for sign in. Add VITE_HCAPTCHA_SITE_KEY to require verification.
+            </div>
+          )}
         </form>
 
         <div className="mt-6 text-center">

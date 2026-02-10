@@ -8,6 +8,7 @@ interface LandingPageProps {
   onEnter: () => void;
   onPreOrder: () => void;
   onViewEvents?: () => void;
+  onViewTopicOfDay?: (topicId: string) => void;
 }
 
 interface Topic {
@@ -19,7 +20,7 @@ interface Topic {
   content?: string;
 }
 
-export function LandingPage({ onEnter, onPreOrder, onViewEvents }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDay }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [topicOfTheDay, setTopicOfTheDay] = useState<Topic | null>(null);
@@ -169,7 +170,11 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents }: LandingPagePr
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onEnter();
+                    if (topicOfTheDay) {
+                      onViewTopicOfDay?.(topicOfTheDay.id);
+                    } else {
+                      onEnter();
+                    }
                   }}
                   className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all inline-flex items-center justify-center space-x-2"
                 >

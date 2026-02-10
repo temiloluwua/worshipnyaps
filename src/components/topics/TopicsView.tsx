@@ -72,9 +72,16 @@ const isValidTopic = (
 interface TopicsViewProps {
   onViewProfile?: (userId: string) => void;
   onViewHashtag?: (hashtagName: string) => void;
+  focusTopicId?: string | null;
+  onFocusedTopicHandled?: () => void;
 }
 
-export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {}) {
+export function TopicsView({
+  onViewProfile,
+  onViewHashtag,
+  focusTopicId,
+  onFocusedTopicHandled,
+}: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
   const { topics, loading, incrementViewCount } = useTopics();
   const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
@@ -92,6 +99,7 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
   const [randomTopic, setRandomTopic] = useState<Topic | null>(null);
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_TOPICS);
   const lastScrollY = useRef(0);
+  const [highlightedTopicId, setHighlightedTopicId] = useState<string | null>(null);
 
   const sanitizedSupabaseTopics = topics
     .map(sanitizeTopic)
@@ -204,6 +212,38 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
       fetchLikeCounts('topic', topics.map(t => t.id));
     }
   }, [topics, fetchLikeCounts]);
+
+  useEffect(() => {
+    if (!focusTopicId || typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    setActiveTab('topics');
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setRandomTopic(null);
+
+    const topicIndex = topicsFiltered.findIndex((topic) => topic.id === focusTopicId);
+    if (topicIndex !== -1) {
+      setVisibleCount((prev) => Math.max(prev, topicIndex + 1));
+    }
+
+    setHighlightedTopicId(focusTopicId);
+
+    const scrollTimeout = window.setTimeout(() => {
+      const element = document.querySelector<HTMLElement>(`[data-topic-card=\"${focusTopicId}\"]`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+
+    const clearHighlight = window.setTimeout(() => {
+      setHighlightedTopicId(null);
+    }, 6000);
+
+    onFocusedTopicHandled?.();
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      clearTimeout(clearHighlight);
+    };
+  }, [focusTopicId, topicsFiltered, onFocusedTopicHandled]);
 
   const handleLike = (id: string) => {
     if (user) {
@@ -391,19 +431,26 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
             <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Topic of the Day</span>
             <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
           </div>
-          <TopicOfTheDayCard
-            topic={{
-              ...topicOfTheDay,
-              likes: getLikeCount('topic', topicOfTheDay.id)
-            }}
-            isLiked={isLiked('topic', topicOfTheDay.id)}
-            isBookmarked={isBookmarked(topicOfTheDay.id)}
-            onLike={() => handleLike(topicOfTheDay.id)}
-            onBookmark={() => handleBookmark(topicOfTheDay.id)}
-            onShare={() => handleShare(topicOfTheDay)}
-            onEdit={() => handleEdit(topicOfTheDay)}
-            onView={() => incrementViewCount(topicOfTheDay.id)}
-          />
+          <div
+            data-topic-card={topicOfTheDay.id}
+            className={`rounded-2xl transition-shadow ${
+              highlightedTopicId === topicOfTheDay.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 shadow-2xl' : ''
+            }`}
+          >
+            <TopicOfTheDayCard
+              topic={{
+                ...topicOfTheDay,
+                likes: getLikeCount('topic', topicOfTheDay.id)
+              }}
+              isLiked={isLiked('topic', topicOfTheDay.id)}
+              isBookmarked={isBookmarked(topicOfTheDay.id)}
+              onLike={() => handleLike(topicOfTheDay.id)}
+              onBookmark={() => handleBookmark(topicOfTheDay.id)}
+              onShare={() => handleShare(topicOfTheDay)}
+              onEdit={() => handleEdit(topicOfTheDay)}
+              onView={() => incrementViewCount(topicOfTheDay.id)}
+            />
+          </div>
         </div>
       )}
 
@@ -421,19 +468,26 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
               Close
             </button>
           </div>
-          <TopicOfTheDayCard
-            topic={{
-              ...randomTopic,
-              likes: getLikeCount('topic', randomTopic.id)
-            }}
-            isLiked={isLiked('topic', randomTopic.id)}
-            isBookmarked={isBookmarked(randomTopic.id)}
-            onLike={() => handleLike(randomTopic.id)}
-            onBookmark={() => handleBookmark(randomTopic.id)}
-            onShare={() => handleShare(randomTopic)}
-            onEdit={() => handleEdit(randomTopic)}
-            onView={() => incrementViewCount(randomTopic.id)}
-          />
+          <div
+            data-topic-card={randomTopic.id}
+            className={`rounded-2xl transition-shadow ${
+              highlightedTopicId === randomTopic.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 shadow-2xl' : ''
+            }`}
+          >
+            <TopicOfTheDayCard
+              topic={{
+                ...randomTopic,
+                likes: getLikeCount('topic', randomTopic.id)
+              }}
+              isLiked={isLiked('topic', randomTopic.id)}
+              isBookmarked={isBookmarked(randomTopic.id)}
+              onLike={() => handleLike(randomTopic.id)}
+              onBookmark={() => handleBookmark(randomTopic.id)}
+              onShare={() => handleShare(randomTopic)}
+              onEdit={() => handleEdit(randomTopic)}
+              onView={() => incrementViewCount(randomTopic.id)}
+            />
+          </div>
         </div>
       )}
 
@@ -442,12 +496,14 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
           <div className="grid gap-6">
             {visibleTopics.map((topic, index) => {
               const isTopicOfDay = topicOfTheDay?.id === topic.id;
+              const isHighlighted = highlightedTopicId === topic.id;
               return (
                 <div
                   key={topic.id}
+                  data-topic-card={topic.id}
                   className={`transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 relative ${
                     isTopicOfDay ? 'ring-2 ring-amber-400 dark:ring-amber-500 rounded-2xl' : ''
-                  }`}
+                  } ${isHighlighted ? 'ring-4 ring-blue-400 dark:ring-blue-500 rounded-2xl shadow-2xl' : ''}`}
                   style={{
                     animationDelay: `${index * 100}ms`,
                     animation: 'slideInUp 0.6s ease-out forwards',
@@ -482,21 +538,26 @@ export function TopicsView({ onViewProfile, onViewHashtag }: TopicsViewProps = {
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {visibleTopics.map((topic) => (
-              <TopicCard
+              <div
                 key={topic.id}
-                topic={{
-                  ...topic,
-                  likes: getLikeCount('topic', topic.id)
-                }}
-                isLiked={isLiked('topic', topic.id)}
-                isBookmarked={isBookmarked(topic.id)}
-                onLike={() => handleLike(topic.id)}
-                onBookmark={() => handleBookmark(topic.id)}
-                onShare={() => handleShare(topic)}
-                onEdit={() => handleEdit(topic)}
-                onView={() => incrementViewCount(topic.id)}
-                cardStyle="feed"
-              />
+                data-topic-card={topic.id}
+                className={`relative ${highlightedTopicId === topic.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 rounded-2xl shadow-2xl m-2' : ''}`}
+              >
+                <TopicCard
+                  topic={{
+                    ...topic,
+                    likes: getLikeCount('topic', topic.id)
+                  }}
+                  isLiked={isLiked('topic', topic.id)}
+                  isBookmarked={isBookmarked(topic.id)}
+                  onLike={() => handleLike(topic.id)}
+                  onBookmark={() => handleBookmark(topic.id)}
+                  onShare={() => handleShare(topic)}
+                  onEdit={() => handleEdit(topic)}
+                  onView={() => incrementViewCount(topic.id)}
+                  cardStyle="feed"
+                />
+              </div>
             ))}
           </div>
         </div>
