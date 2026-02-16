@@ -25,7 +25,6 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     loading: notificationsLoading,
     markAsRead,
     markAllAsRead,
-    fetchNotifications
   } = useNotifications();
   const {
     myActivities,
@@ -38,9 +37,8 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    fetchNotifications();
     fetchMyNotifications();
-  }, [fetchNotifications, fetchMyNotifications]);
+  }, [fetchMyNotifications]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {

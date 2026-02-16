@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Notification } from '../types';
 import { useAuth } from './useAuth';
@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 
 export const useNotifications = () => {
   const { user } = useAuth();
+  const userId = user?.id;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const loadErrorToastShownRef = useRef(false);
 
   // Request notification permission
   const requestNotificationPermission = async () => {
@@ -31,15 +33,15 @@ export const useNotifications = () => {
   };
 
   // Fetch notifications from database
-  const fetchNotifications = async () => {
-    if (!user) return;
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -48,13 +50,17 @@ export const useNotifications = () => {
       setNotifications(data || []);
       const unread = (data || []).filter(n => !n.is_read).length;
       setUnreadCount(unread);
+      loadErrorToastShownRef.current = false;
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      toast.error('Failed to load notifications');
+      if (!loadErrorToastShownRef.current) {
+        toast.error('Failed to load notifications');
+        loadErrorToastShownRef.current = true;
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
@@ -79,13 +85,13 @@ export const useNotifications = () => {
 
   // Mark all notifications as read
   const markAllAsRead = async () => {
-    if (!user) return;
+    if (!userId) return;
 
     try {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('is_read', false);
 
       if (error) throw error;
@@ -195,12 +201,12 @@ export const useNotifications = () => {
 
   // Set up real-time notifications
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       console.log('useNotifications: No user, skipping setup');
       return;
     }
 
-    console.log('useNotifications: Setting up for user:', user.id);
+    console.log('useNotifications: Setting up for user:', userId);
     fetchNotifications();
 
     // Set up real-time subscription
@@ -210,7 +216,7 @@ export const useNotifications = () => {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${userId}`
       }, (payload) => {
         console.log('useNotifications: Received new notification:', payload);
         const newNotification = payload.new as Notification;
@@ -231,7 +237,7 @@ export const useNotifications = () => {
       console.log('useNotifications: Cleaning up subscription');
       subscription.unsubscribe();
     };
-  }, [user]);
+  }, [userId, fetchNotifications]);
 
   // Request permission on first load
   useEffect(() => {
