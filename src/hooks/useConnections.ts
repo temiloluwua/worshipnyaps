@@ -155,54 +155,35 @@ export const useConnections = () => {
     if (!user) return false;
 
     try {
-      // Get the request details
-      const { data: request, error: requestError } = await supabase
-        .from('connection_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single();
-
-      if (requestError) throw requestError;
-
-      // Create mutual connections
-      const { error: connectionError } = await supabase
-        .from('connections')
-        .insert([
-          {
-            user_id: request.from_user_id,
-            connected_user_id: request.to_user_id,
-            status: 'active',
-            met_at_event_id: request.event_id
-          },
-          {
-            user_id: request.to_user_id,
-            connected_user_id: request.from_user_id,
-            status: 'active',
-            met_at_event_id: request.event_id
-          }
-        ]);
-
-      if (connectionError) throw connectionError;
-
-      // Update request status
-      const { error: updateError } = await supabase
+      // Accepting a request should only update status; the DB trigger creates both connection rows.
+      const { data: request, error: updateError } = await supabase
         .from('connection_requests')
         .update({ 
           status: 'accepted',
           responded_at: new Date().toISOString()
         })
-        .eq('id', requestId);
+        .eq('id', requestId)
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending')
+        .select('id, from_user_id')
+        .maybeSingle();
 
       if (updateError) throw updateError;
+      if (!request) {
+        toast.error('This request is no longer pending');
+        return false;
+      }
 
       // Send notification
-      // TODO: Implement notification system
-      // await createNotification(
-      //   request.from_user_id,
-      //   'general',
-      //   'Connection Accepted',
-      //   'Your connection request was accepted!'
-      // );
+      if (request.from_user_id) {
+        // TODO: Implement notification system
+        // await createNotification(
+        //   request.from_user_id,
+        //   'general',
+        //   'Connection Accepted',
+        //   'Your connection request was accepted!'
+        // );
+      }
 
       toast.success('Connection request accepted!');
       await fetchConnections();
