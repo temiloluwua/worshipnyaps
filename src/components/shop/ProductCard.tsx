@@ -1,37 +1,25 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Loader2 } from 'lucide-react';
 import { StripeProduct } from '../../stripe-config';
-import { createCheckoutSession } from '../../lib/stripe';
 import toast from 'react-hot-toast';
 
 interface ProductCardProps {
   product: StripeProduct;
 }
 
+const SHOP_CHECKOUT_URL = 'https://buy.stripe.com/bJeaEX7a38rZ1jv9ao0oM00';
+
 export function ProductCard({ product }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  const handlePurchase = async () => {
+  const handlePurchase = () => {
     setIsLoading(true);
     try {
-      console.log('Starting checkout for product:', product.name);
-      const { url } = await createCheckoutSession({
-        priceId: product.priceId,
-        mode: product.mode,
-        successUrl: `${window.location.origin}/shop/success`,
-        cancelUrl: `${window.location.origin}/shop`,
-      });
-
-      if (url) {
-        console.log('Redirecting to checkout:', url);
-        window.location.href = url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
+      window.location.assign(SHOP_CHECKOUT_URL);
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to start checkout process');
+      toast.error('Failed to redirect to checkout');
       setIsLoading(false);
     }
   };
