@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Users, Clock, MapPin, Music, Coffee, Heart, CheckCircle, Plus, Utensils, ChefHat } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -28,7 +28,7 @@ interface RSVPModalProps {
   event: RSVPEvent;
   isOpen: boolean;
   onClose: () => void;
-  onRSVP: (eventId: string, volunteerRoles: string[], foodItems: string[]) => void;
+  onRSVP: (eventId: string, volunteerRoles: string[], foodItems: string[]) => Promise<void> | void;
 }
 
 export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, onRSVP }) => {
@@ -39,6 +39,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
   const [customFoodServing, setCustomFoodServing] = useState('');
   const [foodNotes, setFoodNotes] = useState('');
   const [activeTab, setActiveTab] = useState<'basic' | 'volunteer' | 'food'>('basic');
+  const [submitting, setSubmitting] = useState(false);
 
   // Mock existing food assignments - in production this would come from the database
   const [existingFoodItems] = useState<FoodItem[]>([
@@ -51,6 +52,19 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
     { id: '7', item: 'Paper Plates & Napkins', category: 'setup', completed: false, servingSize: 'For 12 people' },
     { id: '8', item: 'Cups & Utensils', category: 'setup', assignedTo: 'Emily R.', completed: true }
   ]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -86,7 +100,9 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
     );
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (submitting) return;
+
     const allFoodItems = [...selectedFoodItems];
     
     // Add custom food item if specified
@@ -94,19 +110,27 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
       const customItem = `${customFood.trim()}${customFoodServing ? ` (${customFoodServing})` : ''}${foodNotes ? ` - ${foodNotes}` : ''}`;
       allFoodItems.push(customItem);
     }
-    
-    onRSVP(event.id, selectedRoles, allFoodItems);
-    
-    let message = `RSVP confirmed for ${event.title}!`;
-    if (selectedRoles.length > 0) {
-      message += ` You're volunteering for: ${selectedRoles.join(', ')}.`;
+
+    setSubmitting(true);
+    try {
+      await onRSVP(event.id, selectedRoles, allFoodItems);
+
+      let message = `RSVP confirmed for ${event.title}!`;
+      if (selectedRoles.length > 0) {
+        message += ` You're volunteering for: ${selectedRoles.join(', ')}.`;
+      }
+      if (allFoodItems.length > 0) {
+        message += ` You're bringing food items.`;
+      }
+
+      toast.success(message);
+      onClose();
+    } catch (error) {
+      console.error('RSVP submission failed:', error);
+      toast.error('Could not complete RSVP. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-    if (allFoodItems.length > 0) {
-      message += ` You're bringing food items.`;
-    }
-    
-    toast.success(message);
-    onClose();
   };
 
   const getItemsByCategory = (category: string) => {
@@ -240,7 +264,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
                         )}
                         {item.assignedTo && (
                           <div className="text-sm text-green-600 font-medium">
-                            ✓ {item.assignedTo}
+                            Assigned: {item.assignedTo}
                           </div>
                         )}
                       </div>
@@ -369,12 +393,19 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end z-50">
-      <div className="bg-white w-full max-h-[90vh] rounded-t-3xl overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-end z-50"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-white w-full max-h-[90vh] rounded-t-3xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold text-gray-900">RSVP for Event</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full" aria-label="Close RSVP modal">
             <X size={20} />
           </button>
         </div>
@@ -434,27 +465,32 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
         </div>
 
         {/* Tab Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-250px)]">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {activeTab === 'basic' && renderBasicRSVP()}
           {activeTab === 'volunteer' && renderVolunteerTab()}
           {activeTab === 'food' && renderFoodTab()}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t bg-gray-50">
+        <div
+          className="p-4 border-t bg-gray-50 shrink-0"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
           <div className="flex space-x-3">
             <button
               onClick={onClose}
+              disabled={submitting}
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
-              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center justify-center space-x-2"
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               <CheckCircle className="w-5 h-5" />
-              <span>Confirm RSVP</span>
+              <span>{submitting ? 'Saving...' : 'Confirm RSVP'}</span>
             </button>
           </div>
           
@@ -463,7 +499,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
             <div className="mt-3 text-center">
               <p className="text-xs text-gray-600">
                 {selectedRoles.length > 0 && `Volunteering: ${selectedRoles.length} role${selectedRoles.length > 1 ? 's' : ''}`}
-                {selectedRoles.length > 0 && (selectedFoodItems.length > 0 || customFood.trim()) && ' • '}
+                {selectedRoles.length > 0 && (selectedFoodItems.length > 0 || customFood.trim()) && ' | '}
                 {(selectedFoodItems.length > 0 || customFood.trim()) && `Bringing: ${selectedFoodItems.length + (customFood.trim() ? 1 : 0)} item${selectedFoodItems.length + (customFood.trim() ? 1 : 0) > 1 ? 's' : ''}`}
               </p>
             </div>

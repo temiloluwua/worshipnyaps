@@ -15,6 +15,20 @@ import { Topic } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 const DEFAULT_VISIBLE_TOPICS = 6;
+const TOPIC_REFRESH_TICK_MS = 1000;
+
+const formatTimeUntilNextTopic = () => {
+  const now = new Date();
+  const nextRefresh = new Date(now);
+  nextRefresh.setHours(24, 0, 0, 0);
+  const diffMs = Math.max(nextRefresh.getTime() - now.getTime(), 0);
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
 
 const sanitizeTopic = (topic: any) => {
   const title = typeof topic.title === 'string' ? topic.title.trim() : '';
@@ -100,6 +114,7 @@ export function TopicsView({
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_TOPICS);
   const lastScrollY = useRef(0);
   const [highlightedTopicId, setHighlightedTopicId] = useState<string | null>(null);
+  const [topicRefreshCountdown, setTopicRefreshCountdown] = useState(formatTimeUntilNextTopic);
 
   const sanitizedSupabaseTopics = topics
     .map(sanitizeTopic)
@@ -118,12 +133,21 @@ export function TopicsView({
     (topic: any) => topic.topic_type === 'community'
   );
 
+  const topicOfDaySource =
+    topics.length > 0
+      ? [...topics].sort(
+          (a, b) =>
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        )
+      : topicsFiltered;
+
   const getTopicOfTheDay = () => {
-    if (topicsFiltered.length === 0) return null;
+    if (topicOfDaySource.length === 0) return null;
     const today = new Date().toDateString();
     const dateHash = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const selectedIndex = dateHash % topicsFiltered.length;
-    return topicsFiltered[selectedIndex];
+    const selectedIndex = dateHash % topicOfDaySource.length;
+    const selectedTopic = topicOfDaySource[selectedIndex];
+    return sanitizeTopic(selectedTopic) || selectedTopic;
   };
 
   const topicOfTheDay = getTopicOfTheDay();
@@ -149,7 +173,7 @@ export function TopicsView({
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const shouldShowFeaturedCard =
     activeTab === 'topics' && selectedCategory === 'all' && normalizedQuery.length === 0;
-  const showTopicOfTheDayCard = shouldShowFeaturedCard && Boolean(topicOfTheDay) && !randomTopic;
+  const showTopicOfTheDayCard = shouldShowFeaturedCard && Boolean(topicOfTheDay);
   const showRandomCard = shouldShowFeaturedCard && Boolean(randomTopic);
 
   const featuredExclusions = new Set<string>();
@@ -189,6 +213,14 @@ export function TopicsView({
       setRandomTopic(null);
     }
   }, [shouldShowFeaturedCard, randomTopic]);
+
+  useEffect(() => {
+    const countdownTimer = window.setInterval(() => {
+      setTopicRefreshCountdown(formatTimeUntilNextTopic());
+    }, TOPIC_REFRESH_TICK_MS);
+
+    return () => window.clearInterval(countdownTimer);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -432,24 +464,35 @@ export function TopicsView({
             <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
           </div>
           <div
-            data-topic-card={topicOfTheDay.id}
-            className={`rounded-2xl transition-shadow ${
-              highlightedTopicId === topicOfTheDay.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 shadow-2xl' : ''
+            className={`rounded-[1.4rem] bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 p-[2px] transition-shadow ${
+              highlightedTopicId === topicOfTheDay.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 shadow-2xl' : 'shadow-lg'
             }`}
           >
-            <TopicOfTheDayCard
-              topic={{
-                ...topicOfTheDay,
-                likes: getLikeCount('topic', topicOfTheDay.id)
-              }}
-              isLiked={isLiked('topic', topicOfTheDay.id)}
-              isBookmarked={isBookmarked(topicOfTheDay.id)}
-              onLike={() => handleLike(topicOfTheDay.id)}
-              onBookmark={() => handleBookmark(topicOfTheDay.id)}
-              onShare={() => handleShare(topicOfTheDay)}
-              onEdit={() => handleEdit(topicOfTheDay)}
-              onView={() => incrementViewCount(topicOfTheDay.id)}
-            />
+            <div className="rounded-[1.25rem] bg-gradient-to-br from-blue-50 via-white to-amber-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-2">
+              <div className="flex items-center justify-between px-2 pb-2">
+                <span className="text-xs font-semibold tracking-wide uppercase text-amber-700 dark:text-amber-300">
+                  Featured on Landing
+                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">
+                  Next topic in: {topicRefreshCountdown}
+                </span>
+              </div>
+              <div data-topic-card={topicOfTheDay.id} className="rounded-2xl overflow-hidden">
+                <TopicOfTheDayCard
+                  topic={{
+                    ...topicOfTheDay,
+                    likes: getLikeCount('topic', topicOfTheDay.id)
+                  }}
+                  isLiked={isLiked('topic', topicOfTheDay.id)}
+                  isBookmarked={isBookmarked(topicOfTheDay.id)}
+                  onLike={() => handleLike(topicOfTheDay.id)}
+                  onBookmark={() => handleBookmark(topicOfTheDay.id)}
+                  onShare={() => handleShare(topicOfTheDay)}
+                  onEdit={() => handleEdit(topicOfTheDay)}
+                  onView={() => incrementViewCount(topicOfTheDay.id)}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}

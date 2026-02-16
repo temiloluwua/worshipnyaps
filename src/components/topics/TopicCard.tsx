@@ -14,6 +14,7 @@ interface TopicCardProps {
   onEdit: () => void;
   onView: () => void;
   cardStyle?: 'feed' | 'game';
+  frameTone?: 'default' | 'gold';
 }
 
 export const TopicCard: React.FC<TopicCardProps> = ({
@@ -25,7 +26,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   onShare,
   onEdit,
   onView,
-  cardStyle = 'feed'
+  cardStyle = 'feed',
+  frameTone = 'default'
 }) => {
   const { user, profile } = useAuth();
   const [showComments, setShowComments] = useState(false);
@@ -72,6 +74,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({
     topic.authorId === user.id ||
     (profile?.role === 'admin')
   );
+  const isGoldFrame = cardStyle === 'game' && frameTone === 'gold';
+  const frameBorderClass = isGoldFrame ? 'border-amber-500' : 'border-gray-800';
+  const cornerBorderClass = isGoldFrame ? 'border-amber-500' : 'border-gray-800';
+  const innerBorderClass = isGoldFrame ? 'border-amber-300' : 'border-gray-300';
 
   const handleCommentAdded = () => {
     setCommentCount(prev => prev + 1);
@@ -80,20 +86,20 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   if (cardStyle === 'game') {
     return (
       <div
-        className="bg-gradient-to-br from-amber-50 via-white to-amber-50 rounded-3xl shadow-2xl border-4 border-gray-800 p-8 cursor-pointer transform transition-all duration-300 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] relative overflow-hidden"
+        className={`bg-gradient-to-br from-amber-50 via-white to-amber-50 rounded-3xl shadow-2xl border-4 p-8 cursor-pointer transform transition-all duration-300 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] relative overflow-hidden ${frameBorderClass}`}
         onClick={onView}
         style={{
           fontFamily: 'Georgia, serif',
         }}
       >
         {/* Decorative Corner Elements */}
-        <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-gray-800 rounded-tl-2xl pointer-events-none"></div>
-        <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-gray-800 rounded-tr-2xl pointer-events-none"></div>
-        <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-gray-800 rounded-bl-2xl pointer-events-none"></div>
-        <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-gray-800 rounded-br-2xl pointer-events-none"></div>
+        <div className={`absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 rounded-tl-2xl pointer-events-none ${cornerBorderClass}`}></div>
+        <div className={`absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 rounded-tr-2xl pointer-events-none ${cornerBorderClass}`}></div>
+        <div className={`absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 rounded-bl-2xl pointer-events-none ${cornerBorderClass}`}></div>
+        <div className={`absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 rounded-br-2xl pointer-events-none ${cornerBorderClass}`}></div>
 
         {/* Decorative Inner Border */}
-        <div className="absolute top-4 left-4 right-4 bottom-4 border-2 border-dashed border-gray-300 rounded-2xl pointer-events-none"></div>
+        <div className={`absolute top-4 left-4 right-4 bottom-4 border-2 border-dashed rounded-2xl pointer-events-none ${innerBorderClass}`}></div>
 
         {/* Card Header with Edit Button */}
         <div className="flex items-center justify-between mb-6 relative z-10">

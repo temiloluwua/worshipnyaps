@@ -1,13 +1,94 @@
-import { useState, useEffect } from 'react';
-import { supabase, Event, EventAttendee } from '../lib/supabase';
+import { useState, useEffect, useRef } from 'react';
+import { supabase, Event } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
+
+const INVITE_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CAPACITY_CACHE_KEY = 'event_capacity_cache_v1';
+
+const generateInviteCode = (length = 8) => {
+  let code = '';
+  for (let i = 0; i < length; i += 1) {
+    const randomIndex = Math.floor(Math.random() * INVITE_CODE_CHARS.length);
+    code += INVITE_CODE_CHARS[randomIndex];
+  }
+  return code;
+};
+
+const readCapacityCache = () => {
+  if (typeof window === 'undefined') return {} as Record<string, number>;
+  try {
+    const raw = window.localStorage.getItem(CAPACITY_CACHE_KEY);
+    if (!raw) return {} as Record<string, number>;
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {} as Record<string, number>;
+  }
+};
+
+const writeCapacityCache = (cache: Record<string, number>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(CAPACITY_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // Ignore cache write errors (storage disabled/full).
+  }
+};
 
 export const useEvents = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
+  const [rsvpEventIds, setRsvpEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const capacityCacheRef = useRef<Record<string, number>>(readCapacityCache());
+
+  const getCachedCapacity = (eventId: string) => capacityCacheRef.current[eventId] || 0;
+
+  const setCachedCapacity = (eventId: string, capacity: number) => {
+    if (capacity <= 0) return;
+    const previous = capacityCacheRef.current[eventId] || 0;
+    if (capacity <= previous) return;
+
+    capacityCacheRef.current = {
+      ...capacityCacheRef.current,
+      [eventId]: capacity
+    };
+    writeCapacityCache(capacityCacheRef.current);
+  };
+
+  const fetchAttendeeCountMap = async (eventIds: string[]) => {
+    if (eventIds.length === 0) return new Map<string, number>();
+
+    try {
+      const uniqueEventIds = Array.from(new Set(eventIds));
+      const { data, error } = await supabase
+        .from('event_attendees')
+        .select('event_id')
+        .in('event_id', uniqueEventIds)
+        .eq('status', 'registered');
+
+      if (error) throw error;
+
+      const counts = new Map<string, number>();
+      for (const row of data || []) {
+        counts.set(row.event_id, (counts.get(row.event_id) || 0) + 1);
+      }
+      return counts;
+    } catch (error) {
+      console.error('Error fetching attendee counts:', error);
+      return new Map<string, number>();
+    }
+  };
+
+  const attachAttendeeCounts = async (inputEvents: Event[]) => {
+    const attendeeCountMap = await fetchAttendeeCountMap(inputEvents.map((event) => event.id));
+    return inputEvents.map((event) => ({
+      ...event,
+      attendees: attendeeCountMap.get(event.id) || 0
+    }));
+  };
 
   // Fetch all visible events (public + friends-only for connected users)
   const fetchEvents = async () => {
@@ -41,6 +122,31 @@ export const useEvents = () => {
 
       // If user is logged in, also fetch friends-only events from connections
       if (user) {
+        // Always include events hosted by the current user, regardless of visibility.
+        const { data: hostedEvents, error: hostedError } = await supabase
+          .from('events')
+          .select(`
+            *,
+            locations (
+              name,
+              address,
+              latitude,
+              longitude
+            ),
+            users!events_host_id_fkey (
+              name
+            )
+          `)
+          .eq('host_id', user.id)
+          .eq('status', 'upcoming')
+          .order('date', { ascending: true });
+
+        if (!hostedError && hostedEvents) {
+          const existingIds = new Set(allEvents.map(e => e.id));
+          const uniqueHostedEvents = hostedEvents.filter(e => !existingIds.has(e.id));
+          allEvents = [...allEvents, ...uniqueHostedEvents];
+        }
+
         const { data: connections } = await supabase
           .from('connections')
           .select('connected_user_id')
@@ -77,9 +183,30 @@ export const useEvents = () => {
         }
       }
 
-      // Sort by date
-      allEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      setEvents(allEvents);
+      const eventsWithCounts = await attachAttendeeCounts(allEvents);
+      setEvents((previousEvents) => {
+        const previousCapacityById = new Map(
+          previousEvents.map((event) => [event.id, event.capacity])
+        );
+
+        const normalizedEvents = eventsWithCounts.map((event) => {
+          const previousCapacity = previousCapacityById.get(event.id);
+          const cachedCapacity = getCachedCapacity(event.id);
+          const stableCapacity = previousCapacity
+            ? Math.max(previousCapacity, cachedCapacity, event.capacity, event.attendees || 0)
+            : Math.max(cachedCapacity, event.capacity, event.attendees || 0);
+
+          setCachedCapacity(event.id, stableCapacity);
+
+          return {
+            ...event,
+            capacity: stableCapacity
+          };
+        });
+
+        normalizedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        return normalizedEvents;
+      });
     } catch (error: any) {
       console.error('Error fetching events:', error);
       if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
@@ -87,6 +214,27 @@ export const useEvents = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRsvpEventIds = async () => {
+    if (!user) {
+      setRsvpEventIds(new Set());
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('event_attendees')
+        .select('event_id')
+        .eq('user_id', user.id)
+        .eq('status', 'registered');
+
+      if (error) throw error;
+
+      setRsvpEventIds(new Set((data || []).map((item) => item.event_id)));
+    } catch (error) {
+      console.error('Error fetching RSVP status:', error);
     }
   };
 
@@ -133,7 +281,27 @@ export const useEvents = () => {
         ...(attendingEvents || []).map(item => ({ ...item.events, role: 'attendee' }))
       ];
 
-      setMyEvents(allMyEvents);
+      const myEventsWithCounts = await attachAttendeeCounts(allMyEvents as Event[]);
+      setMyEvents((previousEvents) => {
+        const previousCapacityById = new Map(
+          previousEvents.map((event) => [event.id, event.capacity])
+        );
+
+        return myEventsWithCounts.map((event) => {
+          const previousCapacity = previousCapacityById.get(event.id);
+          const cachedCapacity = getCachedCapacity(event.id);
+          const stableCapacity = previousCapacity
+            ? Math.max(previousCapacity, cachedCapacity, event.capacity, event.attendees || 0)
+            : Math.max(cachedCapacity, event.capacity, event.attendees || 0);
+
+          setCachedCapacity(event.id, stableCapacity);
+
+          return {
+            ...event,
+            capacity: stableCapacity
+          };
+        });
+      });
     } catch (error) {
       console.error('Error fetching my events:', error);
       toast.error('Failed to load your events');
@@ -145,10 +313,13 @@ export const useEvents = () => {
     if (!user) return null;
 
     try {
+      const needsInviteCode = eventData.visibility === 'private' || eventData.is_private;
+
       const { data, error } = await supabase
         .from('events')
         .insert({
           ...eventData,
+          invite_code: eventData.invite_code || (needsInviteCode ? generateInviteCode() : null),
           host_id: user.id,
           status: 'upcoming'
         })
@@ -156,6 +327,9 @@ export const useEvents = () => {
         .single();
 
       if (error) throw error;
+      if (data?.id && data?.capacity) {
+        setCachedCapacity(data.id, data.capacity);
+      }
 
       toast.success('Event created successfully!');
       await fetchEvents();
@@ -172,29 +346,29 @@ export const useEvents = () => {
     if (!user) return false;
 
     try {
-      // Check if already registered
       const { data: existing } = await supabase
         .from('event_attendees')
-        .select('id')
+        .select('id, status')
         .eq('event_id', eventId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (existing) {
-        toast.error('You are already registered for this event');
-        return false;
+      const isAlreadyRegistered = existing?.status === 'registered';
+
+      if (!isAlreadyRegistered) {
+        const { error: rsvpError } = await supabase
+          .from('event_attendees')
+          .upsert(
+            {
+              event_id: eventId,
+              user_id: user.id,
+              status: 'registered'
+            },
+            { onConflict: 'event_id,user_id' }
+          );
+
+        if (rsvpError) throw rsvpError;
       }
-
-      // Register for event
-      const { error: rsvpError } = await supabase
-        .from('event_attendees')
-        .insert({
-          event_id: eventId,
-          user_id: user.id,
-          status: 'registered'
-        });
-
-      if (rsvpError) throw rsvpError;
 
       // Add volunteer roles if any
       if (volunteerRoles.length > 0) {
@@ -255,9 +429,11 @@ export const useEvents = () => {
         // );
       }
 
-      toast.success('RSVP confirmed!');
+      setRsvpEventIds(prev => new Set(prev).add(eventId));
+      toast.success(isAlreadyRegistered ? 'RSVP updated!' : 'RSVP confirmed!');
       await fetchEvents();
       await fetchMyEvents();
+      await fetchRsvpEventIds();
       return true;
     } catch (error: any) {
       toast.error(error.message);
@@ -272,15 +448,26 @@ export const useEvents = () => {
     try {
       const { error } = await supabase
         .from('event_attendees')
-        .delete()
-        .eq('event_id', eventId)
-        .eq('user_id', user.id);
+        .upsert(
+          {
+            event_id: eventId,
+            user_id: user.id,
+            status: 'cancelled'
+          },
+          { onConflict: 'event_id,user_id' }
+        );
 
       if (error) throw error;
 
-      toast.success('RSVP cancelled');
+      setRsvpEventIds(prev => {
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
+      });
+      toast.success('RSVP updated');
       await fetchEvents();
       await fetchMyEvents();
+      await fetchRsvpEventIds();
       return true;
     } catch (error: any) {
       toast.error(error.message);
@@ -355,16 +542,24 @@ export const useEvents = () => {
     fetchEvents();
     if (user) {
       fetchMyEvents();
+      fetchRsvpEventIds();
+    } else {
+      setRsvpEventIds(new Set());
     }
   }, [user]);
+
+  const isEventRsvped = (eventId: string) => rsvpEventIds.has(eventId);
 
   return {
     events,
     myEvents,
+    rsvpEventIds,
     loading,
     fetchEvents,
     fetchMyEvents,
+    fetchRsvpEventIds,
     createEvent,
+    isEventRsvped,
     rsvpToEvent,
     cancelRsvp,
     getEventAttendees,

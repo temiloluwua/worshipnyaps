@@ -10,6 +10,7 @@ interface TopicOfTheDayCardProps {
   onShare: () => void;
   onEdit: () => void;
   onView: () => void;
+  frameTone?: 'default' | 'gold';
 }
 
 export const TopicOfTheDayCard: React.FC<TopicOfTheDayCardProps> = ({
@@ -21,6 +22,7 @@ export const TopicOfTheDayCard: React.FC<TopicOfTheDayCardProps> = ({
   onShare,
   onEdit,
   onView,
+  frameTone = 'default',
 }) => {
   // Lightweight wrapper around TopicCard with the "game" style for emphasis
   return (
@@ -34,6 +36,7 @@ export const TopicOfTheDayCard: React.FC<TopicOfTheDayCardProps> = ({
       onEdit={onEdit}
       onView={onView}
       cardStyle="game"
+      frameTone={frameTone}
     />
   );
 };

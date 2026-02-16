@@ -14,6 +14,7 @@ import { SearchPage } from './components/search/SearchPage';
 import { MessagesView } from './components/messages/MessagesView';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import { HashtagPage } from './components/hashtags/HashtagPage';
+import { EventDetailView } from './components/events/EventDetailView';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
@@ -30,6 +31,7 @@ interface ViewState {
 function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('topics');
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
@@ -45,14 +47,34 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    const path = window.location.pathname;
-    if (path === '/shop/success') {
-      setShowLanding(false);
-      setShowSuccessPage(true);
-    } else if (path === '/shop') {
-      setShowLanding(false);
-      setActiveTab('shop');
-    }
+    const applyPathState = () => {
+      const path = window.location.pathname;
+      const eventMatch = path.match(/^\/event\/([^/]+)$/);
+      if (eventMatch) {
+        setShowLanding(false);
+        setShowSuccessPage(false);
+        setActiveTab('locations');
+        setActiveEventId(decodeURIComponent(eventMatch[1]));
+        return;
+      }
+
+      setActiveEventId(null);
+
+      if (path === '/shop/success') {
+        setShowLanding(false);
+        setShowSuccessPage(true);
+      } else if (path === '/shop') {
+        setShowLanding(false);
+        setShowSuccessPage(false);
+        setActiveTab('shop');
+      } else {
+        setShowSuccessPage(false);
+      }
+    };
+
+    applyPathState();
+    window.addEventListener('popstate', applyPathState);
+    return () => window.removeEventListener('popstate', applyPathState);
   }, []);
 
   const focusTopicById = (topicId: string) => {
@@ -87,6 +109,24 @@ function App() {
     setShowSuccessPage(false);
     setActiveTab('topics');
     window.history.pushState({}, '', '/');
+  };
+
+  const handleOpenEvent = (eventId: string) => {
+    setShowLanding(false);
+    setShowSuccessPage(false);
+    setViewState({ type: 'main' });
+    setActiveTab('locations');
+    setActiveEventId(eventId);
+    window.history.pushState({}, '', `/event/${eventId}`);
+  };
+
+  const handleCloseEvent = () => {
+    setActiveEventId(null);
+    setShowLanding(false);
+    setActiveTab('locations');
+    if (window.location.pathname.startsWith('/event/')) {
+      window.history.pushState({}, '', '/');
+    }
   };
 
   const handleViewProfile = (userId: string) => {
@@ -143,6 +183,15 @@ function App() {
         onPreOrder={handlePreOrder}
         onViewEvents={handleViewEvents}
         onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
+      />
+    );
+  }
+
+  if (activeEventId) {
+    return (
+      <EventDetailView
+        eventId={activeEventId}
+        onBack={handleCloseEvent}
       />
     );
   }
@@ -232,7 +281,9 @@ function App() {
             onStartChat={handleStartChat}
           />
         )}
-        {activeTab === 'locations' && <LocationsView />}
+        {activeTab === 'locations' && (
+          <LocationsView onOpenEvent={handleOpenEvent} />
+        )}
         {activeTab === 'messages' && (
           <MessagesView
             onBack={() => setActiveTab('topics')}
@@ -243,6 +294,7 @@ function App() {
           <NotificationsPage
             onViewProfile={handleViewProfile}
             onViewTopic={(topicId) => focusTopicById(topicId)}
+            onViewEvent={handleOpenEvent}
           />
         )}
         {activeTab === 'shop' && <ShopPage />}

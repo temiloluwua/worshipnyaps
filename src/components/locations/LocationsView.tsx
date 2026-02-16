@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Globe, Lock, UserCheck } from 'lucide-react';
+import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Globe, Lock, UserCheck, MessageCircle } from 'lucide-react';
 import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
 import { RSVPModal } from './RSVPModal';
 import { AuthModal } from '../auth/AuthModal';
 import type { Event as DbEvent } from '../../lib/supabase';
 
-export function LocationsView() {
+interface LocationsViewProps {
+  onOpenEvent?: (eventId: string) => void;
+}
+
+export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user } = useAuth();
-  const { events, loading, rsvpToEvent, cancelRsvp } = useEvents();
+  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp } = useEvents();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
-  const [rsvpEvents, setRsvpEvents] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DbEvent | null>(null);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
@@ -40,7 +43,7 @@ export function LocationsView() {
       setShowAuthModal(true);
       return;
     }
-    if (event.attendees && event.attendees >= event.capacity) {
+    if ((event.attendees || 0) >= event.capacity) {
       toast.error('Event is at full capacity');
       return;
     }
@@ -51,24 +54,28 @@ export function LocationsView() {
 
   const confirmRSVP = async (eventId: string, volunteerRoles: string[], foodItems: string[]) => {
     const success = await rsvpToEvent(eventId, volunteerRoles, foodItems);
-    if (success) {
-      setRsvpEvents(prev => new Set(prev).add(eventId));
+    if (!success) {
+      throw new Error('RSVP failed');
     }
   };
 
   const handleCancelRSVP = async (eventId: string) => {
     const success = await cancelRsvp(eventId);
-    if (success) {
-      setRsvpEvents(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(eventId);
-        return newSet;
-      });
+    if (!success) {
+      toast.error('Could not update RSVP');
     }
   };
 
-  const shareEvent = async (event: any) => {
-    const shareUrl = `${window.location.origin}/event/${event.id}`;
+  const buildShareUrl = (event: DbEvent) => {
+    const url = new URL(`/event/${event.id}`, window.location.origin);
+    if (event.invite_code) {
+      url.searchParams.set('invite', event.invite_code);
+    }
+    return url.toString();
+  };
+
+  const shareEvent = async (event: DbEvent) => {
+    const shareUrl = buildShareUrl(event);
     const shareText = `Join us for ${event.title} on ${event.date} at ${event.time}!`;
 
     if (navigator.share) {
@@ -80,25 +87,57 @@ export function LocationsView() {
         });
         toast.success('Event shared!');
       } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          copyEventLink(event);
-        }
+        if ((err as Error).name === 'AbortError') return;
+        await copyEventLink(event);
       }
     } else {
-      copyEventLink(event);
+      await copyEventLink(event);
     }
   };
 
-  const copyEventLink = (event: any) => {
-    const shareUrl = `${window.location.origin}/event/${event.id}`;
+  const copyTextToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (error) {
+        console.error('Clipboard API copy failed:', error);
+      }
+    }
+
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return copied;
+    } catch (error) {
+      console.error('Legacy copy failed:', error);
+      return false;
+    }
+  };
+
+  const copyEventLink = async (event: DbEvent) => {
+    const shareUrl = buildShareUrl(event);
     const inviteText = event.is_private
-      ? `${event.title}\n${event.date} at ${event.time}\nInvite code: ${event.invite_code}\n\n${shareUrl}`
+      ? `${event.title}\n${event.date} at ${event.time}\nInvite code: ${event.invite_code || 'Unavailable'}\n\n${shareUrl}`
       : `${event.title}\n${event.date} at ${event.time}\n\n${shareUrl}`;
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(inviteText);
+    const copied = await copyTextToClipboard(inviteText);
+    if (copied) {
       toast.success('Event link copied to clipboard!');
+    } else {
+      toast.error('Could not copy link. Please copy it manually from the address bar.');
     }
+  };
+
+  const openEvent = (eventId: string) => {
+    onOpenEvent?.(eventId);
   };
 
   const handleMapEventClick = (eventId: string) => {
@@ -176,123 +215,138 @@ export function LocationsView() {
 
       {/* Events List */}
       <div className="p-4 space-y-4">
-        {filteredEvents.map((event) => (
-          <div key={event.id} id={`event-${event.id}`} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
-                    {event.is_private && (
-                      <EyeOff className="w-4 h-4 text-gray-500" />
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2 flex-wrap gap-1">
-                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                      {event.type?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </span>
-                    {event.visibility === 'friends_only' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                        <UserCheck className="w-3 h-3" />
-                        Friends Only
+        {filteredEvents.map((event) => {
+          const attendeeCount = event.attendees || 0;
+          const safeCapacity = Math.max(event.capacity || 1, 1);
+          const isEventFull = attendeeCount >= safeCapacity;
+          const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
+          const isRsvped = rsvpEventIds.has(event.id);
+
+          return (
+            <div key={event.id} id={`event-${event.id}`} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
+                      {event.is_private && (
+                        <EyeOff className="w-4 h-4 text-gray-500" />
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2 flex-wrap gap-1">
+                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                        {event.type?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </span>
-                    )}
-                    {event.visibility === 'private' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                        <Lock className="w-3 h-3" />
-                        Private
-                      </span>
-                    )}
+                      {event.visibility === 'friends_only' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                          <UserCheck className="w-3 h-3" />
+                          Friends Only
+                        </span>
+                      )}
+                      {event.visibility === 'private' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                          <Lock className="w-3 h-3" />
+                          Private
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <div className="font-medium">{event.date}</div>
+                    <div>{event.time}</div>
                   </div>
                 </div>
-                <div className="text-right text-sm text-gray-500">
-                  <div className="font-medium">{event.date}</div>
-                  <div>{event.time}</div>
+
+                <p className="text-gray-600 text-sm mb-3">{event.description}</p>
+
+                {/* Location & Distance */}
+                <div className="flex items-center text-gray-500 text-sm mb-2">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  <span className="flex-1">{event.locations?.name || 'Location TBD'}</span>
+                  <span className="text-blue-600 font-medium">Calgary</span>
                 </div>
-              </div>
 
-              <p className="text-gray-600 text-sm mb-3">{event.description}</p>
-
-              {/* Location & Distance */}
-              <div className="flex items-center text-gray-500 text-sm mb-2">
-                <MapPin className="w-4 h-4 mr-1" />
-                <span className="flex-1">{event.locations?.name || 'Location TBD'}</span>
-                <span className="text-blue-600 font-medium">Calgary</span>
-              </div>
-
-              {/* Host */}
-              <div className="flex items-center text-gray-500 text-sm mb-2">
-                <Users className="w-4 h-4 mr-1" />
-                <span>Hosted by {event.users?.name || 'Host'}</span>
-              </div>
-
-              {/* Capacity */}
-              <div className="flex items-center text-gray-500 text-sm mb-4">
-                <div className="flex items-center mr-4">
-                  <span className="font-medium">{event.attendees || 0}/{event.capacity} attending</span>
+                {/* Host */}
+                <div className="flex items-center text-gray-500 text-sm mb-2">
+                  <Users className="w-4 h-4 mr-1" />
+                  <span>Hosted by {event.users?.name || 'Host'}</span>
                 </div>
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full" 
-                    style={{ width: `${((event.attendees || 0) / event.capacity) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
 
-              {/* RSVP Status */}
-              {rsvpEvents.has(event.id) && (
-                <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                  <p className="text-sm font-medium text-green-800 mb-1">You're attending!</p>
+                {/* Capacity */}
+                <div className="flex items-center text-gray-500 text-sm mb-4">
+                  <div className="flex items-center mr-4">
+                    <span className="font-medium">{attendeeCount}/{safeCapacity} attending</span>
+                  </div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full" 
+                      style={{ width: `${capacityPercentage}%` }}
+                    ></div>
+                  </div>
                 </div>
-              )}
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => toggleLike(event.id)}
-                    className={`flex items-center space-x-1 text-sm transition-colors ${
-                      likedEvents.has(event.id)
-                        ? 'text-red-600'
-                        : 'text-gray-500 hover:text-red-600'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${likedEvents.has(event.id) ? 'fill-current' : ''}`} />
-                    <span>Interested</span>
-                  </button>
-                  <button
-                    onClick={() => shareEvent(event)}
-                    className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 text-sm transition-colors"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    <span>Share</span>
-                  </button>
-                </div>
-                
-                {rsvpEvents.has(event.id) ? (
-                  <button 
-                    onClick={() => handleCancelRSVP(event.id)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                  >
-                    Cancel RSVP
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => handleRSVP(event)}
-                    disabled={(event.attendees || 0) >= event.capacity}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      (event.attendees || 0) >= event.capacity
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    {(event.attendees || 0) >= event.capacity ? 'Full' : 'RSVP'}
-                  </button>
+                {/* RSVP Status */}
+                {isRsvped && (
+                  <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-medium text-green-800 mb-1">You're attending!</p>
+                  </div>
                 )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between">
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => toggleLike(event.id)}
+                      className={`flex items-center space-x-1 text-sm transition-colors ${
+                        likedEvents.has(event.id)
+                          ? 'text-red-600'
+                          : 'text-gray-500 hover:text-red-600'
+                      }`}
+                    >
+                      <Heart className={`w-4 h-4 ${likedEvents.has(event.id) ? 'fill-current' : ''}`} />
+                      <span>Interested</span>
+                    </button>
+                    <button
+                      onClick={() => shareEvent(event)}
+                      className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 text-sm transition-colors"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>Share</span>
+                    </button>
+                    <button
+                      onClick={() => openEvent(event.id)}
+                      className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 text-sm transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>View</span>
+                    </button>
+                  </div>
+                  
+                  {isRsvped ? (
+                    <button 
+                      onClick={() => handleCancelRSVP(event.id)}
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                    >
+                      Not Going
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleRSVP(event)}
+                      disabled={isEventFull}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isEventFull
+                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                    >
+                      {isEventFull ? 'Full' : 'RSVP'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* RSVP Modal */}
@@ -317,13 +371,21 @@ export function LocationsView() {
 
       {/* Host Event Modal */}
       {showHostModal && (
-        <HostEventModal onClose={() => setShowHostModal(false)} />
+        <HostEventModal
+          onClose={() => setShowHostModal(false)}
+          onEventCreated={(eventId) => onOpenEvent?.(eventId)}
+        />
       )}
     </div>
   );
 }
 
-function HostEventModal({ onClose }: { onClose: () => void }) {
+interface HostEventModalProps {
+  onClose: () => void;
+  onEventCreated?: (eventId: string) => void;
+}
+
+function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
   const { createEvent } = useEvents();
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -336,9 +398,20 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
     visibility: 'public' as 'public' | 'private' | 'friends_only'
   });
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -361,6 +434,7 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
 
     if (result) {
       onClose();
+      onEventCreated?.(result.id);
     }
   };
 
@@ -371,13 +445,22 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">Host an Event</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            type="button"
+            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            aria-label="Close create event modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -494,13 +577,23 @@ function HostEventModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Creating Event...' : 'Create Event'}
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Creating Event...' : 'Create Event'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
