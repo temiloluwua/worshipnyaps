@@ -16,16 +16,18 @@ export function ProductCard({ product }: ProductCardProps) {
   const handlePurchase = () => {
     setIsLoading(true);
     try {
-      const checkoutWindow = window.open(SHOP_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
+      const checkoutWindow = window.open(SHOP_CHECKOUT_URL, '_blank');
       if (!checkoutWindow) {
-        window.location.assign(SHOP_CHECKOUT_URL);
+        toast.error('Popup blocked. Please allow pop-ups and try again.');
+        setIsLoading(false);
         return;
       }
       checkoutWindow.opener = null;
-      setIsLoading(false);
+      checkoutWindow.focus();
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error('Failed to redirect to checkout');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -57,6 +59,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
 
           <button
+            type="button"
             onClick={handlePurchase}
             disabled={isLoading}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
