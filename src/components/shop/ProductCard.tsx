@@ -16,7 +16,13 @@ export function ProductCard({ product }: ProductCardProps) {
   const handlePurchase = () => {
     setIsLoading(true);
     try {
-      window.location.assign(SHOP_CHECKOUT_URL);
+      const checkoutWindow = window.open(SHOP_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
+      if (!checkoutWindow) {
+        window.location.assign(SHOP_CHECKOUT_URL);
+        return;
+      }
+      checkoutWindow.opener = null;
+      setIsLoading(false);
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error('Failed to redirect to checkout');
