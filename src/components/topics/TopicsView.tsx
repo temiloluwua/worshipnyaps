@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
 import { useAuth } from '../../hooks/useAuth';
 import { useLikes } from '../../hooks/useLikes';
@@ -9,10 +10,15 @@ import { TopicCard } from './TopicCard';
 import { CreateTopicModal } from './CreateTopicModal';
 import { EditTopicModal } from './EditTopicModal';
 import { TopicOfTheDayCard } from './TopicOfTheDayCard';
+import { TopicDetailModal } from './TopicDetailModal';
+import { RequestTopicModal } from './RequestTopicModal';
+import { AdminTopicReviewPanel } from './AdminTopicReviewPanel';
 import { AuthModal } from '../auth/AuthModal';
 import { ShareModal } from '../social/ShareModal';
-import { Topic } from '../../lib/supabase';
+import { Topic, CommunityCategory } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+
+type CommunitySub = 'all' | CommunityCategory;
 
 const DEFAULT_VISIBLE_TOPICS = 6;
 const TOPIC_REFRESH_TICK_MS = 1000;
@@ -97,6 +103,7 @@ export function TopicsView({
   onFocusedTopicHandled,
 }: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
+  const { t } = useTranslation();
   const { topics, loading, incrementViewCount } = useTopics();
   const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
@@ -115,6 +122,12 @@ export function TopicsView({
   const lastScrollY = useRef(0);
   const [highlightedTopicId, setHighlightedTopicId] = useState<string | null>(null);
   const [topicRefreshCountdown, setTopicRefreshCountdown] = useState(formatTimeUntilNextTopic);
+  const [communitySub, setCommunitySub] = useState<CommunitySub>('all');
+  const [viewingTopic, setViewingTopic] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showAdminReview, setShowAdminReview] = useState(false);
+  const isAdmin = profile?.role === 'admin';
 
   const sanitizedSupabaseTopics = topics
     .map(sanitizeTopic)
@@ -185,7 +198,10 @@ export function TopicsView({
   }
 
   const primaryTopics = topicsFiltered.filter((topic) => !featuredExclusions.has(topic.id));
-  const currentFeedTopics = activeTab === 'topics' ? primaryTopics : communityTopics;
+  const communityFiltered = communitySub === 'all'
+    ? communityTopics
+    : communityTopics.filter((t: any) => t.community_category === communitySub);
+  const currentFeedTopics = activeTab === 'topics' ? primaryTopics : communityFiltered;
 
   const filteredTopics = currentFeedTopics.filter((topic) => {
     const title = (topic.title ?? '').toLowerCase();
@@ -324,9 +340,29 @@ export function TopicsView({
     setShowCreateModal(true);
   };
 
+  const handleViewTopic = (topic: any) => {
+    incrementViewCount(topic.id);
+    setViewingTopic(topic);
+    setShowDetailModal(true);
+  };
+
+  const handleRequestTopic = () => {
+    if (!user) { setShowAuthModal(true); return; }
+    setShowRequestModal(true);
+  };
+
   const handleShowMoreTopics = () => {
     setVisibleCount((prev) => prev + DEFAULT_VISIBLE_TOPICS);
   };
+
+  const communitySubTabs: { key: CommunitySub; label: string }[] = [
+    { key: 'all', label: t('communityTabs.all') },
+    { key: 'prayer_point', label: t('communityTabs.prayerPoints') },
+    { key: 'testimony', label: t('communityTabs.testimonies') },
+    { key: 'bible_study', label: t('communityTabs.bibleStudy') },
+    { key: 'question', label: t('communityTabs.questions') },
+    { key: 'general', label: t('communityTabs.general') },
+  ];
 
   if (loading) {
     return (
@@ -371,19 +407,39 @@ export function TopicsView({
 
             <div className="flex items-center gap-2">
               {activeTab === 'topics' && (
-                <button
-                  onClick={pickRandomTopic}
-                  className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
-                  aria-label="Pick random topic"
-                  title="Pick a random topic"
-                >
-                  <Shuffle className="w-5 h-5" />
-                </button>
+                <>
+                  <button
+                    onClick={handleRequestTopic}
+                    className="bg-gradient-to-r from-teal-500 to-green-500 text-white p-2 rounded-full hover:from-teal-600 hover:to-green-600 transition-all shadow-lg"
+                    aria-label={t('topicRequest.submitRequest')}
+                    title={t('topicRequest.submitRequest')}
+                  >
+                    <Lightbulb className="w-5 h-5" />
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowAdminReview(true)}
+                      className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
+                      aria-label={t('adminReview.title')}
+                      title={t('adminReview.title')}
+                    >
+                      <ClipboardList className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={pickRandomTopic}
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
+                    aria-label="Pick random topic"
+                    title="Pick a random topic"
+                  >
+                    <Shuffle className="w-5 h-5" />
+                  </button>
+                </>
               )}
               {activeTab === 'community' && (
                 <button
                   onClick={handleCreateTopic}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+                  className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-2 rounded-full hover:from-blue-700 hover:to-teal-700 transition-all shadow-lg"
                   aria-label="Create new post"
                 >
                   <Plus className="w-5 h-5" />
@@ -436,6 +492,24 @@ export function TopicsView({
             />
           </div>
 
+          {activeTab === 'community' && (
+            <div className="flex space-x-1 overflow-x-auto pb-3 scrollbar-hide">
+              {communitySubTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setCommunitySub(tab.key)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    communitySub === tab.key
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => (
               <button
@@ -443,12 +517,12 @@ export function TopicsView({
                 onClick={() => setSelectedCategory(category)}
                 className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
                   selectedCategory === category
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                    ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-md'
                     : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:shadow-md'
                 }`}
               >
                 {category === 'all'
-                  ? 'All Topics'
+                  ? t('topics.allTopics')
                   : category.replace('-', ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())}
               </button>
             ))}
@@ -569,7 +643,7 @@ export function TopicsView({
                     onBookmark={() => handleBookmark(topic.id)}
                     onShare={() => handleShare(topic)}
                     onEdit={() => handleEdit(topic)}
-                    onView={() => incrementViewCount(topic.id)}
+                    onView={() => handleViewTopic(topic)}
                     cardStyle="game"
                   />
                 </div>
@@ -597,7 +671,7 @@ export function TopicsView({
                   onBookmark={() => handleBookmark(topic.id)}
                   onShare={() => handleShare(topic)}
                   onEdit={() => handleEdit(topic)}
-                  onView={() => incrementViewCount(topic.id)}
+                  onView={() => handleViewTopic(topic)}
                   cardStyle="feed"
                 />
               </div>
@@ -664,6 +738,23 @@ export function TopicsView({
           }}
         />
       )}
+
+      {viewingTopic && (
+        <TopicDetailModal
+          topic={{ ...viewingTopic, likes: getLikeCount('topic', viewingTopic.id) }}
+          isOpen={showDetailModal}
+          onClose={() => { setShowDetailModal(false); setViewingTopic(null); }}
+          isLiked={isLiked('topic', viewingTopic.id)}
+          isBookmarked={isBookmarked(viewingTopic.id)}
+          onLike={() => handleLike(viewingTopic.id)}
+          onBookmark={() => handleBookmark(viewingTopic.id)}
+          onShare={() => handleShare(viewingTopic)}
+          onEdit={() => handleEdit(viewingTopic)}
+        />
+      )}
+
+      <RequestTopicModal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} />
+      <AdminTopicReviewPanel isOpen={showAdminReview} onClose={() => setShowAdminReview(false)} />
 
       <style>{`
         @keyframes slideInUp {

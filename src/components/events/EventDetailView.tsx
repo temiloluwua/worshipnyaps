@@ -1,17 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
+import { EventHelpRequests } from './EventHelpRequests';
+import { EventDescriptionDisplay } from './EventDescriptionTemplate';
 
 interface EventDetailViewProps {
   eventId: string;
   onBack: () => void;
 }
 
-type TabType = 'details' | 'chat';
+type TabType = 'details' | 'help' | 'chat' | 'organizer';
 const EVENT_CHAT_NAME_PREFIX = 'event-chat:';
 const EVENT_CAPACITY_CACHE_KEY = 'event_capacity_cache_v1';
 const TYPING_IDLE_TIMEOUT_MS = 1200;
@@ -45,30 +48,40 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
 
 export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack }) => {
   const { user, profile } = useAuth();
+  const { t } = useTranslation();
   const [event, setEvent] = useState<DbEvent | null>(null);
   const [attendeeCount, setAttendeeCount] = useState(0);
   const [displayCapacity, setDisplayCapacity] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isRsvped, setIsRsvped] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatChannel, setChatChannel] = useState<string | null>(null);
+  const [organizerChannel, setOrganizerChannel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [orgMessages, setOrgMessages] = useState<ChatMessage[]>([]);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
   const [messageContent, setMessageContent] = useState('');
+  const [orgMessageContent, setOrgMessageContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const orgRealtimeRef = useRef<RealtimeChannel | null>(null);
   const localTypingActiveRef = useRef(false);
   const localTypingTimeoutRef = useRef<number | null>(null);
   const remoteTypingTimeoutsRef = useRef<Record<string, number>>({});
   const senderCacheRef = useRef<Record<string, ChatMessage['sender']>>({});
   const isHost = Boolean(user && event && user.id === event.host_id);
   const canAccessChat = Boolean(chatChannel && (isRsvped || isHost));
+  const canAccessOrganizerChat = Boolean(isHost || isOrganizer);
   const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
   const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
   const isEventFull = attendeeCount >= safeCapacity;
   const typingUserNames = Object.values(typingUsers);
+  const isPrivateEvent = event?.visibility === 'private';
 
   const clearLocalTypingTimeout = () => {
     if (localTypingTimeoutRef.current !== null) {
@@ -245,6 +258,98 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    orgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [orgMessages]);
+
+  useEffect(() => {
+    if (!organizerChannel) return;
+
+    const fetchOrgMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select(`*, sender:users!chat_messages_sender_id_fkey (id, name, avatar_url)`)
+          .eq('channel', organizerChannel)
+          .is('recipient_id', null)
+          .order('created_at', { ascending: true })
+          .limit(100);
+
+        if (error) throw error;
+        (data || []).forEach((m) => {
+          if (m.sender?.id) senderCacheRef.current[m.sender.id] = m.sender;
+        });
+        setOrgMessages(data || []);
+      } catch (err) {
+        console.error('Error fetching organizer messages:', err);
+      }
+    };
+    fetchOrgMessages();
+
+    const sub = supabase
+      .channel(`org-chat:${organizerChannel}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `channel=eq.${organizerChannel}`
+      }, async (payload) => {
+        const senderId = payload.new.sender_id as string;
+        let sender = senderCacheRef.current[senderId];
+        if (!sender) {
+          const { data } = await supabase.from('users').select('id, name, avatar_url').eq('id', senderId).maybeSingle();
+          sender = data || undefined;
+          if (sender) senderCacheRef.current[senderId] = sender;
+        }
+        const newMsg: ChatMessage = { ...payload.new as ChatMessage, sender };
+        setOrgMessages((prev) => prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]);
+      })
+      .subscribe();
+
+    orgRealtimeRef.current = sub;
+    return () => {
+      orgRealtimeRef.current = null;
+      sub.unsubscribe();
+    };
+  }, [organizerChannel]);
+
+  useEffect(() => {
+    if (!canAccessOrganizerChat || !eventId) return;
+    const orgChannelName = `org:${eventId}`;
+    setOrganizerChannel(orgChannelName);
+  }, [canAccessOrganizerChat, eventId]);
+
+  const sendOrgMessage = async () => {
+    if (!user || !organizerChannel || !orgMessageContent.trim()) return;
+    const content = orgMessageContent.trim();
+    setSending(true);
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({ sender_id: user.id, channel: organizerChannel, content })
+        .select('id, sender_id, recipient_id, channel, content, is_read, created_at')
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        const localSender = {
+          id: user.id,
+          name: profile?.name || user.user_metadata?.name || user.email || 'You',
+          avatar_url: profile?.avatar_url
+        };
+        senderCacheRef.current[user.id] = localSender;
+        const msg: ChatMessage = { ...(data as ChatMessage), sender: localSender };
+        setOrgMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+      }
+      setOrgMessageContent('');
+    } catch (err: any) {
+      console.error('Error sending organizer message:', err);
+      toast.error('Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const fetchEvent = async () => {
     try {
       const { data, error } = await supabase
@@ -265,6 +370,29 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         .single();
 
       if (error) throw error;
+
+      if (data.visibility === 'private') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteCode = urlParams.get('invite');
+        const isEventHost = user && data.host_id === user.id;
+
+        if (!isEventHost) {
+          const { data: rsvpCheck } = user ? await supabase
+            .from('event_attendees')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('user_id', user.id)
+            .eq('status', 'registered')
+            .maybeSingle() : { data: null };
+
+          if (!rsvpCheck && (!inviteCode || inviteCode !== data.invite_code)) {
+            setAccessDenied(true);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       setEvent(data);
       setDisplayCapacity((previousCapacity) => {
         const cachedCapacity = getCachedEventCapacity(eventId);
@@ -277,6 +405,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         return stableCapacity;
       });
       await fetchAttendeeCount(eventId);
+
+      if (user) {
+        const { data: helpAssignment } = await supabase
+          .from('event_help_requests')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('assigned_user_id', user.id)
+          .eq('status', 'filled')
+          .limit(1);
+        setIsOrganizer(Boolean(helpAssignment && helpAssignment.length > 0));
+      }
     } catch (error) {
       console.error('Error fetching event:', error);
       toast.error('Failed to load event');
@@ -657,10 +796,28 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading event...</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('events.loadingEvent')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <Lock className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('events.privateEvent')}</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{t('events.privateEventDesc')}</p>
+          <button
+            onClick={onBack}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t('events.goBack')}
+          </button>
         </div>
       </div>
     );
@@ -668,15 +825,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h2>
-          <p className="text-gray-600 mb-4">This event may have been removed or the link is invalid.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('events.eventNotFound')}</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{t('events.eventNotFoundDesc')}</p>
           <button
             onClick={onBack}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Go Back
+            {t('events.goBack')}
           </button>
         </div>
       </div>
@@ -704,65 +861,110 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </button>
           </div>
 
-          {/* Tabs */}
-          {canAccessChat && (
-            <div className="flex border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`flex-1 py-3 text-center font-medium transition-colors relative ${
-                  activeTab === 'details'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-              >
-                Details
-                {activeTab === 'details' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-                )}
-              </button>
+          <div className="flex border-t border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                activeTab === 'details'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              {t('events.eventDetails')}
+              {activeTab === 'details' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('help')}
+              className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                activeTab === 'help'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <span className="flex items-center justify-center gap-1">
+                <HeartHandshake size={16} />
+                {t('helpRequests.title')}
+              </span>
+              {activeTab === 'help' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            {canAccessChat && (
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-3 text-center font-medium transition-colors relative ${
+                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
                   activeTab === 'chat'
                     ? 'text-blue-600 dark:text-blue-400'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
-                <span className="flex items-center justify-center gap-2">
-                  <MessageCircle size={18} />
-                  Group Chat
+                <span className="flex items-center justify-center gap-1">
+                  <MessageCircle size={16} />
+                  {t('chat.groupChat')}
                 </span>
                 {activeTab === 'chat' && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
                 )}
               </button>
-            </div>
-          )}
+            )}
+            {canAccessOrganizerChat && (
+              <button
+                onClick={() => setActiveTab('organizer')}
+                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                  activeTab === 'organizer'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1">
+                  <Shield size={16} />
+                  {t('chat.organizerChat')}
+                </span>
+                {activeTab === 'organizer' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Content */}
         {activeTab === 'details' ? (
           <div className="p-6">
-          {/* Event Type Badge */}
-          <div className="mb-4">
+          <div className="flex items-center gap-2 mb-4">
             <span className="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
               {event.type.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
             </span>
+            {isPrivateEvent && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium">
+                <Lock className="w-3 h-3" />
+                {t('events.private')}
+              </span>
+            )}
+            {event.visibility === 'friends_only' && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm font-medium">
+                {t('events.friendsOnly')}
+              </span>
+            )}
           </div>
 
-          {/* Title */}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{event.title}</h1>
 
-          {/* Description */}
-          <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>
+          {event.description_template ? (
+            <div className="mb-6">
+              <EventDescriptionDisplay template={event.description_template} />
+            </div>
+          ) : event.description ? (
+            <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>
+          ) : null}
 
-          {/* Event Details */}
           <div className="space-y-4 mb-6">
             <div className="flex items-start">
               <Calendar className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">{event.date}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Date</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('events.date')}</div>
               </div>
             </div>
 
@@ -770,7 +972,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               <Clock className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">{event.time}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Time</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('events.time')}</div>
               </div>
             </div>
 
@@ -778,10 +980,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">
-                  {event.locations?.name || 'Location TBD'}
+                  {event.locations?.name || t('events.locationTBD')}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {event.locations?.address || 'Address provided after RSVP'}
+                  {event.locations?.address || t('events.addressAfterRSVP')}
                 </div>
               </div>
             </div>
@@ -790,20 +992,19 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">
-                  Hosted by {event.users?.name || 'Host'}
+                  {t('events.hostedBy', { name: event.users?.name || 'Host' })}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {attendeeCount} / {safeCapacity} attending
+                  {t('events.attending', { count: attendeeCount, capacity: safeCapacity })}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Capacity Bar */}
           <div className="mb-6">
             <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-              <span>Event Capacity</span>
-              <span>{capacityPercentage}% full</span>
+              <span>{t('events.eventCapacity')}</span>
+              <span>{t('events.percentFull', { percent: capacityPercentage })}</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
@@ -813,20 +1014,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </div>
           </div>
 
-          {/* RSVP Status */}
           {isRsvped && (
             <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-green-800 dark:text-green-300 font-medium">You're attending this event!</p>
+              <p className="text-green-800 dark:text-green-300 font-medium">{t('events.youreAttending')}</p>
             </div>
           )}
 
           {isHost && (
             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-blue-800 dark:text-blue-300 font-medium">You are hosting this event.</p>
+              <p className="text-blue-800 dark:text-blue-300 font-medium">{t('events.youreHosting')}</p>
             </div>
           )}
 
-          {/* RSVP Button */}
           {!isRsvped && !isHost && (
             <button
               onClick={handleRSVP}
@@ -837,7 +1036,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              {isEventFull ? 'Event Full' : 'RSVP Now'}
+              {isEventFull ? t('events.eventFull') : t('events.rsvpNow')}
             </button>
           )}
 
@@ -846,53 +1045,83 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               onClick={handleCancelRSVP}
               className="w-full py-4 rounded-lg font-semibold text-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
             >
-              Not Going
+              {t('events.notGoing')}
             </button>
           )}
           </div>
-        ) : (
-          /* Chat Content */
+        ) : activeTab === 'help' ? (
+          <EventHelpRequests eventId={eventId} isHost={isHost} />
+        ) : activeTab === 'organizer' ? (
           <div className="flex flex-col h-[calc(100vh-120px)]">
-            {/* Messages */}
+            <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+              <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                <Shield size={12} />
+                {t('chat.organizerChat')} - {isHost ? 'Host' : 'Organizer'}
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {orgMessages.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>{t('chat.noMessages')}</p>
+                  <p className="text-sm mt-1">{t('chat.beFirst')}</p>
+                </div>
+              ) : (
+                orgMessages.map((message) => (
+                  <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} rounded-lg px-4 py-2`}>
+                      {message.sender_id !== user?.id && (
+                        <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown'}</div>
+                      )}
+                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                      <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-amber-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={orgMessagesEndRef} />
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={orgMessageContent}
+                  onChange={(e) => setOrgMessageContent(e.target.value)}
+                  onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendOrgMessage(); } }}
+                  placeholder={t('chat.typePlaceholder')}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+                <button
+                  onClick={sendOrgMessage}
+                  disabled={!orgMessageContent.trim() || sending}
+                  className="p-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Send size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col h-[calc(100vh-120px)]">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No messages yet</p>
-                  <p className="text-sm mt-1">Be the first to send a message!</p>
+                  <p>{t('chat.noMessages')}</p>
+                  <p className="text-sm mt-1">{t('chat.beFirst')}</p>
                 </div>
               ) : (
                 messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[70%] ${
-                        message.sender_id === user?.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                      } rounded-lg px-4 py-2`}
-                    >
+                  <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} rounded-lg px-4 py-2`}>
                       {message.sender_id !== user?.id && (
-                        <div className="font-semibold text-sm mb-1">
-                          {message.sender?.name || 'Unknown User'}
-                        </div>
+                        <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown User'}</div>
                       )}
-                      <div className="text-sm whitespace-pre-wrap break-words">
-                        {message.content}
-                      </div>
-                      <div
-                        className={`text-xs mt-1 ${
-                          message.sender_id === user?.id
-                            ? 'text-blue-200'
-                            : 'text-gray-500 dark:text-gray-400'
-                        }`}
-                      >
-                        {new Date(message.created_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                      <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-blue-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                   </div>
@@ -900,8 +1129,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               )}
               <div ref={messagesEndRef} />
             </div>
-
-            {/* Message Input */}
             <div className="border-t border-gray-200 dark:border-gray-700 p-4">
               {typingLabel && (
                 <div className="mb-2 flex items-center">
@@ -909,14 +1136,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                     <span>{typingLabel}</span>
                     <span className="flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce" />
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce"
-                        style={{ animationDelay: '120ms' }}
-                      />
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce"
-                        style={{ animationDelay: '240ms' }}
-                      />
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '120ms' }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '240ms' }} />
                     </span>
                   </div>
                 </div>
@@ -927,7 +1148,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                   value={messageContent}
                   onChange={handleMessageInputChange}
                   onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
+                  placeholder={t('chat.typePlaceholder')}
                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <button

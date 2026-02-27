@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Bell, Settings, LogOut, User, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface HeaderProps {
   onShowAuth?: () => void;
@@ -19,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   unreadNotifications = 0
 }) => {
   const { user, profile, signOut } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
@@ -29,12 +32,13 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="font-bold text-lg">WnY</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Worship and Yapps</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Calgary Bible Study Community</p>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('app.name')}</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('app.tagline')}</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <LanguageSwitcher />
             <ThemeToggle size="md" />
 
             {user && (
@@ -88,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={signOut}
                   className="p-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                  title="Sign Out"
+                  title={t('nav.signOut')}
                 >
                   <LogOut size={20} />
                   <span className="sr-only">Sign Out</span>
@@ -99,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={onShowAuth}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Sign In
+                {t('nav.signIn')}
               </button>
             )}
           </div>

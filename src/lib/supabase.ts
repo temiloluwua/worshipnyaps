@@ -57,11 +57,20 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export interface DescriptionTemplate {
+  whatToExpect?: string;
+  whatToBring?: string[];
+  parkingDirections?: string;
+  contactInfo?: string;
+  specialNotes?: string;
+}
+
 export interface Event {
   id: string;
   title: string;
   type: 'bible-study' | 'basketball-yap' | 'hiking-yap' | 'other';
   description: string;
+  description_template?: DescriptionTemplate;
   date: string;
   time: string;
   location_id: string;
@@ -74,7 +83,6 @@ export interface Event {
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
-  // Joined table data
   locations?: {
     id: string;
     name: string;
@@ -97,10 +105,13 @@ export interface EventAttendee {
   registered_at: string;
 }
 
+export type CommunityCategory = 'prayer_point' | 'testimony' | 'bible_study' | 'question' | 'general';
+
 export interface Topic {
   id: string;
   title: string;
   category: string;
+  community_category?: CommunityCategory;
   content: string;
   author_id: string;
   tags: string[];
@@ -108,14 +119,44 @@ export interface Topic {
   view_count: number;
   created_at: string;
   updated_at: string;
-  // Additional properties for UI components
   questions?: string[];
   bibleReference?: string;
-  // Joined table data
   users?: {
     id: string;
     name: string;
     email: string;
+  };
+}
+
+export interface EventHelpRequest {
+  id: string;
+  event_id: string;
+  request_type: 'prayer' | 'worship' | 'tech' | 'discussion' | 'hospitality' | 'food' | 'setup' | 'other';
+  title: string;
+  description?: string;
+  status: 'open' | 'filled' | 'in_progress';
+  assigned_user_id?: string;
+  created_at: string;
+  assigned_user?: {
+    name: string;
+    avatar_url?: string;
+  };
+}
+
+export interface TopicRequest {
+  id: string;
+  title: string;
+  description?: string;
+  bible_verse?: string;
+  category: string;
+  requested_by: string;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_notes?: string;
+  created_at: string;
+  reviewed_at?: string;
+  requester?: {
+    name: string;
+    avatar_url?: string;
   };
 }
 

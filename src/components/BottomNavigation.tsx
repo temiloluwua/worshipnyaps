@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, MapPin, Users, ShoppingBag, Search, Mail, Bell } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export type TabType = 'topics' | 'locations' | 'network' | 'shop' | 'search' | 'messages' | 'notifications';
 
@@ -16,33 +17,14 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   unreadMessages = 0,
   unreadNotifications = 0,
 }) => {
+  const { t } = useTranslation();
+
   const tabs = [
-    {
-      id: 'topics' as const,
-      name: 'Home',
-      icon: MessageSquare,
-    },
-    {
-      id: 'search' as const,
-      name: 'Search',
-      icon: Search,
-    },
-    {
-      id: 'locations' as const,
-      name: 'Events',
-      icon: MapPin,
-    },
-    {
-      id: 'messages' as const,
-      name: 'Messages',
-      icon: Mail,
-      badge: unreadMessages,
-    },
-    {
-      id: 'shop' as const,
-      name: 'Shop',
-      icon: ShoppingBag,
-    },
+    { id: 'topics' as const, nameKey: 'nav.home', icon: MessageSquare },
+    { id: 'search' as const, nameKey: 'nav.search', icon: Search },
+    { id: 'locations' as const, nameKey: 'nav.events', icon: MapPin },
+    { id: 'messages' as const, nameKey: 'nav.messages', icon: Mail, badge: unreadMessages },
+    { id: 'shop' as const, nameKey: 'nav.shop', icon: ShoppingBag },
   ];
 
   return (
@@ -55,7 +37,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-
           const badge = (tab as any).badge;
 
           return (
@@ -77,7 +58,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                   </span>
                 )}
               </div>
-              <span className="text-xs mt-1 font-medium">{tab.name}</span>
+              <span className="text-xs mt-1 font-medium">{t(tab.nameKey)}</span>
             </button>
           );
         })}
