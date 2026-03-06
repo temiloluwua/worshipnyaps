@@ -5,6 +5,12 @@ import { supabase, EventHelpRequest } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
+interface AttendeeUser {
+  id: string;
+  name: string;
+  avatar_url?: string;
+}
+
 interface EventHelpRequestsProps {
   eventId: string;
   isHost: boolean;
@@ -30,12 +36,32 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   const { user } = useAuth();
   const [requests, setRequests] = useState<EventHelpRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attendees, setAttendees] = useState<AttendeeUser[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRequest, setNewRequest] = useState({
     request_type: 'other' as typeof REQUEST_TYPES[number],
     title: '',
     description: '',
+    assigned_user_id: '',
   });
+
+  const fetchAttendees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('event_attendees')
+        .select('users!user_id(id, name, avatar_url)')
+        .eq('event_id', eventId)
+        .eq('status', 'registered');
+
+      if (error) throw error;
+      const attendeeList = (data || [])
+        .map((item: any) => item.users)
+        .filter(Boolean) as AttendeeUser[];
+      setAttendees(attendeeList);
+    } catch (err) {
+      console.error('Error fetching attendees:', err);
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -56,25 +82,34 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
 
   useEffect(() => {
     fetchRequests();
-  }, [eventId]);
+    if (isHost) {
+      fetchAttendees();
+    }
+  }, [eventId, isHost]);
 
   const handleAddRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRequest.title.trim()) return;
 
     try {
+      const insertData: any = {
+        event_id: eventId,
+        request_type: newRequest.request_type,
+        title: newRequest.title.trim(),
+        description: newRequest.description.trim() || null,
+        status: newRequest.assigned_user_id ? 'filled' : 'open',
+      };
+
+      if (newRequest.assigned_user_id) {
+        insertData.assigned_user_id = newRequest.assigned_user_id;
+      }
+
       const { error } = await supabase
         .from('event_help_requests')
-        .insert({
-          event_id: eventId,
-          request_type: newRequest.request_type,
-          title: newRequest.title.trim(),
-          description: newRequest.description.trim() || null,
-          status: 'open',
-        });
+        .insert(insertData);
 
       if (error) throw error;
-      setNewRequest({ request_type: 'other', title: '', description: '' });
+      setNewRequest({ request_type: 'other', title: '', description: '', assigned_user_id: '' });
       setShowAddForm(false);
       await fetchRequests();
       toast.success('Help request added!');
@@ -101,6 +136,21 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
       toast.success('Thanks for volunteering!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to volunteer');
+    }
+  };
+
+  const handleAssignRequest = async (requestId: string, assignedUserId: string) => {
+    try {
+      const { error } = await supabase
+        .from('event_help_requests')
+        .update({ assigned_user_id: assignedUserId, status: 'filled' })
+        .eq('id', requestId);
+
+      if (error) throw error;
+      await fetchRequests();
+      toast.success('Request assigned!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to assign request');
     }
   };
 
@@ -180,11 +230,11 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
             }`}
           >
             <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 flex-1">
                 <span className="text-xl" role="img" aria-label={req.request_type}>
                   {typeIcons[req.request_type] || '📋'}
                 </span>
-                <div>
+                <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium text-gray-900 dark:text-white text-sm">
                       {req.title}
@@ -202,10 +252,28 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                       <span>{(req.assigned_user as any).name}</span>
                     </div>
                   )}
+                  {isHost && req.status === 'open' && attendees.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleAssignRequest(req.id, e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="mt-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Assign to someone...</option>
+                      {attendees.map((attendee) => (
+                        <option key={attendee.id} value={attendee.id}>
+                          {attendee.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {req.status === 'open' && user && req.assigned_user_id !== user.id && (
+                {req.status === 'open' && user && req.assigned_user_id !== user.id && !isHost && (
                   <button
                     onClick={() => handleVolunteer(req.id)}
                     className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
@@ -278,6 +346,25 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
             />
+            {attendees.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Assign to (optional)
+                </label>
+                <select
+                  value={newRequest.assigned_user_id}
+                  onChange={(e) => setNewRequest(prev => ({ ...prev, assigned_user_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">No one assigned yet</option>
+                  {attendees.map((attendee) => (
+                    <option key={attendee.id} value={attendee.id}>
+                      {attendee.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button
               type="submit"
               className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"

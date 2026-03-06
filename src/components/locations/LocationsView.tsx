@@ -17,7 +17,7 @@ interface LocationsViewProps {
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp } = useEvents();
+  const { events, myEvents, loading, rsvpEventIds, rsvpToEvent, cancelRsvp } = useEvents();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
@@ -141,6 +141,24 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
         </button>
         <p className="text-center text-sm text-white/90 mt-2">{t('events.hostDescription')}</p>
       </div>
+
+      {user && myEvents.length > 0 && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">My Events</h2>
+          <div className="space-y-2">
+            {myEvents.slice(0, 3).map((event) => (
+              <button
+                key={event.id}
+                onClick={() => onOpenEvent?.(event.id)}
+                className="w-full text-left p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-200 dark:border-blue-800"
+              >
+                <div className="font-medium text-blue-900 dark:text-blue-300 text-sm">{event.title}</div>
+                <div className="text-xs text-blue-700 dark:text-blue-400 mt-1">{event.date} at {event.time}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showMap && (
         <div className="p-4 bg-gray-50 dark:bg-gray-800">
