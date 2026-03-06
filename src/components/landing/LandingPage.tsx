@@ -3,6 +3,7 @@ import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircl
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
 import { supabase } from '../../lib/supabase';
+import { Logo } from '../ui/Logo';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -72,11 +73,8 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
 
       <div className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center space-x-3 mb-6">
-            <Heart className="w-14 h-14 text-rose-500" />
-            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-slate-800 to-blue-600 dark:from-white dark:to-blue-400 bg-clip-text text-transparent">
-              Worship & Yapps
-            </h1>
+          <div className="inline-flex items-center justify-center mb-6">
+            <Logo size="lg" includeText />
           </div>
 
           <p className="text-xl md:text-2xl text-slate-700 dark:text-slate-200 mb-4 font-medium">
@@ -118,7 +116,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
         <div className="mb-12">
           <div className="flex items-center justify-center space-x-2 mb-8">
             <Star className="w-6 h-6 text-amber-500" />
-            <h2 className="text-3xl font-bold text-slate-800 dark:text-white">
+            <h2 className="font-logo text-3xl text-blue-600 dark:text-blue-400">
               Topic of the Day
             </h2>
             <Star className="w-6 h-6 text-amber-500" />
@@ -144,7 +142,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
                   </div>
                   <MessageCircle className="w-6 h-6 text-slate-400" />
                 </div>
-                <h3 className="text-3xl font-bold text-slate-800 dark:text-white mb-4">
+                <h3 className="font-logo text-3xl text-blue-600 dark:text-blue-400 mb-4">
                   {topicOfTheDay.title}
                 </h3>
                 {topicOfTheDay.bible_verse && (

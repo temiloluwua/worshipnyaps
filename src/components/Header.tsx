@@ -3,6 +3,7 @@ import { Bell, Settings, LogOut, User, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { SettingsModal } from './SettingsModal';
+import { Logo } from './ui/Logo';
 
 interface HeaderProps {
   onShowAuth?: () => void;
@@ -27,13 +28,11 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <div className="bg-blue-600 text-white rounded-lg p-2 mr-3">
-              <span className="font-bold text-lg">WnY</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <Logo size="md" />
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('app.name')}</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('app.tagline')}</p>
+              <h1 className="font-logo text-lg text-gray-900 dark:text-white tracking-tight">{t('app.name')}</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-light">{t('app.tagline')}</p>
             </div>
           </div>
 

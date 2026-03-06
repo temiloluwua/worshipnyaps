@@ -7,6 +7,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Quicksand', 'sans-serif'],
+        logo: ['Fredoka One', 'sans-serif'],
+      },
       colors: {
         blue: {
           50: '#eff6ff',

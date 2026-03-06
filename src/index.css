@@ -80,6 +80,13 @@
   body {
     background-color: rgb(var(--color-bg-secondary));
     color: rgb(var(--color-text-primary));
+    font-family: 'Quicksand', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fredoka One', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.5px;
   }
 
 
