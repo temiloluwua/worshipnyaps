@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Bell, Settings, LogOut, User, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
-import { ThemeToggle } from './ThemeToggle';
-import { LanguageSwitcher } from './LanguageSwitcher';
+import { SettingsModal } from './SettingsModal';
 
 interface HeaderProps {
   onShowAuth?: () => void;
@@ -22,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { user, profile, signOut } = useAuth();
   const { t } = useTranslation();
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
@@ -38,9 +38,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <LanguageSwitcher />
-            <ThemeToggle size="md" />
-
             {user && (
               <button
                 onClick={onViewNetwork}
@@ -64,7 +61,11 @@ export const Header: React.FC<HeaderProps> = ({
               )}
               <span className="sr-only">Notifications</span>
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+              title="Settings"
+            >
               <Settings size={20} />
               <span className="sr-only">Settings</span>
             </button>
@@ -109,6 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </div>
+
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </header>
   );
 };
