@@ -19,6 +19,9 @@ export default defineConfig({
       }
     }
   },
+  define: {
+    'process.env.VITE_CAPACITOR': 'true'
+  },
   server: {
     port: 5173,
     host: true,
