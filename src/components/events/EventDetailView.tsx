@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
-import { supabase, ChatMessage } from '../../lib/supabase';
+import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -951,9 +951,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{event.title}</h1>
 
-          {event.description_template ? (
+          {event.description_template && typeof event.description_template === 'object' ? (
             <div className="mb-6">
-              <EventDescriptionDisplay template={event.description_template} />
+              <EventDescriptionDisplay template={event.description_template as DescriptionTemplate} />
             </div>
           ) : event.description ? (
             <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>
