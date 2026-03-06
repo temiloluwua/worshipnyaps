@@ -172,7 +172,7 @@ url = ""
 
 [auth.external.google]
 enabled = true
-client_id = "YOUR_GOOGLE_CLIENT_ID"
+client_id = "155447123475-ptq2obfugc1lkvdgo29bsolt4slbfb7e.apps.googleusercontent.com"
 secret = "YOUR_GOOGLE_CLIENT_SECRET"
 # Overrides the default auth redirectURL.
 redirect_uri = ""
