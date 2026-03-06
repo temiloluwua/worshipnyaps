@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { SocialAuthButtons } from './SocialAuthButtons';
 
 interface SignupFormProps {
   onSuccess?: () => void;
@@ -187,6 +188,10 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
             )}
           </button>
         </form>
+
+        <div className="mt-6">
+          <SocialAuthButtons onSuccess={onSuccess} mode="signup" />
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
