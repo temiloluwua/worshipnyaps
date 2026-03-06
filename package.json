@@ -16,7 +16,6 @@
     "deploy": "npm run build && echo 'Build complete! Upload dist/ folder to your hosting provider.'"
   },
   "dependencies": {
-    "@hcaptcha/react-hcaptcha": "^2.0.2",
     "@supabase/supabase-js": "^2.39.0",
     "@types/leaflet": "^1.9.21",
     "clsx": "^2.0.0",
@@ -29,7 +28,7 @@
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
     "react-i18next": "^16.5.4",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
