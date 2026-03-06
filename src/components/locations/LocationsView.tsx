@@ -304,7 +304,13 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
   const { createEvent } = useEvents();
   const [submitting, setSubmitting] = useState(false);
   const [useTemplate, setUseTemplate] = useState(false);
-  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>({});
+  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>({
+    whatToExpect: '',
+    whatToBring: [],
+    parkingDirections: '',
+    contactInfo: '',
+    specialNotes: ''
+  });
   const [formData, setFormData] = useState({
     eventTitle: '',
     eventType: 'bible-study',
@@ -324,6 +330,12 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
     e.preventDefault();
     setSubmitting(true);
 
+    if (!formData.eventTitle.trim()) {
+      toast.error('Please enter an event title');
+      setSubmitting(false);
+      return;
+    }
+
     const eventData: Record<string, any> = {
       title: formData.eventTitle,
       type: formData.eventType,
@@ -335,9 +347,33 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
     };
 
     if (useTemplate) {
-      eventData.description_template = descriptionTemplate;
-      eventData.description = descriptionTemplate.whatToExpect || '';
+      const hasTemplateContent =
+        descriptionTemplate.whatToExpect?.trim() ||
+        (Array.isArray(descriptionTemplate.whatToBring) && descriptionTemplate.whatToBring.length > 0) ||
+        descriptionTemplate.parkingDirections?.trim() ||
+        descriptionTemplate.contactInfo?.trim() ||
+        descriptionTemplate.specialNotes?.trim();
+
+      if (!hasTemplateContent) {
+        toast.error('Please fill in at least one template field');
+        setSubmitting(false);
+        return;
+      }
+
+      eventData.description_template = {
+        whatToExpect: descriptionTemplate.whatToExpect || '',
+        whatToBring: Array.isArray(descriptionTemplate.whatToBring) ? descriptionTemplate.whatToBring : [],
+        parkingDirections: descriptionTemplate.parkingDirections || '',
+        contactInfo: descriptionTemplate.contactInfo || '',
+        specialNotes: descriptionTemplate.specialNotes || ''
+      };
+      eventData.description = descriptionTemplate.whatToExpect || 'Event details available in the template';
     } else {
+      if (!formData.description.trim()) {
+        toast.error('Please enter an event description');
+        setSubmitting(false);
+        return;
+      }
       eventData.description = formData.description;
     }
 

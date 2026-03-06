@@ -103,18 +103,22 @@ export const EventDescriptionForm: React.FC<EventDescriptionFormProps> = ({ temp
   const [bringItem, setBringItem] = React.useState('');
 
   const addBringItem = () => {
-    if (!bringItem.trim()) return;
+    const trimmedItem = bringItem.trim();
+    if (!trimmedItem) return;
+    const currentItems = Array.isArray(template.whatToBring) ? template.whatToBring : [];
+    if (currentItems.includes(trimmedItem)) return;
     onChange({
       ...template,
-      whatToBring: [...(template.whatToBring || []), bringItem.trim()],
+      whatToBring: [...currentItems, trimmedItem],
     });
     setBringItem('');
   };
 
   const removeBringItem = (index: number) => {
+    const currentItems = Array.isArray(template.whatToBring) ? template.whatToBring : [];
     onChange({
       ...template,
-      whatToBring: (template.whatToBring || []).filter((_, i) => i !== index),
+      whatToBring: currentItems.filter((_, i) => i !== index),
     });
   };
 
