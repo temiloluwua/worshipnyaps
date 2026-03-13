@@ -1,491 +1,1169 @@
-import React, { useState, useEffect } from 'react';
-import { HeartHandshake, Plus, X, Check, Utensils } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { supabase } from '../../lib/supabase';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
+import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
+import type { Event as DbEvent } from '../../lib/supabase';
+import { EventHelpRequests } from './EventHelpRequests';
+import { EventDescriptionDisplay } from './EventDescriptionTemplate';
 
-interface AttendeeUser {
-  id: string;
-  name: string;
-  avatar_url?: string;
-}
-
-interface UnifiedHelpItem {
-  id: string;
-  event_id: string;
-  source: 'help_request' | 'food_item';
-  category: string;
-  title: string;
-  description: string | null;
-  assigned_user_id: string | null;
-  status: 'open' | 'filled' | 'in_progress' | 'completed';
-  is_filled: boolean;
-  created_at: string;
-  assigned_user?: { name: string; avatar_url?: string } | null;
-}
-
-interface EventHelpRequestsProps {
+interface EventDetailViewProps {
   eventId: string;
-  isHost: boolean;
+  onBack: () => void;
 }
 
-const HELP_REQUEST_TYPES = [
-  'prayer', 'worship', 'tech', 'discussion', 'hospitality', 'setup', 'other'
-] as const;
+type TabType = 'details' | 'help' | 'chat' | 'organizer';
+const EVENT_CHAT_NAME_PREFIX = 'event-chat:';
+const EVENT_CAPACITY_CACHE_KEY = 'event_capacity_cache_v1';
+const TYPING_IDLE_TIMEOUT_MS = 1200;
+const REMOTE_TYPING_TIMEOUT_MS = 3500;
 
-const FOOD_CATEGORIES = [
-  'main', 'side', 'dessert', 'beverage', 'setup'
-] as const;
-
-const typeIcons: Record<string, string> = {
-  prayer: '🙏', worship: '🎵', tech: '🖥️', discussion: '💬',
-  hospitality: '🏠', food: '🍕', setup: '🔧', other: '📋',
-  main: '🍽️', side: '🥗', dessert: '🍰', beverage: '🥤',
+const getCachedEventCapacity = (eventId: string) => {
+  try {
+    const raw = window.localStorage.getItem(EVENT_CAPACITY_CACHE_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    return parsed[eventId] || 0;
+  } catch {
+    return 0;
+  }
 };
 
-const categoryLabel: Record<string, string> = {
-  prayer: 'Prayer', worship: 'Worship', tech: 'Tech', discussion: 'Discussion',
-  hospitality: 'Hospitality', setup: 'Setup', other: 'Other',
-  main: 'Main Dish', side: 'Side', dessert: 'Dessert', beverage: 'Drinks', food: 'Food',
+const setCachedEventCapacity = (eventId: string, capacity: number) => {
+  if (capacity <= 0) return;
+  try {
+    const raw = window.localStorage.getItem(EVENT_CAPACITY_CACHE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    const previous = parsed[eventId] || 0;
+    if (capacity > previous) {
+      parsed[eventId] = capacity;
+      window.localStorage.setItem(EVENT_CAPACITY_CACHE_KEY, JSON.stringify(parsed));
+    }
+  } catch {
+    // Ignore cache write issues.
+  }
 };
 
-export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost }) => {
+export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack }) => {
+  const { user, profile } = useAuth();
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const [items, setItems] = useState<UnifiedHelpItem[]>([]);
+  const [event, setEvent] = useState<DbEvent | null>(null);
+  const [attendeeCount, setAttendeeCount] = useState(0);
+  const [displayCapacity, setDisplayCapacity] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [attendees, setAttendees] = useState<AttendeeUser[]>([]);
-  const [showForm, setShowForm] = useState<null | 'help' | 'food'>(null);
-  const [newHelp, setNewHelp] = useState({
-    request_type: 'other' as typeof HELP_REQUEST_TYPES[number],
-    title: '', description: '', assigned_user_id: '',
-  });
-  const [newFood, setNewFood] = useState({
-    item: '', category: 'main' as typeof FOOD_CATEGORIES[number],
-    notes: '', assigned_to: '',
-  });
+  const [isRsvped, setIsRsvped] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('details');
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [chatChannel, setChatChannel] = useState<string | null>(null);
+  const [organizerChannel, setOrganizerChannel] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [orgMessages, setOrgMessages] = useState<ChatMessage[]>([]);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const [messageContent, setMessageContent] = useState('');
+  const [orgMessageContent, setOrgMessageContent] = useState('');
+  const [sending, setSending] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const orgMessagesEndRef = useRef<HTMLDivElement>(null);
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const orgRealtimeRef = useRef<RealtimeChannel | null>(null);
+  const localTypingActiveRef = useRef(false);
+  const localTypingTimeoutRef = useRef<number | null>(null);
+  const remoteTypingTimeoutsRef = useRef<Record<string, number>>({});
+  const senderCacheRef = useRef<Record<string, ChatMessage['sender']>>({});
+  const isHost = Boolean(user && event && user.id === event.host_id);
+  const canAccessChat = Boolean(chatChannel && (isRsvped || isHost));
+  const canAccessOrganizerChat = Boolean(isHost || isOrganizer);
+  const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
+  const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
+  const isEventFull = attendeeCount >= safeCapacity;
+  const typingUserNames = Object.values(typingUsers);
+  const isPrivateEvent = event?.visibility === 'private';
 
-  const fetchAttendees = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('event_attendees')
-        .select('users!user_id(id, name, avatar_url)')
-        .eq('event_id', eventId)
-        .eq('status', 'registered');
-      if (error) throw error;
-      setAttendees((data || []).map((d: any) => d.users).filter(Boolean));
-    } catch (err) {
-      console.error(err);
+  const clearLocalTypingTimeout = () => {
+    if (localTypingTimeoutRef.current !== null) {
+      window.clearTimeout(localTypingTimeoutRef.current);
+      localTypingTimeoutRef.current = null;
     }
   };
 
-  const fetchItems = async () => {
+  const clearAllRemoteTypingTimeouts = () => {
+    Object.values(remoteTypingTimeoutsRef.current).forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    remoteTypingTimeoutsRef.current = {};
+  };
+
+  const sendTypingSignal = (isTyping: boolean) => {
+    const channel = realtimeChannelRef.current;
+    if (!channel || !user || !chatChannel) return;
+
+    void channel.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: {
+        userId: user.id,
+        name: profile?.name || user.user_metadata?.name || user.email || 'Someone',
+        isTyping,
+        channel: chatChannel
+      }
+    });
+  };
+
+  const stopTyping = () => {
+    clearLocalTypingTimeout();
+    if (!localTypingActiveRef.current) return;
+
+    localTypingActiveRef.current = false;
+    sendTypingSignal(false);
+  };
+
+  const queueTypingStop = () => {
+    clearLocalTypingTimeout();
+    localTypingTimeoutRef.current = window.setTimeout(() => {
+      stopTyping();
+    }, TYPING_IDLE_TIMEOUT_MS);
+  };
+
+  useEffect(() => {
+    setConversationId(null);
+    setChatChannel(null);
+    setMessages([]);
+    setTypingUsers({});
+    senderCacheRef.current = {};
+    setAttendeeCount(0);
+    setDisplayCapacity(getCachedEventCapacity(eventId));
+    setIsRsvped(false);
+    setActiveTab('details');
+    fetchEvent();
+    if (user) {
+      checkRsvpStatus();
+    }
+  }, [eventId, user]);
+
+  useEffect(() => {
+    if (!user || !event || (!isRsvped && !isHost)) return;
+    fetchEventConversation(event);
+  }, [user, event, isRsvped, isHost]);
+
+  useEffect(() => {
+    if (chatChannel) {
+      fetchMessages();
+    }
+  }, [chatChannel]);
+
+  useEffect(() => {
+    if (activeTab === 'chat' && !canAccessChat) {
+      setActiveTab('details');
+    }
+  }, [activeTab, canAccessChat]);
+
+  useEffect(() => {
+    if (!chatChannel) return;
+
+    const clearTypingUser = (typingUserId: string) => {
+      const existingTimeout = remoteTypingTimeoutsRef.current[typingUserId];
+      if (existingTimeout) {
+        window.clearTimeout(existingTimeout);
+        delete remoteTypingTimeoutsRef.current[typingUserId];
+      }
+      setTypingUsers((prev) => {
+        if (!prev[typingUserId]) return prev;
+        const next = { ...prev };
+        delete next[typingUserId];
+        return next;
+      });
+    };
+
+    const trackTypingUser = (typingUserId: string, name: string) => {
+      const existingTimeout = remoteTypingTimeoutsRef.current[typingUserId];
+      if (existingTimeout) {
+        window.clearTimeout(existingTimeout);
+      }
+      remoteTypingTimeoutsRef.current[typingUserId] = window.setTimeout(() => {
+        clearTypingUser(typingUserId);
+      }, REMOTE_TYPING_TIMEOUT_MS);
+
+      setTypingUsers((prev) => ({
+        ...prev,
+        [typingUserId]: name
+      }));
+    };
+
+    const subscription = supabase
+      .channel(`event-chat:${chatChannel}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `channel=eq.${chatChannel}`
+        },
+        async (payload) => {
+          const senderId = payload.new.sender_id as string;
+          let sender = senderCacheRef.current[senderId];
+
+          if (!sender) {
+            const { data } = await supabase
+              .from('users')
+              .select('id, name, avatar_url')
+              .eq('id', senderId)
+              .maybeSingle();
+
+            sender = data || undefined;
+            if (sender) {
+              senderCacheRef.current[senderId] = sender;
+            }
+          }
+
+          const newMessage: ChatMessage = {
+            ...payload.new as ChatMessage,
+            sender
+          };
+          setMessages((prev) => (
+            prev.some((message) => message.id === newMessage.id)
+              ? prev
+              : [...prev, newMessage]
+          ));
+        }
+      )
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        const data = payload as { userId?: string; name?: string; isTyping?: boolean };
+        if (!data.userId || data.userId === user?.id) return;
+
+        if (data.isTyping) {
+          trackTypingUser(data.userId, data.name || 'Someone');
+        } else {
+          clearTypingUser(data.userId);
+        }
+      })
+      .subscribe();
+
+    realtimeChannelRef.current = subscription;
+
+    return () => {
+      stopTyping();
+      realtimeChannelRef.current = null;
+      clearAllRemoteTypingTimeouts();
+      setTypingUsers({});
+      subscription.unsubscribe();
+    };
+  }, [chatChannel, user?.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    orgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [orgMessages]);
+
+  useEffect(() => {
+    if (!organizerChannel) return;
+
+    const fetchOrgMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select(`*, sender:users!chat_messages_sender_id_fkey (id, name, avatar_url)`)
+          .eq('channel', organizerChannel)
+          .is('recipient_id', null)
+          .order('created_at', { ascending: true })
+          .limit(100);
+
+        if (error) throw error;
+        (data || []).forEach((m) => {
+          if (m.sender?.id) senderCacheRef.current[m.sender.id] = m.sender;
+        });
+        setOrgMessages(data || []);
+      } catch (err) {
+        console.error('Error fetching organizer messages:', err);
+      }
+    };
+    fetchOrgMessages();
+
+    const sub = supabase
+      .channel(`org-chat:${organizerChannel}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `channel=eq.${organizerChannel}`
+      }, async (payload) => {
+        const senderId = payload.new.sender_id as string;
+        let sender = senderCacheRef.current[senderId];
+        if (!sender) {
+          const { data } = await supabase.from('users').select('id, name, avatar_url').eq('id', senderId).maybeSingle();
+          sender = data || undefined;
+          if (sender) senderCacheRef.current[senderId] = sender;
+        }
+        const newMsg: ChatMessage = { ...payload.new as ChatMessage, sender };
+        setOrgMessages((prev) => prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]);
+      })
+      .subscribe();
+
+    orgRealtimeRef.current = sub;
+    return () => {
+      orgRealtimeRef.current = null;
+      sub.unsubscribe();
+    };
+  }, [organizerChannel]);
+
+  useEffect(() => {
+    if (!canAccessOrganizerChat || !eventId) return;
+    const orgChannelName = `org:${eventId}`;
+    setOrganizerChannel(orgChannelName);
+  }, [canAccessOrganizerChat, eventId]);
+
+  const sendOrgMessage = async () => {
+    if (!user || !organizerChannel || !orgMessageContent.trim()) return;
+    const content = orgMessageContent.trim();
+    setSending(true);
     try {
-      const { data: helpData, error: helpError } = await supabase
-        .from('event_help_requests')
-        .select('*, assigned_user:users!event_help_requests_assigned_user_id_fkey(name, avatar_url)')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (helpError) throw helpError;
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({ sender_id: user.id, channel: organizerChannel, content })
+        .select('id, sender_id, recipient_id, channel, content, is_read, created_at')
+        .single();
 
-      const { data: foodData, error: foodError } = await supabase
-        .from('food_items')
-        .select('*, assigned_user:users!food_items_assigned_to_fkey(name, avatar_url)')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (foodError) throw foodError;
+      if (error) throw error;
+      if (data) {
+        const localSender = {
+          id: user.id,
+          name: profile?.name || user.user_metadata?.name || user.email || 'You',
+          avatar_url: profile?.avatar_url
+        };
+        senderCacheRef.current[user.id] = localSender;
+        const msg: ChatMessage = { ...(data as ChatMessage), sender: localSender };
+        setOrgMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+      }
+      setOrgMessageContent('');
+    } catch (err: any) {
+      console.error('Error sending organizer message:', err);
+      toast.error('Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
 
-      const helpItems: UnifiedHelpItem[] = (helpData || []).map((r: any) => ({
-        id: r.id.toString(),
-        event_id: r.event_id,
-        source: 'help_request' as const,
-        category: r.request_type,
-        title: r.title,
-        description: r.description,
-        assigned_user_id: r.assigned_user_id,
-        status: r.status,
-        is_filled: r.status === 'filled' || r.is_filled,
-        created_at: r.created_at,
-        assigned_user: r.assigned_user,
-      }));
+  const fetchEvent = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          locations (
+            name,
+            address,
+            latitude,
+            longitude
+          ),
+          users!events_host_id_fkey (
+            name
+          )
+        `)
+        .eq('id', eventId)
+        .single();
 
-      const foodItems: UnifiedHelpItem[] = (foodData || []).map((f: any) => ({
-        id: `food_${f.id}`,
-        event_id: f.event_id,
-        source: 'food_item' as const,
-        category: f.category || 'food',
-        title: f.item,
-        description: f.notes,
-        assigned_user_id: f.assigned_to,
-        status: f.completed ? 'filled' : 'open',
-        is_filled: f.completed,
-        created_at: f.created_at,
-        assigned_user: f.assigned_user,
-      }));
+      if (error) throw error;
 
-      setItems([...helpItems, ...foodItems]);
-    } catch (err) {
-      console.error(err);
+      if (data.visibility === 'private') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteCode = urlParams.get('invite');
+        const isEventHost = user && data.host_id === user.id;
+
+        if (!isEventHost) {
+          const { data: rsvpCheck } = user ? await supabase
+            .from('event_attendees')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('user_id', user.id)
+            .eq('status', 'registered')
+            .maybeSingle() : { data: null };
+
+          if (!rsvpCheck && (!inviteCode || inviteCode !== data.invite_code)) {
+            setAccessDenied(true);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      setEvent(data);
+      setDisplayCapacity((previousCapacity) => {
+        const cachedCapacity = getCachedEventCapacity(eventId);
+        const normalizedCapacity = Math.max(Number(data.capacity) || 0, 1);
+        const stableCapacity = previousCapacity > 0
+          ? Math.max(previousCapacity, cachedCapacity, normalizedCapacity)
+          : Math.max(cachedCapacity, normalizedCapacity);
+
+        setCachedEventCapacity(eventId, stableCapacity);
+        return stableCapacity;
+      });
+      await fetchAttendeeCount(eventId);
+
+      if (user) {
+        const { data: helpAssignment } = await supabase
+          .from('event_help_requests')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('assigned_user_id', user.id)
+          .eq('status', 'filled')
+          .limit(1);
+        setIsOrganizer(Boolean(helpAssignment && helpAssignment.length > 0));
+      }
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      toast.error('Failed to load event');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchItems();
-    fetchAttendees();
-  }, [eventId]);
-
-  const handleVolunteer = async (item: UnifiedHelpItem) => {
-    if (!user) { toast.error('Please sign in'); return; }
+  const fetchAttendeeCount = async (targetEventId: string) => {
     try {
-      if (item.source === 'help_request') {
-        const { error } = await supabase
-          .from('event_help_requests')
-          .update({ assigned_user_id: user.id, status: 'filled' })
-          .eq('id', item.id)
-          .eq('status', 'open');
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('food_items')
-          .update({ assigned_to: user.id })
-          .eq('id', item.id.replace('food_', ''))
-          .is('assigned_to', null);
-        if (error) throw error;
-      }
-      await fetchItems();
-      toast.success("You're signed up to help! 🙌");
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to volunteer');
-    }
-  };
+      const { count, error } = await supabase
+        .from('event_attendees')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', targetEventId)
+        .eq('status', 'registered');
 
-  const handleAssign = async (item: UnifiedHelpItem, userId: string) => {
-    try {
-      if (item.source === 'help_request') {
-        const { error } = await supabase
-          .from('event_help_requests')
-          .update({ assigned_user_id: userId, status: 'filled' })
-          .eq('id', item.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('food_items')
-          .update({ assigned_to: userId })
-          .eq('id', item.id.replace('food_', ''));
-        if (error) throw error;
-      }
-      await fetchItems();
-      toast.success('Assigned!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to assign');
-    }
-  };
-
-  const handleRemove = async (item: UnifiedHelpItem) => {
-    try {
-      if (item.source === 'help_request') {
-        const { error } = await supabase
-          .from('event_help_requests')
-          .delete()
-          .eq('id', item.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('food_items')
-          .delete()
-          .eq('id', item.id.replace('food_', ''));
-        if (error) throw error;
-      }
-      await fetchItems();
-      toast.success('Removed');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to remove');
-    }
-  };
-
-  const handleAddHelp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHelp.title.trim()) return;
-    try {
-      const { error } = await supabase.from('event_help_requests').insert({
-        event_id: eventId,
-        request_type: newHelp.request_type,
-        title: newHelp.title.trim(),
-        description: newHelp.description.trim() || null,
-        assigned_user_id: newHelp.assigned_user_id || null,
-        status: newHelp.assigned_user_id ? 'filled' : 'open',
-      });
       if (error) throw error;
-      setNewHelp({ request_type: 'other', title: '', description: '', assigned_user_id: '' });
-      setShowForm(null);
-      await fetchItems();
-      toast.success('Help request added!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to add request');
+      setAttendeeCount(count || 0);
+      setDisplayCapacity((previous) => Math.max(previous, count || 0));
+    } catch (error) {
+      console.error('Error fetching attendee count:', error);
+      setAttendeeCount(0);
     }
   };
 
-  const handleAddFood = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFood.item.trim()) return;
+  const checkRsvpStatus = async () => {
+    if (!user) return;
+
     try {
-      const { error } = await supabase.from('food_items').insert({
-        event_id: eventId,
-        item: newFood.item.trim(),
-        category: newFood.category,
-        notes: newFood.notes.trim() || null,
-        assigned_to: newFood.assigned_to || null,
-        completed: false,
-      });
+      const { data, error } = await supabase
+        .from('event_attendees')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', user.id)
+        .eq('status', 'registered')
+        .maybeSingle();
+
       if (error) throw error;
-      setNewFood({ item: '', category: 'main', notes: '', assigned_to: '' });
-      setShowForm(null);
-      await fetchItems();
-      toast.success('Food item added!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to add food item');
+      setIsRsvped(Boolean(data));
+    } catch (error) {
+      console.error('Error checking RSVP status:', error);
     }
   };
 
-  const openCount = items.filter(i => !i.is_filled).length;
-  const filledCount = items.filter(i => i.is_filled).length;
+  const isMissingEventIdColumnError = (error: unknown) => {
+    const message = (error as { message?: string })?.message || '';
+    return message.includes('event_id') && message.includes('conversations');
+  };
+
+  const ensureConversationParticipant = async (targetConversationId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('conversation_participants')
+      .insert({
+        conversation_id: targetConversationId,
+        user_id: user.id
+      });
+
+    if (error && error.code !== '23505') {
+      throw error;
+    }
+  };
+
+  const fetchEventConversation = async (eventData: DbEvent) => {
+    if (!user) return;
+
+    try {
+      const conversationName = `${EVENT_CHAT_NAME_PREFIX}${eventId}`;
+      let supportsEventIdColumn = true;
+      let foundConversationId: string | null = null;
+
+      const { data: eventConversations, error: eventConversationError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+        .limit(1);
+
+      if (eventConversationError) {
+        if (isMissingEventIdColumnError(eventConversationError)) {
+          supportsEventIdColumn = false;
+        } else {
+          throw eventConversationError;
+        }
+      } else {
+        foundConversationId = eventConversations?.[0]?.id || null;
+      }
+
+      if (!foundConversationId) {
+        const { data: namedConversations, error: namedConversationError } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('name', conversationName)
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        if (namedConversationError) throw namedConversationError;
+        foundConversationId = namedConversations?.[0]?.id || null;
+      }
+
+      if (foundConversationId) {
+        await ensureConversationParticipant(foundConversationId);
+        setConversationId(foundConversationId);
+        setChatChannel(foundConversationId);
+        return;
+      }
+
+      if (eventData.host_id !== user.id && !isRsvped) {
+        setConversationId(null);
+        setChatChannel(`event:${eventId}`);
+        return;
+      }
+
+      const conversationPayload: {
+        is_group: boolean;
+        name: string;
+        event_id?: string;
+      } = {
+        is_group: true,
+        name: conversationName
+      };
+
+      if (supportsEventIdColumn) {
+        conversationPayload.event_id = eventData.id;
+      }
+
+      const { data: newConversation, error: createConversationError } = await supabase
+        .from('conversations')
+        .insert(conversationPayload)
+        .select('id')
+        .single();
+
+      if (createConversationError) throw createConversationError;
+
+      await ensureConversationParticipant(newConversation.id);
+      setConversationId(newConversation.id);
+      setChatChannel(newConversation.id);
+    } catch (error) {
+      console.error('Error fetching event conversation:', error);
+      setConversationId(null);
+      setChatChannel(`event:${eventId}`);
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (!chatChannel) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          *,
+          sender:users!chat_messages_sender_id_fkey (
+            id,
+            name,
+            avatar_url
+          )
+        `)
+        .eq('channel', chatChannel)
+        .is('recipient_id', null)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (error) throw error;
+      (data || []).forEach((message) => {
+        if (message.sender?.id) {
+          senderCacheRef.current[message.sender.id] = message.sender;
+        }
+      });
+      setMessages(data || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!user || !chatChannel || !messageContent.trim()) return;
+
+    const content = messageContent.trim();
+    stopTyping();
+    setSending(true);
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          sender_id: user.id,
+          channel: chatChannel,
+          content
+        })
+        .select(`
+          id,
+          sender_id,
+          recipient_id,
+          channel,
+          content,
+          is_read,
+          created_at
+        `)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        const localSender = {
+          id: user.id,
+          name: profile?.name || user.user_metadata?.name || user.email || 'You',
+          avatar_url: profile?.avatar_url
+        };
+        senderCacheRef.current[user.id] = localSender;
+        const insertedMessage: ChatMessage = {
+          ...(data as ChatMessage),
+          sender: localSender
+        };
+        setMessages((prev) => (
+          prev.some((message) => message.id === insertedMessage.id)
+            ? prev
+            : [...prev, insertedMessage]
+        ));
+      }
+      setMessageContent('');
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = e.target.value;
+    setMessageContent(nextValue);
+
+    if (!nextValue.trim()) {
+      stopTyping();
+      return;
+    }
+
+    if (!localTypingActiveRef.current) {
+      localTypingActiveRef.current = true;
+      sendTypingSignal(true);
+    }
+    queueTypingStop();
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleRSVP = async () => {
+    if (!user) {
+      toast.error('Please sign in to RSVP');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('event_attendees')
+        .upsert(
+          {
+            event_id: eventId,
+            user_id: user.id,
+            status: 'registered',
+          },
+          { onConflict: 'event_id,user_id' }
+        );
+
+      if (error) throw error;
+      setIsRsvped(true);
+      await fetchAttendeeCount(eventId);
+      if (event) {
+        await fetchEventConversation(event);
+      }
+      toast.success('RSVP confirmed!');
+    } catch (error: any) {
+      console.error('Error RSVPing:', error);
+      toast.error(error.message || 'Failed to RSVP');
+    }
+  };
+
+  const handleCancelRSVP = async () => {
+    if (!user) {
+      toast.error('Please sign in to update RSVP');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('event_attendees')
+        .upsert(
+          {
+            event_id: eventId,
+            user_id: user.id,
+            status: 'cancelled'
+          },
+          { onConflict: 'event_id,user_id' }
+        );
+
+      if (error) throw error;
+      setIsRsvped(false);
+      setActiveTab('details');
+      await fetchAttendeeCount(eventId);
+      toast.success('RSVP updated');
+    } catch (error: any) {
+      console.error('Error updating RSVP:', error);
+      toast.error(error.message || 'Failed to update RSVP');
+    }
+  };
+
+  const shareEvent = async () => {
+    if (!event) return;
+
+    const shareUrl = new URL(`/event/${event.id}`, window.location.origin);
+    if (event.invite_code) {
+      shareUrl.searchParams.set('invite', event.invite_code);
+    }
+
+    const shareText = `Join us for ${event.title} on ${event.date} at ${event.time}!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: shareText,
+          url: shareUrl.toString(),
+        });
+        toast.success('Event shared!');
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        await copyLink(shareUrl.toString());
+      }
+    } else {
+      await copyLink(shareUrl.toString());
+    }
+  };
+
+  const copyLink = async (url: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied to clipboard!');
+        return;
+      } catch (error) {
+        console.error('Clipboard API copy failed:', error);
+      }
+    }
+
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (copied) {
+        toast.success('Link copied to clipboard!');
+      } else {
+        toast.error('Could not copy link. Please copy it manually from the address bar.');
+      }
+    } catch (error) {
+      console.error('Legacy copy failed:', error);
+      toast.error('Could not copy link. Please copy it manually from the address bar.');
+    }
+  };
+
+  const typingLabel = (() => {
+    if (typingUserNames.length === 0) return '';
+    if (typingUserNames.length === 1) return `${typingUserNames[0]} is typing...`;
+    if (typingUserNames.length === 2) return `${typingUserNames[0]} and ${typingUserNames[1]} are typing...`;
+    return `${typingUserNames[0]}, ${typingUserNames[1]} and ${typingUserNames.length - 2} others are typing...`;
+  })();
 
   if (loading) {
-    return <div className="p-6 text-center text-gray-500 dark:text-gray-400">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">{t('events.loadingEvent')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <Lock className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('events.privateEvent')}</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{t('events.privateEventDesc')}</p>
+          <button
+            onClick={onBack}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t('events.goBack')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('events.eventNotFound')}</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{t('events.eventNotFoundDesc')}</p>
+          <button
+            onClick={onBack}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t('events.goBack')}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-5 space-y-4">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <HeartHandshake className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Help Needed</h3>
-        </div>
-        {items.length > 0 && (
-          <div className="flex gap-2 text-xs">
-            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
-              {filledCount} filled
-            </span>
-            <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-              {openCount} open
-            </span>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 min-h-screen">
+        {/* Header */}
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10">
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            >
+              <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Event Details</h1>
+            <button
+              onClick={shareEvent}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            >
+              <Share2 size={20} className="text-gray-700 dark:text-gray-300" />
+            </button>
           </div>
-        )}
-      </div>
 
-      {/* Empty state */}
-      {items.length === 0 && !showForm && (
-        <div className="text-center py-10">
-          <HeartHandshake className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
-          <p className="text-gray-500 dark:text-gray-400 text-sm">No help requests yet</p>
-          {isHost && (
-            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Add something below to get started</p>
-          )}
-        </div>
-      )}
-
-      {/* Items list */}
-      <div className="space-y-3">
-        {items.map((item) => {
-          const isMine = user && item.assigned_user_id === user.id;
-          const isOpen = !item.is_filled && !item.assigned_user_id;
-          return (
-            <div
-              key={item.id}
-              className={`border rounded-xl p-4 transition-all ${
-                item.is_filled
-                  ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+          <div className="flex border-t border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                activeTab === 'details'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              <div className="flex items-start gap-3">
-                <span className="text-xl mt-0.5">{typeIcons[item.category] || '📋'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-gray-900 dark:text-white text-sm">{item.title}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                      {categoryLabel[item.category] || item.category}
-                    </span>
-                    {item.source === 'food_item' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                        <Utensils size={10} /> Food
-                      </span>
-                    )}
-                  </div>
-                  {item.description && (
-                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">{item.description}</p>
-                  )}
-                  {item.is_filled && item.assigned_user && (
-                    <div className="flex items-center gap-1 mt-2 text-green-700 dark:text-green-300 text-xs">
-                      <Check className="w-3 h-3" />
-                      <span>{(item.assigned_user as any).name}</span>
-                      {isMine && <span className="text-green-500 ml-1">(you)</span>}
-                    </div>
-                  )}
-                  {isHost && !item.is_filled && attendees.length > 0 && (
-                    <select
-                      onChange={(e) => { if (e.target.value) { handleAssign(item, e.target.value); e.target.value = ''; } }}
-                      className="mt-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="">Assign to someone...</option>
-                      {attendees.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                  )}
+              {t('events.eventDetails')}
+              {activeTab === 'details' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('help')}
+              className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                activeTab === 'help'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <span className="flex items-center justify-center gap-1">
+                <HeartHandshake size={16} />
+                {t('helpRequests.title')}
+              </span>
+              {activeTab === 'help' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            {canAccessChat && (
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                  activeTab === 'chat'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1">
+                  <MessageCircle size={16} />
+                  {t('chat.groupChat')}
+                </span>
+                {activeTab === 'chat' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                )}
+              </button>
+            )}
+            {canAccessOrganizerChat && (
+              <button
+                onClick={() => setActiveTab('organizer')}
+                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                  activeTab === 'organizer'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1">
+                  <Shield size={16} />
+                  {t('chat.organizerChat')}
+                </span>
+                {activeTab === 'organizer' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {activeTab === 'details' ? (
+          <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+              {event.type.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+            </span>
+            {isPrivateEvent && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium">
+                <Lock className="w-3 h-3" />
+                {t('events.private')}
+              </span>
+            )}
+            {event.visibility === 'friends_only' && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm font-medium">
+                {t('events.friendsOnly')}
+              </span>
+            )}
+          </div>
+
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{event.title}</h1>
+
+          {event.description_template && typeof event.description_template === 'object' ? (
+            <div className="mb-6">
+              <EventDescriptionDisplay template={event.description_template as DescriptionTemplate} />
+            </div>
+          ) : event.description ? (
+            <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>
+          ) : null}
+
+          <div className="space-y-4 mb-6">
+            <div className="flex items-start">
+              <Calendar className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900 dark:text-white">{event.date}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('events.date')}</div>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <Clock className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900 dark:text-white">{event.time}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('events.time')}</div>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {event.locations?.name || t('events.locationTBD')}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {isOpen && user && !isHost && (
-                    <button
-                      onClick={() => handleVolunteer(item)}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
-                    >
-                      I'll do it
-                    </button>
-                  )}
-                  {isMine && (
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-                      <Check className="w-3 h-3" /> You
-                    </span>
-                  )}
-                  {isHost && (
-                    <button
-                      onClick={() => handleRemove(item)}
-                      className="p-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {event.locations?.address || t('events.addressAfterRSVP')}
                 </div>
               </div>
             </div>
-          );
-        })}
+
+            <div className="flex items-start">
+              <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {t('events.hostedBy', { name: event.users?.name || 'Host' })}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {t('events.attending', { count: attendeeCount, capacity: safeCapacity })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <span>{t('events.eventCapacity')}</span>
+              <span>{t('events.percentFull', { percent: capacityPercentage })}</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+              <div
+                className="bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all"
+                style={{ width: `${capacityPercentage}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {isRsvped && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-green-800 dark:text-green-300 font-medium">{t('events.youreAttending')}</p>
+            </div>
+          )}
+
+          {isHost && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-blue-800 dark:text-blue-300 font-medium">{t('events.youreHosting')}</p>
+            </div>
+          )}
+
+          {!isRsvped && !isHost && (
+            <button
+              onClick={handleRSVP}
+              disabled={isEventFull}
+              className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
+                isEventFull
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {isEventFull ? t('events.eventFull') : t('events.rsvpNow')}
+            </button>
+          )}
+
+          {isRsvped && !isHost && (
+            <button
+              onClick={handleCancelRSVP}
+              className="w-full py-4 rounded-lg font-semibold text-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            >
+              {t('events.notGoing')}
+            </button>
+          )}
+          </div>
+        ) : activeTab === 'help' ? (
+          <EventHelpRequests eventId={eventId} isHost={isHost} />
+        ) : activeTab === 'organizer' ? (
+          <div className="flex flex-col h-[calc(100vh-120px)]">
+            <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+              <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                <Shield size={12} />
+                {t('chat.organizerChat')} - {isHost ? 'Host' : 'Organizer'}
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {orgMessages.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>{t('chat.noMessages')}</p>
+                  <p className="text-sm mt-1">{t('chat.beFirst')}</p>
+                </div>
+              ) : (
+                orgMessages.map((message) => (
+                  <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} rounded-lg px-4 py-2`}>
+                      {message.sender_id !== user?.id && (
+                        <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown'}</div>
+                      )}
+                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                      <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-amber-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={orgMessagesEndRef} />
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={orgMessageContent}
+                  onChange={(e) => setOrgMessageContent(e.target.value)}
+                  onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendOrgMessage(); } }}
+                  placeholder={t('chat.typePlaceholder')}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+                <button
+                  onClick={sendOrgMessage}
+                  disabled={!orgMessageContent.trim() || sending}
+                  className="p-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Send size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col h-[calc(100vh-120px)]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>{t('chat.noMessages')}</p>
+                  <p className="text-sm mt-1">{t('chat.beFirst')}</p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} rounded-lg px-4 py-2`}>
+                      {message.sender_id !== user?.id && (
+                        <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown User'}</div>
+                      )}
+                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                      <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-blue-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+              {typingLabel && (
+                <div className="mb-2 flex items-center">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs text-gray-600 dark:text-gray-300">
+                    <span>{typingLabel}</span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '120ms' }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '240ms' }} />
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={messageContent}
+                  onChange={handleMessageInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={t('chat.typePlaceholder')}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!messageContent.trim() || sending}
+                  className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Send size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Add buttons — host only */}
-      {isHost && !showForm && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowForm('help')}
-            className="flex-1 py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors text-sm flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Add Help Request
-          </button>
-          <button
-            onClick={() => setShowForm('food')}
-            className="flex-1 py-2.5 border-2 border-dashed border-orange-200 dark:border-orange-800 rounded-xl text-orange-400 dark:text-orange-500 hover:border-orange-400 hover:text-orange-500 transition-colors text-sm flex items-center justify-center gap-1.5"
-          >
-            <Utensils className="w-4 h-4" /> Add Food Item
-          </button>
-        </div>
-      )}
-
-      {/* Help Request Form */}
-      {showForm === 'help' && (
-        <form onSubmit={handleAddHelp} className="border border-blue-200 dark:border-blue-800 rounded-xl p-4 bg-blue-50 dark:bg-blue-900/10 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-2">
-              <HeartHandshake size={15} /> New Help Request
-            </h4>
-            <button type="button" onClick={() => setShowForm(null)}>
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
-          <select
-            value={newHelp.request_type}
-            onChange={(e) => setNewHelp(p => ({ ...p, request_type: e.target.value as any }))}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-          >
-            {HELP_REQUEST_TYPES.map(type => (
-              <option key={type} value={type}>{typeIcons[type]} {categoryLabel[type]}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={newHelp.title}
-            onChange={(e) => setNewHelp(p => ({ ...p, title: e.target.value }))}
-            placeholder="What do you need help with?"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-            required
-          />
-          <textarea
-            value={newHelp.description}
-            onChange={(e) => setNewHelp(p => ({ ...p, description: e.target.value }))}
-            placeholder="Any details? (optional)"
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
-          />
-          {attendees.length > 0 && (
-            <select
-              value={newHelp.assigned_user_id}
-              onChange={(e) => setNewHelp(p => ({ ...p, assigned_user_id: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-            >
-              <option value="">Leave open for volunteers</option>
-              {attendees.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          )}
-          <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-            Add Request
-          </button>
-        </form>
-      )}
-
-      {/* Food Item Form */}
-      {showForm === 'food' && (
-        <form onSubmit={handleAddFood} className="border border-orange-200 dark:border-orange-800 rounded-xl p-4 bg-orange-50 dark:bg-orange-900/10 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-2">
-              <Utensils size={15} /> New Food Item
-            </h4>
-            <button type="button" onClick={() => setShowForm(null)}>
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
-          <input
-            type="text"
-            value={newFood.item}
-            onChange={(e) => setNewFood(p => ({ ...p, item: e.target.value }))}
-            placeholder="e.g. Potato salad, Lemonade..."
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-            required
-          />
-          <select
-            value={newFood.category}
-            onChange={(e) => setNewFood(p => ({ ...p, category: e.target.value as any }))}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-          >
-            {FOOD_CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{typeIcons[cat]} {categoryLabel[cat]}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={newFood.notes}
-            onChange={(e) => setNewFood(p => ({ ...p, notes: e.target.value }))}
-            placeholder="Any notes? e.g. nut-free (optional)"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-          />
-          {attendees.length > 0 && (
-            <select
-              value={newFood.assigned_to}
-              onChange={(e) => setNewFood(p => ({ ...p, assigned_to: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-            >
-              <option value="">Leave open for volunteers</option>
-              {attendees.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          )}
-          <button type="submit" className="w-full py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium">
-            Add Food Item
-          </button>
-        </form>
-      )}
-
     </div>
   );
 };
+export { EventDetailView };
