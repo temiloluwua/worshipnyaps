@@ -1,6 +1,7 @@
 [build]
-command = "npx vite build"
+command = "npm run build"
 publish = "dist"
+install = "npm install"
 
 [build.environment]
 NODE_VERSION = "18.20.8"
