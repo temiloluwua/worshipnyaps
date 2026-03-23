@@ -1166,4 +1166,3 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     </div>
   );
 };
-export { EventDetailView };
