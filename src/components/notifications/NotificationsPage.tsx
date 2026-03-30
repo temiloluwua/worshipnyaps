@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Bell, Heart, MessageCircle, UserPlus, Calendar,
-  Settings, Check, Filter, Repeat, AtSign
+  Settings, Check, Filter, Repeat, AtSign, HeartHandshake, AlertCircle
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useActivityFeed } from '../../hooks/useActivityFeed';
@@ -57,6 +57,10 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
       case 'event_reminder':
       case 'event_update':
         return <Calendar className="w-5 h-5 text-orange-500" />;
+      case 'help_request':
+        return <HeartHandshake className="w-5 h-5 text-pink-500" />;
+      case 'general':
+        return <Bell className="w-5 h-5 text-gray-500" />;
       default:
         return <Bell className="w-5 h-5 text-gray-400" />;
     }

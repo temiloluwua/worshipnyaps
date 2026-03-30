@@ -193,7 +193,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
           const isRsvped = rsvpEventIds.has(event.id);
 
           return (
-            <div key={event.id} id={`event-${event.id}`} className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div
+              key={event.id}
+              id={`event-${event.id}`}
+              onClick={() => onOpenEvent?.(event.id)}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+            >
               <div className="p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">

@@ -3,18 +3,21 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
 import { EventDescriptionDisplay } from './EventDescriptionTemplate';
+import { CheckInButton } from './CheckInButton';
+import { AttendeeList } from './AttendeeList';
+import { PostEventFriendSuggestions } from './PostEventFriendSuggestions';
 
 interface EventDetailViewProps {
   eventId: string;
   onBack: () => void;
 }
 
-type TabType = 'details' | 'help' | 'chat' | 'organizer';
+type TabType = 'details' | 'help' | 'chat' | 'organizer' | 'people';
 const EVENT_CHAT_NAME_PREFIX = 'event-chat:';
 const EVENT_CAPACITY_CACHE_KEY = 'event_capacity_cache_v1';
 const TYPING_IDLE_TIMEOUT_MS = 1200;
@@ -46,6 +49,42 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
   }
 };
 
+const ORGANIZER_CHECKLIST_KEY = 'event_organizer_checklist_v1';
+const CHECKLIST_ITEMS = [
+  'Confirm venue & address',
+  'Send reminders to attendees',
+  'Assign worship leader',
+  'Assign hospitality coordinator',
+  'Assign discussion leader',
+  'Assign prayer leader',
+  'Confirm food/drinks list',
+  'Prepare discussion questions',
+  'Test audio/visual setup',
+  'Post-event follow-up planned'
+] as const;
+
+const getCachedChecklist = (eventId: string) => {
+  try {
+    const raw = window.localStorage.getItem(ORGANIZER_CHECKLIST_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, Record<string, boolean>>;
+    return parsed[eventId] || {};
+  } catch {
+    return {};
+  }
+};
+
+const setCachedChecklist = (eventId: string, checklist: Record<string, boolean>) => {
+  try {
+    const raw = window.localStorage.getItem(ORGANIZER_CHECKLIST_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, boolean>>) : {};
+    parsed[eventId] = checklist;
+    window.localStorage.setItem(ORGANIZER_CHECKLIST_KEY, JSON.stringify(parsed));
+  } catch {
+    // Ignore cache write issues
+  }
+};
+
 export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack }) => {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -66,6 +105,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [orgMessageContent, setOrgMessageContent] = useState('');
   const [sending, setSending] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [organizerChecklist, setOrganizerChecklist] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
@@ -138,6 +178,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     setDisplayCapacity(getCachedEventCapacity(eventId));
     setIsRsvped(false);
     setActiveTab('details');
+    setOrganizerChecklist(getCachedChecklist(eventId));
     fetchEvent();
     if (user) {
       checkRsvpStatus();
@@ -927,6 +968,24 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 )}
               </button>
             )}
+            {(isRsvped || isHost) && (
+              <button
+                onClick={() => setActiveTab('people')}
+                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                  activeTab === 'people'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1">
+                  <Users size={16} />
+                  People
+                </span>
+                {activeTab === 'people' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1048,9 +1107,117 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               {t('events.notGoing')}
             </button>
           )}
+
+          <div className="space-y-6 mt-8">
+            {/* Open in Maps */}
+            {(isRsvped || isHost) && event.locations?.address && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <a
+                  href={`https://www.google.com/maps/search/${encodeURIComponent(event.locations.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open in Maps
+                </a>
+              </div>
+            )}
+
+            {/* Invite Code for Private Events */}
+            {isPrivateEvent && isHost && event.invite_code && (
+              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <p className="text-sm text-purple-600 dark:text-purple-400 mb-3 font-medium">Invite Code</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 font-mono text-lg font-bold text-purple-700 dark:text-purple-300 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg border border-purple-200 dark:border-purple-700">
+                    {event.invite_code}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(event.invite_code || '');
+                      toast.success('Copied!');
+                    }}
+                    className="p-3 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg hover:bg-purple-50 dark:hover:bg-gray-700 transition-colors"
+                    title="Copy invite code"
+                  >
+                    <Copy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Event Roles */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Event Roles</h3>
+              <div className="space-y-2">
+                {[
+                  { role: 'Worship Leader', status: true },
+                  { role: 'Discussion Leader', status: false },
+                  { role: 'Hospitality', status: true },
+                  { role: 'Prayer Leader', status: false }
+                ].map(({ role, status }) => (
+                  <div key={role} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{role}</span>
+                    {status ? (
+                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-sm">
+                        <CheckCircle2 className="w-4 h-4" /> Assigned
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Check-in */}
+            <CheckInButton eventId={eventId} isHost={isHost} isRsvped={isRsvped} />
+
+            {/* Organizer Checklist */}
+            {isHost && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Host Checklist</h3>
+                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    {Object.values(organizerChecklist).filter(Boolean).length}/{CHECKLIST_ITEMS.length} done
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {CHECKLIST_ITEMS.map((item) => (
+                    <label key={item} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={organizerChecklist[item] || false}
+                        onChange={(e) => {
+                          const newChecklist = { ...organizerChecklist, [item]: e.target.checked };
+                          setOrganizerChecklist(newChecklist);
+                          setCachedChecklist(eventId, newChecklist);
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 cursor-pointer"
+                      />
+                      <span className={`text-sm ${organizerChecklist[item] ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {item}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Post-event friend suggestions */}
+            {event && new Date(event.date) < new Date() && (
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <PostEventFriendSuggestions eventId={eventId} eventTitle={event.title} />
+              </div>
+            )}
+          </div>
           </div>
         ) : activeTab === 'help' ? (
           <EventHelpRequests eventId={eventId} isHost={isHost} />
+        ) : activeTab === 'people' ? (
+          <div className="p-6">
+            <AttendeeList eventId={eventId} isHost={isHost} />
+          </div>
         ) : activeTab === 'organizer' ? (
           <div className="flex flex-col h-[calc(100vh-120px)]">
             <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
