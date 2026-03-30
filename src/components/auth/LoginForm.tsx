@@ -36,33 +36,9 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
     setCaptchaError(null);
 
     try {
-      let captchaToken: string | undefined;
-
-      if (isCaptchaEnabled && window.grecaptcha) {
-        try {
-          captchaToken = await new Promise<string>((resolve, reject) => {
-            window.grecaptcha.enterprise.ready(async () => {
-              try {
-                const token = await window.grecaptcha.enterprise.execute(recaptchaSiteKey, { action: 'LOGIN' });
-                resolve(token);
-              } catch (error) {
-                reject(error);
-              }
-            });
-          });
-        } catch (error) {
-          console.error('reCAPTCHA error:', error);
-          setCaptchaError('reCAPTCHA verification failed. Please try again.');
-          return;
-        }
-      }
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          captchaToken,
-        },
       });
 
       if (error) {
@@ -70,9 +46,6 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
           toast.error('Please confirm your email address before signing in. Check your inbox for a confirmation link.');
         } else if (error.message.toLowerCase().includes('invalid')) {
           toast.error('Invalid email or password. Please check your credentials and try again.');
-        } else if (error.message.toLowerCase().includes('captcha')) {
-          toast.error('Captcha verification failed. Please try again.');
-          setCaptchaError('Captcha verification failed. Please try again.');
         } else {
           toast.error(error.message);
         }

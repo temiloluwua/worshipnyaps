@@ -37,27 +37,6 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
     setCaptchaError(null);
 
     try {
-      let captchaToken: string | undefined;
-
-      if (isCaptchaEnabled && window.grecaptcha) {
-        try {
-          captchaToken = await new Promise<string>((resolve, reject) => {
-            window.grecaptcha.enterprise.ready(async () => {
-              try {
-                const token = await window.grecaptcha.enterprise.execute(recaptchaSiteKey, { action: 'SIGNUP' });
-                resolve(token);
-              } catch (error) {
-                reject(error);
-              }
-            });
-          });
-        } catch (error) {
-          console.error('reCAPTCHA error:', error);
-          setCaptchaError('reCAPTCHA verification failed. Please try again.');
-          return;
-        }
-      }
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -65,15 +44,11 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           data: {
             name,
           },
-          captchaToken,
         },
       });
 
       if (authError) {
         toast.error(authError.message);
-        if (authError.message.toLowerCase().includes('captcha')) {
-          setCaptchaError('Captcha verification failed. Please try again.');
-        }
         return;
       }
 

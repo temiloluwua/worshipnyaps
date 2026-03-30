@@ -34,15 +34,18 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: `${window.location.origin}/`,
+          skipBrowserWarning: true,
         },
       });
 
       if (error) {
-        toast.error(error.message);
+        console.error('Google sign in error:', error);
+        toast.error(error.message || 'Failed to sign in with Google');
       }
-    } catch (error) {
-      toast.error('An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Google sign in exception:', error);
+      toast.error(error?.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
