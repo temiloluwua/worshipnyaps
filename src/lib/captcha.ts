@@ -11,9 +11,27 @@ declare global {
 
 const RECAPTCHA_SITE_KEY = '6LfON4EsAAAAAJ4lGaSkQ2o0-S0zhTiJM7_chFkP';
 
+function waitForRecaptcha(timeout = 10000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const check = () => {
+      if (window.grecaptcha?.enterprise?.ready) {
+        resolve();
+      } else if (Date.now() - start > timeout) {
+        reject(new Error('reCAPTCHA failed to load'));
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  });
+}
+
 export async function executeRecaptcha(action: string): Promise<string | undefined> {
-  if (!window.grecaptcha) {
-    console.warn('reCAPTCHA not loaded');
+  try {
+    await waitForRecaptcha();
+  } catch {
+    console.warn('reCAPTCHA not loaded, proceeding without token');
     return undefined;
   }
 
