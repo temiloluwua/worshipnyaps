@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, Users, Clock, MapPin, Music, Coffee, Heart, CheckCircle, Plus, Utensils, ChefHat } from 'lucide-react';
+import { X, Users, Clock, MapPin, Music, Coffee, Heart, CheckCircle, Plus, Utensils, ChefHat, UserPlus, StickyNote, Leaf } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 type RSVPEvent = {
   id: string;
@@ -9,7 +11,6 @@ type RSVPEvent = {
   time: string;
   capacity: number;
   attendees?: number;
-  // Support either a simple string or joined location object
   location?: string;
   locations?: { name?: string };
 };
@@ -32,6 +33,7 @@ interface RSVPModalProps {
 }
 
 export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, onRSVP }) => {
+  const { user } = useAuth();
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedFoodItems, setSelectedFoodItems] = useState<string[]>([]);
   const [customFood, setCustomFood] = useState('');
@@ -41,7 +43,10 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
   const [activeTab, setActiveTab] = useState<'basic' | 'volunteer' | 'food'>('basic');
   const [submitting, setSubmitting] = useState(false);
 
-  // Mock existing food assignments - in production this would come from the database
+  const [dietaryRestrictions, setDietaryRestrictions] = useState('');
+  const [plusOneCount, setPlusOneCount] = useState(0);
+  const [attendeeNotes, setAttendeeNotes] = useState('');
+
   const [existingFoodItems] = useState<FoodItem[]>([
     { id: '1', item: 'Main Dish', category: 'main', assignedTo: 'Sarah M.', completed: true, servingSize: 'Serves 12' },
     { id: '2', item: 'Garden Salad', category: 'side', assignedTo: 'Michael C.', completed: true, servingSize: 'Large bowl' },
@@ -55,13 +60,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
 
   useEffect(() => {
     if (!isOpen) return;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
@@ -71,7 +70,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
   const volunteerRoles = [
     { id: 'prayer', name: 'Prayer Leader', icon: Heart, description: 'Lead opening and closing prayers, pray for specific needs' },
     { id: 'worship', name: 'Worship Leader', icon: Music, description: 'Lead music and singing, choose songs that fit the study theme' },
-    { id: 'discussion', name: 'Discussion Coordinator', icon: Users, description: 'Guide group discussions, ask follow-up questions, ensure participation' },
+    { id: 'discussion', name: 'Discussion Coordinator', icon: Users, description: 'Guide group discussions, ask follow-up questions' },
     { id: 'hospitality', name: 'Hospitality Coordinator', icon: Coffee, description: 'Coordinate food, setup/cleanup, welcome newcomers' },
     { id: 'tech', name: 'Tech Support', icon: Users, description: 'Manage tech needs, help with virtual attendees, audio setup' }
   ];
@@ -81,31 +80,42 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
     { id: 'side', name: 'Side Dishes', icon: Utensils, color: 'bg-green-50 border-green-200 text-green-800' },
     { id: 'dessert', name: 'Desserts', icon: Heart, color: 'bg-pink-50 border-pink-200 text-pink-800' },
     { id: 'beverage', name: 'Beverages', icon: Coffee, color: 'bg-blue-50 border-blue-200 text-blue-800' },
-    { id: 'setup', name: 'Setup Items', icon: Users, color: 'bg-purple-50 border-purple-200 text-purple-800' }
+    { id: 'setup', name: 'Setup Items', icon: Users, color: 'bg-gray-50 border-gray-200 text-gray-800' }
   ];
 
   const toggleRole = (roleId: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(roleId) 
-        ? prev.filter(id => id !== roleId)
-        : [...prev, roleId]
+    setSelectedRoles(prev =>
+      prev.includes(roleId) ? prev.filter(id => id !== roleId) : [...prev, roleId]
     );
   };
 
   const toggleFoodItem = (itemId: string) => {
-    setSelectedFoodItems(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
+    setSelectedFoodItems(prev =>
+      prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
     );
+  };
+
+  const saveRsvpDetails = async () => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('event_rsvp_details')
+        .upsert({
+          event_id: event.id,
+          user_id: user.id,
+          dietary_restrictions: dietaryRestrictions.trim(),
+          plus_one_count: plusOneCount,
+          notes: attendeeNotes.trim(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'event_id,user_id' });
+    } catch (err) {
+      console.error('Failed to save RSVP details:', err);
+    }
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
-
     const allFoodItems = [...selectedFoodItems];
-    
-    // Add custom food item if specified
     if (customFood.trim()) {
       const customItem = `${customFood.trim()}${customFoodServing ? ` (${customFoodServing})` : ''}${foodNotes ? ` - ${foodNotes}` : ''}`;
       allFoodItems.push(customItem);
@@ -114,15 +124,10 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
     setSubmitting(true);
     try {
       await onRSVP(event.id, selectedRoles, allFoodItems);
-
+      await saveRsvpDetails();
       let message = `RSVP confirmed for ${event.title}!`;
-      if (selectedRoles.length > 0) {
-        message += ` You're volunteering for: ${selectedRoles.join(', ')}.`;
-      }
-      if (allFoodItems.length > 0) {
-        message += ` You're bringing food items.`;
-      }
-
+      if (plusOneCount > 0) message += ` +${plusOneCount} guest${plusOneCount > 1 ? 's' : ''}.`;
+      if (selectedRoles.length > 0) message += ` Volunteering for ${selectedRoles.length} role${selectedRoles.length > 1 ? 's' : ''}.`;
       toast.success(message);
       onClose();
     } catch (error) {
@@ -133,41 +138,91 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
     }
   };
 
-  const getItemsByCategory = (category: string) => {
-    return existingFoodItems.filter(item => item.category === category);
-  };
+  const getItemsByCategory = (category: string) => existingFoodItems.filter(item => item.category === category);
 
   const renderBasicRSVP = () => (
-    <div className="p-6">
-      <div className="text-center mb-6">
-        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Confirm Your Attendance</h3>
-        <p className="text-gray-600">
-          Join us for {event.title} on {event.date} at {event.time}
+    <div className="p-6 space-y-6">
+      <div className="text-center">
+        <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-3" />
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Confirm Your Attendance</h3>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">
+          {event.title} &middot; {event.date} at {event.time}
         </p>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-center">
-          <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-          <span className="text-green-800 font-medium">Yes, I'll be there!</span>
+      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 flex items-center justify-center gap-2">
+        <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+        <span className="text-green-800 dark:text-green-300 font-medium text-sm">Yes, I'll be there!</span>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <Leaf className="w-4 h-4 text-green-500" />
+            Dietary Restrictions / Allergies
+          </label>
+          <input
+            type="text"
+            value={dietaryRestrictions}
+            onChange={(e) => setDietaryRestrictions(e.target.value)}
+            placeholder="e.g., vegetarian, nut allergy, gluten-free..."
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <UserPlus className="w-4 h-4 text-blue-500" />
+            Bringing a guest?
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPlusOneCount(Math.max(0, plusOneCount - 1))}
+              className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-lg leading-none transition-colors"
+            >
+              −
+            </button>
+            <span className="w-12 text-center font-semibold text-gray-900 dark:text-white text-lg">
+              {plusOneCount === 0 ? 'Just me' : `+${plusOneCount}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPlusOneCount(Math.min(10, plusOneCount + 1))}
+              className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-lg leading-none transition-colors"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <StickyNote className="w-4 h-4 text-amber-500" />
+            Notes for the host (optional)
+          </label>
+          <textarea
+            value={attendeeNotes}
+            onChange={(e) => setAttendeeNotes(e.target.value)}
+            placeholder="Anything the host should know..."
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          />
         </div>
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-gray-600 mb-4">
-          Want to help make this event special? You can volunteer or bring food on the next tabs.
-        </p>
-        <div className="flex space-x-2 justify-center">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Want to help make this event special?</p>
+        <div className="flex gap-2 justify-center">
           <button
             onClick={() => setActiveTab('volunteer')}
-            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors"
+            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
           >
             Volunteer to Help
           </button>
           <button
             onClick={() => setActiveTab('food')}
-            className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition-colors"
+            className="px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-xs font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
           >
             Bring Food
           </button>
@@ -178,38 +233,29 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
 
   const renderVolunteerTab = () => (
     <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Would you like to serve? (Optional)</h3>
-      <p className="text-sm text-gray-600 mb-6">
-        Select any roles you'd be willing to help with:
-      </p>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Would you like to serve? (Optional)</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Select any roles you'd be willing to help with:</p>
       <div className="space-y-3">
         {volunteerRoles.map((role) => {
           const Icon = role.icon;
           const isSelected = selectedRoles.includes(role.id);
-          
           return (
             <button
               key={role.id}
               onClick={() => toggleRole(role.id)}
               className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                isSelected 
-                  ? 'border-blue-500 bg-blue-50 shadow-md' 
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                isSelected
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
               }`}
             >
-              <div className="flex items-center">
-                <Icon className={`w-6 h-6 mr-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
+              <div className="flex items-center gap-3">
+                <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
                 <div className="flex-1">
-                  <div className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
-                    {role.name}
-                  </div>
-                  <div className={`text-sm ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
-                    {role.description}
-                  </div>
+                  <div className={`font-medium text-sm ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>{role.name}</div>
+                  <div className={`text-xs mt-0.5 ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>{role.description}</div>
                 </div>
-                {isSelected && (
-                  <CheckCircle className="w-6 h-6 text-blue-600" />
-                )}
+                {isSelected && <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />}
               </div>
             </button>
           );
@@ -220,68 +266,49 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
 
   const renderFoodTab = () => (
     <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Food Coordination</h3>
-      <p className="text-sm text-gray-600 mb-6">
-        Help make this gathering special by contributing food. See what's needed and what others are bringing:
-      </p>
-
-      {/* Food Categories */}
-      <div className="space-y-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Food Coordination</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">See what's needed and what others are already bringing:</p>
+      <div className="space-y-5">
         {foodCategories.map((category) => {
           const Icon = category.icon;
           const items = getItemsByCategory(category.id);
-          
           return (
-            <div key={category.id} className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Icon className="w-5 h-5 text-gray-600" />
-                <h4 className="font-medium text-gray-900">{category.name}</h4>
-                <span className="text-xs text-gray-500">
-                  ({items.filter(item => item.completed).length}/{items.length} covered)
+            <div key={category.id} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <h4 className="font-medium text-gray-900 dark:text-white text-sm">{category.name}</h4>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  ({items.filter(i => i.completed).length}/{items.length} covered)
                 </span>
               </div>
-              
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-3 rounded-lg border transition-all ${
+                    className={`p-2.5 rounded-lg border transition-all ${
                       item.completed
-                        ? 'bg-gray-50 border-gray-200'
+                        ? 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700'
                         : selectedFoodItems.includes(item.id)
-                        ? 'bg-green-50 border-green-300 shadow-sm'
-                        : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-pointer'
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer'
                     }`}
                     onClick={() => !item.completed && toggleFoodItem(item.id)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className={`font-medium ${item.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                          {item.item}
-                        </div>
-                        {item.servingSize && (
-                          <div className="text-sm text-gray-500">{item.servingSize}</div>
-                        )}
-                        {item.assignedTo && (
-                          <div className="text-sm text-green-600 font-medium">
-                            Assigned: {item.assignedTo}
-                          </div>
-                        )}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium truncate ${item.completed ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{item.item}</div>
+                        {item.servingSize && <div className="text-xs text-gray-500 dark:text-gray-400">{item.servingSize}</div>}
+                        {item.assignedTo && <div className="text-xs text-green-600 dark:text-green-400 font-medium">By: {item.assignedTo}</div>}
                       </div>
-                      
                       {!item.completed && (
-                        <div className="flex items-center">
-                          {selectedFoodItems.includes(item.id) ? (
-                            <div className="flex items-center space-x-1 text-green-600">
-                              <CheckCircle className="w-5 h-5" />
-                              <span className="text-sm font-medium">I'll bring this</span>
-                            </div>
-                          ) : (
-                            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                              I can bring this
-                            </button>
-                          )}
-                        </div>
+                        selectedFoodItems.includes(item.id) ? (
+                          <div className="flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium shrink-0">
+                            <CheckCircle className="w-4 h-4" />
+                            I'll bring this
+                          </div>
+                        ) : (
+                          <span className="text-blue-600 dark:text-blue-400 text-xs font-medium shrink-0">I can bring this</span>
+                        )
                       )}
                     </div>
                   </div>
@@ -292,36 +319,29 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
         })}
       </div>
 
-      {/* Custom Food Item */}
-      <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-200">
-        <h4 className="font-medium text-blue-900 mb-4 flex items-center">
-          <Plus className="w-5 h-5 mr-2" />
+      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+        <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-3 text-sm flex items-center gap-1.5">
+          <Plus className="w-4 h-4" />
           Bring Something Else
         </h4>
-        
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                What will you bring?
-              </label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">What will you bring?</label>
               <input
                 type="text"
                 value={customFood}
                 onChange={(e) => setCustomFood(e.target.value)}
-                placeholder="e.g., Homemade lasagna, Fresh fruit salad..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Homemade lasagna..."
+                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
               <select
                 value={customFoodCategory}
                 onChange={(e) => setCustomFoodCategory(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="main">Main Dish</option>
                 <option value="side">Side Dish</option>
@@ -331,176 +351,121 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
               </select>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Serving Size (Optional)
-              </label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Serving Size (optional)</label>
               <input
                 type="text"
                 value={customFoodServing}
                 onChange={(e) => setCustomFoodServing(e.target.value)}
-                placeholder="e.g., Serves 8-10, Large tray..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Serves 8-10..."
+                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Special Notes (Optional)
-              </label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Special Notes (optional)</label>
               <input
                 type="text"
                 value={foodNotes}
                 onChange={(e) => setFoodNotes(e.target.value)}
-                placeholder="e.g., Vegetarian, Contains nuts..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Vegetarian..."
+                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
       </div>
-
-      {/* Food Summary */}
-      {(selectedFoodItems.length > 0 || customFood.trim()) && (
-        <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
-          <h4 className="font-medium text-green-900 mb-3">Your Food Contributions:</h4>
-          <div className="space-y-2">
-            {selectedFoodItems.map(itemId => {
-              const item = existingFoodItems.find(f => f.id === itemId);
-              return item ? (
-                <div key={itemId} className="flex items-center text-sm text-green-800">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  <span>{item.item} {item.servingSize && `(${item.servingSize})`}</span>
-                </div>
-              ) : null;
-            })}
-            {customFood.trim() && (
-              <div className="flex items-center text-sm text-green-800">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                <span>
-                  {customFood}
-                  {customFoodServing && ` (${customFoodServing})`}
-                  {foodNotes && ` - ${foodNotes}`}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-end z-50"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white w-full max-h-[90vh] rounded-t-3xl overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">RSVP for Event</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full" aria-label="Close RSVP modal">
-            <X size={20} />
+      <div className="bg-white dark:bg-gray-800 w-full max-h-[92vh] rounded-t-3xl overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">RSVP for Event</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+            <X size={18} className="text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
-        {/* Event Info */}
-        <div className="p-4 bg-blue-50 border-b">
-          <h3 className="font-semibold text-gray-900 mb-2">{event.title}</h3>
-          <div className="space-y-1 text-sm text-gray-600">
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-2" />
-              {event.date} at {event.time}
-            </div>
-            <div className="flex items-center">
-              <MapPin className="w-4 h-4 mr-2" />
-              {event.locations?.name || event.location || 'Location TBD'}
-            </div>
-            <div className="flex items-center">
-              <Users className="w-4 h-4 mr-2" />
-              {(event.attendees || 0)}/{event.capacity} attending
-            </div>
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 shrink-0">
+          <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{event.title}</h3>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.date} at {event.time}</span>
+            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.locations?.name || event.location || 'Location TBD'}</span>
+            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{(event.attendees || 0)}/{event.capacity} attending</span>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b">
-          {[
+        <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0">
+          {([
             { id: 'basic', label: 'RSVP', icon: CheckCircle },
             { id: 'volunteer', label: 'Volunteer', icon: Heart },
-            { id: 'food', label: 'Food', icon: Utensils }
-          ].map((tab) => {
+            { id: 'food', label: 'Food', icon: Utensils },
+          ] as const).map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
                 {tab.id === 'volunteer' && selectedRoles.length > 0 && (
-                  <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                    {selectedRoles.length}
-                  </span>
+                  <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">{selectedRoles.length}</span>
                 )}
                 {tab.id === 'food' && (selectedFoodItems.length > 0 || customFood.trim()) && (
-                  <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-                    {selectedFoodItems.length + (customFood.trim() ? 1 : 0)}
-                  </span>
+                  <span className="bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">{selectedFoodItems.length + (customFood.trim() ? 1 : 0)}</span>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* Tab Content */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {activeTab === 'basic' && renderBasicRSVP()}
           {activeTab === 'volunteer' && renderVolunteerTab()}
           {activeTab === 'food' && renderFoodTab()}
         </div>
 
-        {/* Footer */}
         <div
-          className="p-4 border-t bg-gray-50 shrink-0"
+          className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
-          <div className="flex space-x-3">
+          <div className="flex gap-3">
             <button
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50"
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
             >
-              <CheckCircle className="w-5 h-5" />
+              <CheckCircle className="w-4 h-4" />
               <span>{submitting ? 'Saving...' : 'Confirm RSVP'}</span>
             </button>
           </div>
-          
-          {/* RSVP Summary */}
-          {(selectedRoles.length > 0 || selectedFoodItems.length > 0 || customFood.trim()) && (
-            <div className="mt-3 text-center">
-              <p className="text-xs text-gray-600">
-                {selectedRoles.length > 0 && `Volunteering: ${selectedRoles.length} role${selectedRoles.length > 1 ? 's' : ''}`}
-                {selectedRoles.length > 0 && (selectedFoodItems.length > 0 || customFood.trim()) && ' | '}
-                {(selectedFoodItems.length > 0 || customFood.trim()) && `Bringing: ${selectedFoodItems.length + (customFood.trim() ? 1 : 0)} item${selectedFoodItems.length + (customFood.trim() ? 1 : 0) > 1 ? 's' : ''}`}
+          {(plusOneCount > 0 || dietaryRestrictions || selectedRoles.length > 0 || selectedFoodItems.length > 0) && (
+            <div className="mt-2 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {[
+                  plusOneCount > 0 && `+${plusOneCount} guest${plusOneCount > 1 ? 's' : ''}`,
+                  dietaryRestrictions && 'dietary info added',
+                  selectedRoles.length > 0 && `${selectedRoles.length} volunteer role${selectedRoles.length > 1 ? 's' : ''}`,
+                  (selectedFoodItems.length > 0 || customFood.trim()) && `${selectedFoodItems.length + (customFood.trim() ? 1 : 0)} food item${selectedFoodItems.length + (customFood.trim() ? 1 : 0) > 1 ? 's' : ''}`
+                ].filter(Boolean).join(' · ')}
               </p>
             </div>
           )}

@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, CheckCircle2, Edit3, UserPlus, XCircle, CalendarPlus, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -11,6 +11,10 @@ import { EventDescriptionDisplay } from './EventDescriptionTemplate';
 import { CheckInButton } from './CheckInButton';
 import { AttendeeList } from './AttendeeList';
 import { PostEventFriendSuggestions } from './PostEventFriendSuggestions';
+import { EditEventModal } from './EditEventModal';
+import { InviteFriendsModal } from './InviteFriendsModal';
+import { CoHostManager } from './CoHostManager';
+import { EventAnnouncements } from './EventAnnouncements';
 
 interface EventDetailViewProps {
   eventId: string;
@@ -106,6 +110,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [sending, setSending] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [organizerChecklist, setOrganizerChecklist] = useState<Record<string, boolean>>({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [cancellingEvent, setCancellingEvent] = useState(false);
+  const [showHostActions, setShowHostActions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
@@ -828,6 +836,70 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     }
   };
 
+  const cancelEvent = async () => {
+    if (!event || !isHost) return;
+    if (!window.confirm('Are you sure you want to cancel this event? All attendees will be notified.')) return;
+    setCancellingEvent(true);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', event.id);
+      if (error) throw error;
+      toast.success('Event cancelled');
+      onBack();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to cancel event');
+    } finally {
+      setCancellingEvent(false);
+    }
+  };
+
+  const addToGoogleCalendar = () => {
+    if (!event) return;
+    const title = encodeURIComponent(event.title);
+    const details = encodeURIComponent(event.description || '');
+    const location = encodeURIComponent(event.locations?.address || event.locations?.name || '');
+    const dateStr = event.date.replace(/-/g, '');
+    const timeStr = (event.time || '00:00').replace(':', '') + '00';
+    const start = `${dateStr}T${timeStr}`;
+    const endHour = String(parseInt(timeStr.slice(0, 2)) + 2).padStart(2, '0');
+    const end = `${dateStr}T${endHour}${timeStr.slice(2)}`;
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
+    window.open(url, '_blank');
+  };
+
+  const downloadIcal = () => {
+    if (!event) return;
+    const dateStr = event.date.replace(/-/g, '');
+    const timeStr = (event.time || '00:00').replace(':', '') + '00';
+    const start = `${dateStr}T${timeStr}`;
+    const endHour = String(parseInt(timeStr.slice(0, 2)) + 2).padStart(2, '0');
+    const end = `${dateStr}T${endHour}${timeStr.slice(2)}`;
+    const ical = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Worship & Yapps//EN',
+      'BEGIN:VEVENT',
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      `SUMMARY:${event.title}`,
+      `DESCRIPTION:${(event.description || '').replace(/\n/g, '\\n')}`,
+      `LOCATION:${event.locations?.address || event.locations?.name || ''}`,
+      `UID:${event.id}@worshipandyapps`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+    const blob = new Blob([ical], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${event.title.replace(/\s+/g, '-')}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Calendar file downloaded!');
+  };
+
   const typingLabel = (() => {
     if (typingUserNames.length === 0) return '';
     if (typingUserNames.length === 1) return `${typingUserNames[0]} is typing...`;
@@ -894,12 +966,76 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
             </button>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Event Details</h1>
-            <button
-              onClick={shareEvent}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-            >
-              <Share2 size={20} className="text-gray-700 dark:text-gray-300" />
-            </button>
+            <div className="flex items-center gap-1">
+              {isHost && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowHostActions(!showHostActions)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors flex items-center gap-0.5"
+                    title="Host actions"
+                  >
+                    <Edit3 size={18} className="text-gray-700 dark:text-gray-300" />
+                    <ChevronDown size={12} className="text-gray-500 dark:text-gray-400" />
+                  </button>
+                  {showHostActions && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 overflow-hidden">
+                      <button
+                        onClick={() => { setShowEditModal(true); setShowHostActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        Edit Event
+                      </button>
+                      <button
+                        onClick={() => { setShowInviteModal(true); setShowHostActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        Invite Friends
+                      </button>
+                      <button
+                        onClick={() => { addToGoogleCalendar(); setShowHostActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        Add to Calendar
+                      </button>
+                      <button
+                        onClick={() => { downloadIcal(); setShowHostActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        Download .ics
+                      </button>
+                      <div className="border-t border-gray-100 dark:border-gray-700" />
+                      <button
+                        onClick={() => { cancelEvent(); setShowHostActions(false); }}
+                        disabled={cancellingEvent}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        {cancellingEvent ? 'Cancelling...' : 'Cancel Event'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!isHost && (isRsvped || true) && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                  title="Invite friends"
+                >
+                  <UserPlus size={18} className="text-gray-700 dark:text-gray-300" />
+                </button>
+              )}
+              <button
+                onClick={shareEvent}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+              >
+                <Share2 size={20} className="text-gray-700 dark:text-gray-300" />
+              </button>
+            </div>
           </div>
 
           <div className="flex border-t border-gray-200 dark:border-gray-700 overflow-x-auto">
@@ -1085,6 +1221,32 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </div>
           )}
 
+          {(isRsvped || isHost) && (
+            <div className="mb-6 flex flex-wrap gap-2">
+              <button
+                onClick={addToGoogleCalendar}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <CalendarPlus className="w-4 h-4 text-blue-500" />
+                Google Calendar
+              </button>
+              <button
+                onClick={downloadIcal}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <CalendarPlus className="w-4 h-4 text-green-500" />
+                Download .ics
+              </button>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <UserPlus className="w-4 h-4 text-teal-500" />
+                Invite Friends
+              </button>
+            </div>
+          )}
+
           {!isRsvped && !isHost && (
             <button
               onClick={handleRSVP}
@@ -1169,6 +1331,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 ))}
               </div>
             </div>
+
+            {/* Co-hosts */}
+            <CoHostManager eventId={eventId} isHost={isHost} />
 
             {/* Check-in */}
             <CheckInButton eventId={eventId} isHost={isHost} isRsvped={isRsvped} />
@@ -1273,6 +1438,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         ) : (
           <div className="flex flex-col h-[calc(100vh-120px)]">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <EventAnnouncements eventId={eventId} canPost={isHost || isOrganizer} />
               {messages.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -1330,6 +1496,29 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           </div>
         )}
       </div>
+
+      {showEditModal && event && (
+        <EditEventModal
+          event={event}
+          onClose={() => setShowEditModal(false)}
+          onSaved={() => { fetchEvent(); }}
+        />
+      )}
+
+      {showInviteModal && event && (
+        <InviteFriendsModal
+          eventId={eventId}
+          eventTitle={event.title}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
+
+      {showHostActions && (
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => setShowHostActions(false)}
+        />
+      )}
     </div>
   );
 };
