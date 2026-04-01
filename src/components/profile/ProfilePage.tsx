@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Camera, MapPin, Calendar, Settings, MessageCircle,
+  Camera, MapPin, Calendar, MessageCircle,
   UserPlus, UserMinus, ArrowLeft, Heart, Bookmark,
-  Repeat, Link as LinkIcon, Grid, List, Sparkles
+  Sparkles, Settings, LayoutGrid, LayoutList, Link as LinkIcon, Edit2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
@@ -21,7 +21,7 @@ interface ProfilePageProps {
   onViewTopic?: (topic: Topic) => void;
 }
 
-type ProfileTab = 'posts' | 'likes' | 'bookmarks' | 'reposts';
+type ProfileTab = 'posts' | 'likes' | 'bookmarks';
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   userId,
@@ -30,19 +30,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onViewTopic
 }) => {
   const { user } = useAuth();
-  const {
-    viewingProfile,
-    loading,
-    fetchProfile,
-    fetchUserPosts,
-    fetchUserLikedPosts
-  } = useProfile();
-  const {
-    isConnected,
-    hasPendingRequest,
-    sendConnectionRequest,
-    removeConnection
-  } = useConnections();
+  const { viewingProfile, loading, fetchProfile, fetchUserPosts, fetchUserLikedPosts } = useProfile();
+  const { isConnected, hasPendingRequest, sendConnectionRequest, removeConnection } = useConnections();
   const { bookmarkedTopics, fetchBookmarkedTopics, isBookmarked, toggleBookmark } = useBookmarks();
   const { isLiked, toggleLike, getLikeCount, fetchLikeCounts } = useLikes();
 
@@ -56,188 +45,144 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const connected = isConnected(userId);
   const pendingRequest = hasPendingRequest(userId);
 
-  useEffect(() => {
-    fetchProfile(userId);
-  }, [userId, fetchProfile]);
+  useEffect(() => { fetchProfile(userId); }, [userId, fetchProfile]);
 
   useEffect(() => {
-    const loadTabContent = async () => {
+    const load = async () => {
       setTabLoading(true);
       if (activeTab === 'posts') {
-        const userPosts = await fetchUserPosts(userId);
-        setPosts(userPosts);
-        if (userPosts.length > 0) {
-          fetchLikeCounts('topic', userPosts.map(p => p.id));
-        }
+        const data = await fetchUserPosts(userId);
+        setPosts(data);
+        if (data.length > 0) fetchLikeCounts('topic', data.map(p => p.id));
       } else if (activeTab === 'likes') {
-        const liked = await fetchUserLikedPosts(userId);
-        setLikedPosts(liked);
+        setLikedPosts(await fetchUserLikedPosts(userId));
       } else if (activeTab === 'bookmarks' && isOwnProfile) {
         await fetchBookmarkedTopics();
       }
       setTabLoading(false);
     };
-
-    loadTabContent();
+    load();
   }, [activeTab, userId, isOwnProfile]);
 
   const handleConnect = async () => {
-    if (connected) {
-      await removeConnection(userId);
-    } else {
-      await sendConnectionRequest(userId);
-    }
+    if (connected) await removeConnection(userId);
+    else await sendConnectionRequest(userId);
   };
 
-  const renderContent = () => {
-    if (tabLoading) {
-      return (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      );
-    }
+  const getTopicsForTab = (): Topic[] => {
+    if (activeTab === 'posts') return posts;
+    if (activeTab === 'likes') return likedPosts;
+    if (activeTab === 'bookmarks' && isOwnProfile) return bookmarkedTopics;
+    return [];
+  };
 
-    let topics: Topic[] = [];
-
-    switch (activeTab) {
-      case 'posts':
-        topics = posts;
-        break;
-      case 'likes':
-        topics = likedPosts;
-        break;
-      case 'bookmarks':
-        topics = isOwnProfile ? bookmarkedTopics : [];
-        break;
-      default:
-        topics = [];
-    }
-
-    if (topics.length === 0) {
-      return (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          {activeTab === 'posts' && 'No posts yet'}
-          {activeTab === 'likes' && 'No liked posts'}
-          {activeTab === 'bookmarks' && 'No bookmarks'}
-          {activeTab === 'reposts' && 'No reposts'}
-        </div>
-      );
-    }
-
-    return (
-      <div className="divide-y divide-gray-200 dark:divide-gray-700">
-        {topics.map(topic => (
-          <TopicCard
-            key={topic.id}
-            topic={topic}
-            isLiked={isLiked('topic', topic.id)}
-            isBookmarked={isBookmarked(topic.id)}
-            onLike={() => toggleLike('topic', topic.id)}
-            onBookmark={() => toggleBookmark(topic.id)}
-            onShare={() => {}}
-            onEdit={() => {}}
-            onView={() => onViewTopic?.(topic)}
-          />
-        ))}
-      </div>
-    );
+  const emptyMessages: Record<ProfileTab, string> = {
+    posts: 'No posts yet',
+    likes: 'No liked posts yet',
+    bookmarks: 'No bookmarks yet',
   };
 
   if (loading && !viewingProfile) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
       </div>
     );
   }
 
   if (!viewingProfile) {
     return (
-      <div className="text-center py-12">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center items-center gap-4">
         <p className="text-gray-500 dark:text-gray-400">Profile not found</p>
-        <button
-          onClick={onBack}
-          className="mt-4 text-blue-600 hover:text-blue-700"
-        >
-          Go back
-        </button>
+        <button onClick={onBack} className="text-blue-600 hover:underline text-sm">Go back</button>
       </div>
     );
   }
 
+  const tabs: { id: ProfileTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'posts', label: 'Posts', icon: <LayoutGrid className="w-4 h-4" /> },
+    { id: 'likes', label: 'Likes', icon: <Heart className="w-4 h-4" /> },
+    ...(isOwnProfile ? [{ id: 'bookmarks' as ProfileTab, label: 'Saved', icon: <Bookmark className="w-4 h-4" /> }] : []),
+  ];
+
+  const topics = getTopicsForTab();
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center px-4 py-3">
+      <div className="sticky top-0 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-3 px-4 py-3">
           <button
             onClick={onBack}
-            className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
-          <div className="ml-4">
-            <h1 className="font-bold text-lg text-gray-900 dark:text-white">
-              {viewingProfile.name}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {viewingProfile.stats?.posts_count || 0} posts
-            </p>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-bold text-base text-gray-900 dark:text-white truncate">{viewingProfile.name}</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{viewingProfile.stats?.posts_count || 0} posts</p>
           </div>
+          {isOwnProfile && (
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
         </div>
       </div>
 
       <div className="relative">
-        <div className="h-32 sm:h-48 bg-gradient-to-br from-blue-500 to-blue-700 relative">
-          {viewingProfile.cover_photo_url && (
-            <img
-              src={viewingProfile.cover_photo_url}
-              alt="Cover"
-              className="w-full h-full object-cover"
-            />
+        <div className="h-40 sm:h-52 bg-gradient-to-br from-blue-500 via-blue-600 to-teal-500 relative overflow-hidden">
+          {viewingProfile.cover_photo_url ? (
+            <img src={viewingProfile.cover_photo_url} alt="Cover" className="w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute top-4 left-4 w-24 h-24 rounded-full border-2 border-white/40" />
+              <div className="absolute bottom-4 right-8 w-16 h-16 rounded-full border-2 border-white/30" />
+              <div className="absolute top-1/2 right-1/4 w-10 h-10 rounded-full border border-white/20" />
+            </div>
           )}
           {isOwnProfile && (
             <button
               onClick={() => setShowEditModal(true)}
-              className="absolute bottom-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium transition-colors"
             >
-              <Camera className="w-5 h-5" />
+              <Camera className="w-3.5 h-3.5" />
+              Edit cover
             </button>
           )}
         </div>
 
-        <div className="px-4 pb-4">
-          <div className="relative -mt-16 sm:-mt-20 mb-4 flex justify-between items-end">
-            <div className="relative">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white dark:border-gray-900 overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600">
+        <div className="px-4 sm:px-6">
+          <div className="relative -mt-14 sm:-mt-16 mb-4 flex justify-between items-end">
+            <div className="relative shrink-0">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-gray-900 overflow-hidden bg-gradient-to-br from-blue-500 to-teal-500 shadow-lg">
                 {viewingProfile.avatar_url ? (
-                  <img
-                    src={viewingProfile.avatar_url}
-                    alt={viewingProfile.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={viewingProfile.avatar_url} alt={viewingProfile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-3xl sm:text-4xl font-bold">
-                    {viewingProfile.name.charAt(0)}
+                  <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
+                    {viewingProfile.name.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
               {isOwnProfile && (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="absolute bottom-0 right-0 p-2 bg-blue-600 rounded-full text-white hover:bg-blue-700 transition-colors"
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-white shadow-md transition-colors border-2 border-white dark:border-gray-900"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            <div className="flex space-x-2 mb-2">
+            <div className="flex items-center gap-2 pb-1">
               {isOwnProfile ? (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
+                  <Edit2 className="w-3.5 h-3.5" />
                   Edit Profile
                 </button>
               ) : (
@@ -245,34 +190,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   {onStartChat && (
                     <button
                       onClick={() => onStartChat(userId)}
-                      className="p-2 border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
-                      <MessageCircle className="w-5 h-5" />
+                      <MessageCircle className="w-4 h-4" />
                     </button>
                   )}
                   <button
                     onClick={handleConnect}
                     disabled={pendingRequest}
-                    className={`px-4 py-2 rounded-full font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
                       connected
-                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 hover:text-red-600'
+                        ? 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700'
                         : pendingRequest
-                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        ? 'border border-gray-300 dark:border-gray-600 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                     }`}
                   >
                     {connected ? (
-                      <span className="flex items-center">
-                        <UserMinus className="w-4 h-4 mr-1" />
-                        Connected
-                      </span>
+                      <><UserMinus className="w-3.5 h-3.5" /> Connected</>
                     ) : pendingRequest ? (
-                      'Pending'
+                      'Pending...'
                     ) : (
-                      <span className="flex items-center">
-                        <UserPlus className="w-4 h-4 mr-1" />
-                        Connect
-                      </span>
+                      <><UserPlus className="w-3.5 h-3.5" /> Connect</>
                     )}
                   </button>
                 </>
@@ -280,40 +219,58 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
           </div>
 
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              {viewingProfile.name}
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400">
-              @{viewingProfile.email.split('@')[0]}
-            </p>
+          <div className="mb-3">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{viewingProfile.name}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">@{viewingProfile.email?.split('@')[0]}</p>
           </div>
 
-          {viewingProfile.bio && (
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+          {viewingProfile.bio ? (
+            <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
               {viewingProfile.bio}
             </p>
-          )}
+          ) : isOwnProfile ? (
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="text-sm text-gray-400 dark:text-gray-500 italic mb-4 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              + Add a bio
+            </button>
+          ) : null}
 
-          <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
             {viewingProfile.location_text && (
-              <div className="flex items-center">
-                <MapPin className="w-4 h-4 mr-1" />
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
                 {viewingProfile.location_text}
-              </div>
+              </span>
             )}
-            <div className="flex items-center">
-              <Calendar className="w-4 h-4 mr-1" />
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
               Joined {format(new Date(viewingProfile.created_at), 'MMMM yyyy')}
+            </span>
+          </div>
+
+          <div className="flex gap-5 mb-4">
+            <div>
+              <span className="font-bold text-gray-900 dark:text-white text-sm">{viewingProfile.stats?.connections_count || 0}</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">Connections</span>
+            </div>
+            <div>
+              <span className="font-bold text-gray-900 dark:text-white text-sm">{viewingProfile.stats?.posts_count || 0}</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">Posts</span>
+            </div>
+            <div>
+              <span className="font-bold text-gray-900 dark:text-white text-sm">{viewingProfile.stats?.likes_received || 0}</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">Likes</span>
             </div>
           </div>
 
           {viewingProfile.interests && viewingProfile.interests.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-4">
               {viewingProfile.interests.map((interest, idx) => (
                 <span
                   key={idx}
-                  className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm"
+                  className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium border border-blue-100 dark:border-blue-800/50"
                 >
                   {interest}
                 </span>
@@ -322,18 +279,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           )}
 
           {viewingProfile.spiritual_gifts && viewingProfile.spiritual_gifts.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-5 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-800/30">
               <div className="flex items-center gap-1.5 mb-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Spiritual Gifts
-                </span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Spiritual Gifts</span>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {viewingProfile.spiritual_gifts.map((gift, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-full text-sm font-medium border border-amber-200 dark:border-amber-800"
+                    className="px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded-full text-xs font-medium"
                   >
                     {gift}
                   </span>
@@ -341,61 +296,67 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
             </div>
           )}
-
-          <div className="flex space-x-6">
-            <button className="hover:underline">
-              <span className="font-bold text-gray-900 dark:text-white">
-                {viewingProfile.stats?.connections_count || 0}
-              </span>
-              <span className="text-gray-500 dark:text-gray-400 ml-1">
-                Connections
-              </span>
-            </button>
-            <div>
-              <span className="font-bold text-gray-900 dark:text-white">
-                {viewingProfile.stats?.likes_received || 0}
-              </span>
-              <span className="text-gray-500 dark:text-gray-400 ml-1">
-                Likes
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex">
-          {(['posts', 'likes', ...(isOwnProfile ? ['bookmarks'] : [])] as ProfileTab[]).map(tab => (
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-[57px] z-10">
+        <nav className="flex px-4 sm:px-6">
+          {tabs.map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-4 text-center font-medium transition-colors relative ${
-                activeTab === tab
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-3.5 text-sm font-semibold transition-colors relative ${
+                activeTab === tab.id
                   ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              <span className="capitalize">{tab}</span>
-              {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />
+              {tab.icon}
+              {tab.label}
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />
               )}
             </button>
           ))}
         </nav>
       </div>
 
-      <div className="bg-white dark:bg-gray-900">
-        {renderContent()}
+      <div className="bg-white dark:bg-gray-900 min-h-[200px]">
+        {tabLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600" />
+          </div>
+        ) : topics.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400 dark:text-gray-600">
+            {activeTab === 'posts' && <LayoutGrid className="w-8 h-8" />}
+            {activeTab === 'likes' && <Heart className="w-8 h-8" />}
+            {activeTab === 'bookmarks' && <Bookmark className="w-8 h-8" />}
+            <p className="text-sm">{emptyMessages[activeTab]}</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {topics.map(topic => (
+              <TopicCard
+                key={topic.id}
+                topic={topic}
+                isLiked={isLiked('topic', topic.id)}
+                isBookmarked={isBookmarked(topic.id)}
+                onLike={() => toggleLike('topic', topic.id)}
+                onBookmark={() => toggleBookmark(topic.id)}
+                onShare={() => {}}
+                onEdit={() => {}}
+                onView={() => onViewTopic?.(topic)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {showEditModal && (
         <EditProfileModal
           profile={viewingProfile}
           onClose={() => setShowEditModal(false)}
-          onSave={() => {
-            setShowEditModal(false);
-            fetchProfile(userId);
-          }}
+          onSave={() => { setShowEditModal(false); fetchProfile(userId); }}
         />
       )}
     </div>
