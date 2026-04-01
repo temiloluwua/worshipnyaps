@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { executeRecaptcha } from '../../lib/captcha';
 import { Mail, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PhoneVerificationModal } from './PhoneVerificationModal';
@@ -9,24 +10,11 @@ interface SocialAuthButtonsProps {
   mode?: 'login' | 'signup';
 }
 
-declare global {
-  interface Window {
-    grecaptcha: {
-      enterprise: {
-        ready: (callback: () => void) => void;
-        execute: (siteKey: string, options: { action: string }) => Promise<string>;
-      };
-    };
-  }
-}
-
 export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButtonsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showVerification, setShowVerification] = useState(false);
-
-  const recaptchaSiteKey = '6LfON4EsAAAAAJ4lGaSkQ2o0-S0zhTiJM7_chFkP';
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -63,24 +51,13 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
     try {
       let captchaToken: string | undefined;
 
-      if (window.grecaptcha) {
-        try {
-          captchaToken = await new Promise<string>((resolve, reject) => {
-            window.grecaptcha.enterprise.ready(async () => {
-              try {
-                const token = await window.grecaptcha.enterprise.execute(recaptchaSiteKey, { action: 'PHONE_AUTH' });
-                resolve(token);
-              } catch (error) {
-                reject(error);
-              }
-            });
-          });
-        } catch (error) {
-          console.error('reCAPTCHA error:', error);
-          toast.error('Security verification failed. Please try again.');
-          setIsLoading(false);
-          return;
-        }
+      try {
+        captchaToken = await executeRecaptcha('PHONE_AUTH');
+      } catch (error) {
+        console.error('reCAPTCHA error:', error);
+        toast.error('Security verification failed. Please try again.');
+        setIsLoading(false);
+        return;
       }
 
       const { error } = await supabase.auth.signInWithOtp({

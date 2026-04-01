@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { executeRecaptcha } from '../../lib/captcha';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
@@ -7,17 +8,6 @@ import { SocialAuthButtons } from './SocialAuthButtons';
 interface SignupFormProps {
   onSuccess?: () => void;
   onSwitchToLogin?: () => void;
-}
-
-declare global {
-  interface Window {
-    grecaptcha: {
-      enterprise: {
-        ready: (callback: () => void) => void;
-        execute: (siteKey: string, options: { action: string }) => Promise<string>;
-      };
-    };
-  }
 }
 
 export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
@@ -28,19 +18,28 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
 
-  const recaptchaSiteKey = '6LfON4EsAAAAAJ4lGaSkQ2o0-S0zhTiJM7_chFkP';
-  const isCaptchaEnabled = Boolean(recaptchaSiteKey);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setCaptchaError(null);
 
     try {
+      let captchaToken: string | undefined;
+
+      try {
+        captchaToken = await executeRecaptcha('SIGNUP');
+      } catch (error) {
+        console.error('reCAPTCHA error:', error);
+        setCaptchaError('Security verification failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          captchaToken,
           data: {
             name,
           },
