@@ -122,10 +122,12 @@ export interface Topic {
   updated_at: string;
   questions?: string[];
   bibleReference?: string;
+  bible_verse?: string;
   users?: {
     id: string;
     name: string;
     email: string;
+    avatar_url?: string;
   };
 }
 

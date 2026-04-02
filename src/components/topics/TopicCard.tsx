@@ -47,6 +47,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   const safeCategory =
     typeof topic.category === 'string' && topic.category.trim().length > 0 ? topic.category : 'general';
   const safeContent = typeof topic.content === 'string' ? topic.content.trim() : '';
+  const safeBibleRef = topic.bibleReference || topic.bible_verse || '';
   const hasQuestions = Array.isArray(topic.questions) && topic.questions.length > 0;
 
   const openBibleReference = (reference: string) => {
@@ -126,10 +127,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         </h2>
 
         {/* Bible Reference */}
-        {topic.bibleReference && (
+        {safeBibleRef && (
           <div className="text-center mb-6 relative z-10">
             <p className="text-base text-gray-700 italic">
-              {topic.bibleReference}
+              {safeBibleRef}
             </p>
           </div>
         )}
@@ -323,18 +324,18 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           </div>
 
           {/* Bible Reference */}
-          {topic.bibleReference && (
+          {safeBibleRef && (
             <div className="mb-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
               <div className="flex items-center space-x-2 mb-2">
                 <BookOpen className="w-4 h-4 text-amber-600" />
                 <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Scripture</span>
               </div>
-              <p className="font-bold text-amber-900 mb-2">{topic.bibleReference}</p>
+              <p className="font-bold text-amber-900 mb-2">{safeBibleRef}</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openESV(topic.bibleReference);
+                    openESV(safeBibleRef);
                   }}
                   className="inline-flex items-center space-x-1.5 bg-amber-600 text-white px-3 py-1.5 rounded-md hover:bg-amber-700 transition-all text-xs font-medium"
                 >
@@ -344,7 +345,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openBibleReference(topic.bibleReference);
+                    openBibleReference(safeBibleRef);
                   }}
                   className="inline-flex items-center space-x-1.5 bg-white text-amber-700 px-3 py-1.5 rounded-md hover:bg-amber-50 transition-all border border-amber-300 text-xs font-medium"
                 >

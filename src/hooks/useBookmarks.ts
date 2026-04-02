@@ -82,6 +82,7 @@ export const useBookmarks = () => {
         .filter((t): t is Topic => t !== undefined);
 
       setBookmarkedTopics(orderedTopics);
+      setBookmarkedIds(new Set(topicIds));
     } catch (error) {
       console.error('Error fetching bookmarked topics:', error);
     } finally {
