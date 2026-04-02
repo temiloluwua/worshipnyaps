@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, CheckCircle2, Edit3, UserPlus, XCircle, CalendarPlus, ChevronDown } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -1272,7 +1272,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           <div className="space-y-6 mt-8">
             {/* Open in Maps */}
-            {(isRsvped || isHost) && event.locations?.address && (
+            {event.locations?.address && (
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <a
                   href={`https://www.google.com/maps/search/${encodeURIComponent(event.locations.address)}`}
@@ -1280,7 +1280,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <MapPin className="w-4 h-4" />
                   Open in Maps
                 </a>
               </div>
@@ -1308,35 +1308,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               </div>
             )}
 
-            {/* Event Roles */}
-            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Event Roles</h3>
-              <div className="space-y-2">
-                {[
-                  { role: 'Worship Leader', status: true },
-                  { role: 'Discussion Leader', status: false },
-                  { role: 'Hospitality', status: true },
-                  { role: 'Prayer Leader', status: false }
-                ].map(({ role, status }) => (
-                  <div key={role} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{role}</span>
-                    {status ? (
-                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-sm">
-                        <CheckCircle2 className="w-4 h-4" /> Assigned
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Co-hosts */}
             <CoHostManager eventId={eventId} isHost={isHost} />
 
-            {/* Check-in */}
-            <CheckInButton eventId={eventId} isHost={isHost} isRsvped={isRsvped} />
+            {/* Check-in - only for hosts and organizers */}
+            {(isHost || isOrganizer) && (
+              <CheckInButton eventId={eventId} isHost={isHost} isRsvped={isRsvped} />
+            )}
 
             {/* Organizer Checklist */}
             {isHost && (

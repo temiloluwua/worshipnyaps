@@ -82,27 +82,29 @@ export const useProfile = () => {
     if (!user) return false;
 
     try {
+      const payload: Record<string, any> = {
+        id: user.id,
+        updated_at: new Date().toISOString()
+      };
+      if (updates.name !== undefined) payload.name = updates.name;
+      if (updates.bio !== undefined) payload.bio = updates.bio;
+      if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url;
+      if (updates.cover_photo_url !== undefined) payload.cover_photo_url = updates.cover_photo_url;
+      if (updates.interests !== undefined) payload.interests = updates.interests;
+      if (updates.spiritual_gifts !== undefined) payload.spiritual_gifts = updates.spiritual_gifts;
+      if (updates.location_text !== undefined) payload.location_text = updates.location_text;
+
       const { error } = await supabase
         .from('users')
-        .update({
-          name: updates.name,
-          bio: updates.bio,
-          avatar_url: updates.avatar_url,
-          cover_photo_url: updates.cover_photo_url,
-          interests: updates.interests,
-          spiritual_gifts: updates.spiritual_gifts,
-          location_text: updates.location_text,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+        .upsert(payload, { onConflict: 'id' });
 
       if (error) throw error;
 
       toast.success('Profile updated!');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error(error?.message || 'Failed to update profile');
       return false;
     }
   }, [user]);
@@ -124,11 +126,6 @@ export const useProfile = () => {
       const { data: { publicUrl } } = supabase.storage
         .from('profiles')
         .getPublicUrl(filePath);
-
-      await supabase
-        .from('users')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
 
       return publicUrl;
     } catch (error) {
@@ -155,11 +152,6 @@ export const useProfile = () => {
       const { data: { publicUrl } } = supabase.storage
         .from('profiles')
         .getPublicUrl(filePath);
-
-      await supabase
-        .from('users')
-        .update({ cover_photo_url: publicUrl })
-        .eq('id', user.id);
 
       return publicUrl;
     } catch (error) {
