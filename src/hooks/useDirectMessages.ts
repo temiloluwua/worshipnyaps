@@ -239,26 +239,38 @@ export const useDirectMessages = () => {
 
       if (error) throw error;
 
-      await fetchConversations();
+      const { data: participants } = await supabase
+        .from('conversation_participants')
+        .select(`*, users:user_id (id, name, avatar_url)`)
+        .eq('conversation_id', convId);
 
-      const conversation = conversations.find(c => c.id === convId) || {
+      const { data: convData } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('id', convId)
+        .maybeSingle();
+
+      const freshConversation: Conversation = {
         id: convId,
         is_group: false,
-        name: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        participants: [],
+        name: convData?.name ?? null,
+        created_at: convData?.created_at ?? new Date().toISOString(),
+        updated_at: convData?.updated_at ?? new Date().toISOString(),
+        participants: (participants || []).map(p => ({ ...p, user: p.users })),
         unread_count: 0
       };
 
-      setActiveConversation(conversation);
+      setActiveConversation(freshConversation);
+
+      fetchConversations();
+
       return convId;
     } catch (error) {
       console.error('Error starting conversation:', error);
       toast.error('Failed to start conversation');
       return null;
     }
-  }, [user, conversations, fetchConversations]);
+  }, [user, fetchConversations]);
 
   const createGroupConversation = useCallback(async (
     name: string,

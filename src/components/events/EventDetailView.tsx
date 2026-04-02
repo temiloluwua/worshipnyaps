@@ -1146,13 +1146,27 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{event.title}</h1>
 
-          {event.description_template && typeof event.description_template === 'object' ? (
-            <div className="mb-6">
-              <EventDescriptionDisplay template={event.description_template as DescriptionTemplate} />
-            </div>
-          ) : event.description ? (
-            <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>
-          ) : null}
+          {(() => {
+            const tmpl = event.description_template as DescriptionTemplate | null | undefined;
+            const hasTemplateContent = tmpl && typeof tmpl === 'object' && (
+              tmpl.whatToExpect?.trim() ||
+              (Array.isArray(tmpl.whatToBring) && tmpl.whatToBring.length > 0) ||
+              tmpl.parkingDirections?.trim() ||
+              tmpl.contactInfo?.trim() ||
+              tmpl.specialNotes?.trim()
+            );
+            if (hasTemplateContent) {
+              return (
+                <div className="mb-6">
+                  <EventDescriptionDisplay template={tmpl!} />
+                </div>
+              );
+            }
+            if (event.description && event.description !== 'Event details available in the template' && event.description !== 'Event details in template') {
+              return <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>;
+            }
+            return null;
+          })()}
 
           <div className="space-y-4 mb-6">
             <div className="flex items-start">
