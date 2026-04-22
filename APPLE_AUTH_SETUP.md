@@ -28,16 +28,17 @@ Apple authentication has been added to your app. Follow these steps to enable it
 2. Create a new identifier by clicking the **+** button
 3. Select **Services IDs** and click **Continue**
 4. Fill in:
-   - **Identifier**: Enter a unique identifier (e.g., `com.yourcompany.worshipandyapps.service`)
+   - **Identifier**: Enter a unique identifier (e.g., `com.worshipandyapps.service`)
    - Check **Sign in with Apple** under Capabilities
    - Click **Continue** → **Register**
 5. Open this Service ID and click **Configure** for "Sign in with Apple"
 6. Add your domain and return URLs:
    - **Primary App ID**: Select the App ID you created above
-   - **Web Domain**: `https://tijbvxhakeskvvquyjse.supabase.co` (your Supabase domain)
-   - **Return URLs**: Add both:
-     - `https://tijbvxhakeskvvquyjse.supabase.co/auth/v1/callback?provider=apple`
-     - `https://localhost:3000/` (for local development, optional)
+   - **Web Domain**: `tijbvxhakeskvvquyjse.supabase.co` (your Supabase domain, no https://)
+   - **Return URLs**: Add these:
+     - `https://tijbvxhakeskvvquyjse.supabase.co/auth/v1/callback?provider=apple` (for web)
+     - `com.worshipandyapps.app://auth-callback` (for iOS Capacitor app)
+     - `http://localhost:3000/` (for local development, optional)
    - Click **Save**
 
 ### 3. Create a Private Key
