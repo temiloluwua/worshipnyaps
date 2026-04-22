@@ -41,7 +41,7 @@ Apple authentication has been added to your app. Follow these steps to enable it
      - `http://localhost:3000/` (for local development, optional)
    - Click **Save**
 
-### 3. Create a Private Key
+### 3. Create a Private Key (JWT)
 
 1. Go to **Certificates, Identifiers & Profiles** → **Keys**
 2. Click the **+** button to create a new key
@@ -49,8 +49,8 @@ Apple authentication has been added to your app. Follow these steps to enable it
 4. Give it a name (e.g., "Supabase Key")
 5. Check the **Primary App ID** checkbox and select your App ID
 6. Click **Continue** → **Register**
-7. Click **Download** to get your `.p8` file (save this securely)
-8. Copy your **Key ID** from this page
+7. Click **Download** to get your `.p8` file (this is your private key - save securely)
+8. Copy your **Key ID** from this page (you'll need this too)
 
 ### 4. Configure in Supabase Dashboard
 
@@ -59,10 +59,15 @@ Apple authentication has been added to your app. Follow these steps to enable it
 3. Click on **Apple**
 4. Enable the provider
 5. Fill in the following fields:
-   - **Service ID**: The Service ID you created (e.g., `com.yourcompany.worshipandyapps.service`)
-   - **Team ID**: Your Apple Team ID (visible in Apple Developer Account → Membership)
-   - **Key ID**: The Key ID from step 3
-   - **Private Key**: The contents of your `.p8` file (including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines)
+   - **Service ID**: The Service ID you created (e.g., `com.worshipandyapps.service`)
+   - **Team ID**: Your Apple Team ID (find at [developer.apple.com](https://developer.apple.com/account/membership/))
+   - **Key ID**: The Key ID from step 3 (visible in Apple Developer Console when you created the key)
+   - **Private Key**: Paste the entire contents of your `.p8` file - **this is the JWT secret key**. Include the header and footer lines:
+     ```
+     -----BEGIN PRIVATE KEY-----
+     MIGfMA0GCSq...
+     -----END PRIVATE KEY-----
+     ```
 6. Click **Save**
 
 ### 5. Test in Your App
@@ -75,9 +80,14 @@ Apple authentication has been added to your app. Follow these steps to enable it
 
 ## Troubleshooting
 
-- **"Invalid credentials" error**: Check that your Service ID, Team ID, and Key ID match exactly in Supabase
-- **Redirect URI mismatch**: Ensure the return URL in Apple Developer Console matches `https://tijbvxhakeskvvquyjse.supabase.co/auth/v1/callback?provider=apple`
-- **Private key issues**: Make sure the entire `.p8` content is copied, including the header/footer lines
+- **"Invalid credentials" error**: Check that your Service ID, Team ID, and Key ID match exactly in Supabase. Also verify the Private Key (JWT) is the complete `.p8` file content with header/footer.
+- **"Invalid private key" error**: Make sure you pasted the **entire** `.p8` file contents including:
+  - `-----BEGIN PRIVATE KEY-----` (top)
+  - `-----END PRIVATE KEY-----` (bottom)
+  - All lines in between
+- **Redirect URI mismatch**: Ensure return URLs in Apple Developer Console match exactly:
+  - Web: `https://tijbvxhakeskvvquyjse.supabase.co/auth/v1/callback?provider=apple`
+  - iOS: `com.worshipandyapps.app://auth-callback`
 
 ## User Data Handling
 
