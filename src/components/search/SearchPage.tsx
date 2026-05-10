@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, X, Users, Hash, FileText, TrendingUp } from 'lucide-react';
+import { Search, X, Users, Hash, FileText, TrendingUp, Flame } from 'lucide-react';
 import { useSearch, SearchTab } from '../../hooks/useSearch';
 import { useHashtags } from '../../hooks/useHashtags';
+import { useTopics } from '../../hooks/useTopics';
 import { ProfileCard } from '../profile/ProfileCard';
 import { TopicCard } from '../topics/TopicCard';
 import { useLikes } from '../../hooks/useLikes';
@@ -31,7 +32,8 @@ export const SearchPage: React.FC<SearchPageProps> = ({
     clearResults
   } = useSearch();
   const { trendingHashtags, fetchTrendingHashtags } = useHashtags();
-  const { isLiked, toggleLike } = useLikes();
+  const { topics } = useTopics();
+  const { isLiked, toggleLike, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
 
   const [searchInput, setSearchInput] = useState('');
@@ -70,6 +72,10 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
   const hasResults = results.people.length > 0 || results.topics.length > 0 || results.hashtags.length > 0;
   const showInitialState = !searchInput.trim() && !loading;
+
+  const popularPosts = topics
+    .sort((a, b) => (b.like_count || 0) - (a.like_count || 0))
+    .slice(0, 5);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -220,6 +226,33 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
         {showInitialState && (
           <div className="space-y-8">
+            {popularPosts.length > 0 && (
+              <section>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <Flame className="w-5 h-5 mr-2 text-orange-500" />
+                  Popular Posts
+                </h2>
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+                  {popularPosts.map(post => (
+                    <TopicCard
+                      key={post.id}
+                      topic={{
+                        ...post,
+                        likes: getLikeCount('topic', post.id)
+                      }}
+                      isLiked={isLiked('topic', post.id)}
+                      isBookmarked={isBookmarked(post.id)}
+                      onLike={() => toggleLike('topic', post.id)}
+                      onBookmark={() => toggleBookmark(post.id)}
+                      onShare={() => {}}
+                      onEdit={() => {}}
+                      onView={() => onViewTopic?.(post)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {trendingHashtags.length > 0 && (
               <section>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">

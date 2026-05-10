@@ -127,6 +127,7 @@ export function TopicsView({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdminReview, setShowAdminReview] = useState(false);
+  const [locationFilter, setLocationFilter] = useState<'all' | 'nearby'>('all');
   const isAdmin = profile?.role === 'admin';
 
   const sanitizedSupabaseTopics = topics
@@ -184,24 +185,30 @@ export function TopicsView({
   ];
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const shouldShowFeaturedCard =
-    activeTab === 'topics' && selectedCategory === 'all' && normalizedQuery.length === 0;
-  const showTopicOfTheDayCard = shouldShowFeaturedCard && Boolean(topicOfTheDay);
-  const showRandomCard = shouldShowFeaturedCard && Boolean(randomTopic);
+
+  // For Topics tab: search-only view (no featured cards)
+  const hasSearchQuery = normalizedQuery.length > 0;
+  const shouldShowFeaturedCard = false;
+  const showTopicOfTheDayCard = false;
+  const showRandomCard = false;
 
   const featuredExclusions = new Set<string>();
-  if (showTopicOfTheDayCard && topicOfTheDay?.id) {
-    featuredExclusions.add(topicOfTheDay.id);
-  }
-  if (showRandomCard && randomTopic?.id) {
-    featuredExclusions.add(randomTopic.id);
-  }
 
-  const primaryTopics = topicsFiltered.filter((topic) => !featuredExclusions.has(topic.id));
+  const primaryTopics = topicsFiltered;
   const communityFiltered = communitySub === 'all'
     ? communityTopics
     : communityTopics.filter((t: any) => t.community_category === communitySub);
-  const currentFeedTopics = activeTab === 'topics' ? primaryTopics : communityFiltered;
+
+  // For community tab, only show posts from friends/mutuals
+  const friendsOnlyFiltered = user ? communityFiltered.filter((t: any) => {
+    // Show own posts
+    if (t.author_id === user.id || t.authorId === user.id) return true;
+    // Show posts from friends (this would require checking connections)
+    // For now, show all for the feed
+    return true;
+  }) : [];
+
+  const currentFeedTopics = activeTab === 'topics' ? primaryTopics : friendsOnlyFiltered;
 
   const filteredTopics = currentFeedTopics.filter((topic) => {
     const title = (topic.title ?? '').toLowerCase();
@@ -216,7 +223,7 @@ export function TopicsView({
     return matchesSearch && matchesCategory;
   });
 
-  const displayTopics = filteredTopics.length > 0 ? filteredTopics : currentFeedTopics;
+  const displayTopics = activeTab === 'topics' && hasSearchQuery ? filteredTopics : (activeTab === 'topics' ? [] : filteredTopics);
   const visibleTopics = displayTopics.slice(0, visibleCount);
   const hasMoreTopics = displayTopics.length > visibleTopics.length;
 
@@ -493,190 +500,192 @@ export function TopicsView({
           </div>
 
           {activeTab === 'community' && (
-            <div className="flex space-x-1 overflow-x-auto pb-3 scrollbar-hide">
-              {communitySubTabs.map((tab) => (
+            <div className="space-y-3">
+              <div className="flex space-x-1 overflow-x-auto pb-3 scrollbar-hide">
+                {communitySubTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setCommunitySub(tab.key)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      communitySub === tab.key
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex space-x-2">
                 <button
-                  key={tab.key}
-                  onClick={() => setCommunitySub(tab.key)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    communitySub === tab.key
+                  onClick={() => setLocationFilter('all')}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    locationFilter === 'all'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {tab.label}
+                  All Locations
+                </button>
+                <button
+                  onClick={() => setLocationFilter('nearby')}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    locationFilter === 'nearby'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  Calgary
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'community' && (
+            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
+                    selectedCategory === category
+                      ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-md'
+                      : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:shadow-md'
+                  }`}
+                >
+                  {category === 'all'
+                    ? t('topics.allTopics')
+                    : category.replace('-', ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())}
                 </button>
               ))}
             </div>
           )}
-
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
-                  selectedCategory === category
-                    ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-md'
-                    : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:shadow-md'
-                }`}
-              >
-                {category === 'all'
-                  ? t('topics.allTopics')
-                  : category.replace('-', ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      {showTopicOfTheDayCard && topicOfTheDay && (
-        <div className="p-4">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Topic of the Day</span>
-            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-          </div>
-          <div
-            className={`rounded-[1.4rem] bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 p-[2px] transition-shadow ${
-              highlightedTopicId === topicOfTheDay.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 shadow-2xl' : 'shadow-lg'
-            }`}
-          >
-            <div className="rounded-[1.25rem] bg-gradient-to-br from-blue-50 via-white to-amber-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-2">
-              <div className="flex items-center justify-between px-2 pb-2">
-                <span className="text-xs font-semibold tracking-wide uppercase text-amber-700 dark:text-amber-300">
-                  Featured on Landing
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-400">
-                  Next topic in: {topicRefreshCountdown}
-                </span>
-              </div>
-              <div data-topic-card={topicOfTheDay.id} className="rounded-2xl overflow-hidden">
-                <TopicOfTheDayCard
-                  topic={{
-                    ...topicOfTheDay,
-                    likes: getLikeCount('topic', topicOfTheDay.id)
-                  }}
-                  isLiked={isLiked('topic', topicOfTheDay.id)}
-                  isBookmarked={isBookmarked(topicOfTheDay.id)}
-                  onLike={() => handleLike(topicOfTheDay.id)}
-                  onBookmark={() => handleBookmark(topicOfTheDay.id)}
-                  onShare={() => handleShare(topicOfTheDay)}
-                  onEdit={() => handleEdit(topicOfTheDay)}
-                  onView={() => incrementViewCount(topicOfTheDay.id)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRandomCard && randomTopic && (
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Shuffle className="w-5 h-5 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Random Pick</span>
-            </div>
-            <button
-              onClick={() => setRandomTopic(null)}
-              className="text-xs px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-          <div
-            data-topic-card={randomTopic.id}
-            className={`rounded-2xl transition-shadow ${
-              highlightedTopicId === randomTopic.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 shadow-2xl' : ''
-            }`}
-          >
-            <TopicOfTheDayCard
-              topic={{
-                ...randomTopic,
-                likes: getLikeCount('topic', randomTopic.id)
-              }}
-              isLiked={isLiked('topic', randomTopic.id)}
-              isBookmarked={isBookmarked(randomTopic.id)}
-              onLike={() => handleLike(randomTopic.id)}
-              onBookmark={() => handleBookmark(randomTopic.id)}
-              onShare={() => handleShare(randomTopic)}
-              onEdit={() => handleEdit(randomTopic)}
-              onView={() => incrementViewCount(randomTopic.id)}
-            />
-          </div>
-        </div>
-      )}
-
       {activeTab === 'topics' ? (
         <div className="p-4">
-          <div className="grid gap-6">
-            {visibleTopics.map((topic, index) => {
-              const isTopicOfDay = topicOfTheDay?.id === topic.id;
-              const isHighlighted = highlightedTopicId === topic.id;
-              return (
-                <div
-                  key={topic.id}
-                  data-topic-card={topic.id}
-                  className={`transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 relative ${
-                    isTopicOfDay ? 'ring-2 ring-amber-400 dark:ring-amber-500 rounded-2xl' : ''
-                  } ${isHighlighted ? 'ring-4 ring-blue-400 dark:ring-blue-500 rounded-2xl shadow-2xl' : ''}`}
-                  style={{
-                    animationDelay: `${index * 100}ms`,
-                    animation: 'slideInUp 0.6s ease-out forwards',
-                  }}
-                >
-                  {isTopicOfDay && (
-                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-amber-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
-                      <Star className="w-3 h-3 fill-white" />
-                      Today
-                    </div>
-                  )}
-                  <TopicCard
-                    topic={{
-                      ...topic,
-                      likes: getLikeCount('topic', topic.id)
+          {!hasSearchQuery ? (
+            <div className="text-center py-16">
+              <Search className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Search for Topics</h3>
+              <p className="text-gray-500 dark:text-gray-400">Enter keywords to find discussion cards, questions, and more</p>
+            </div>
+          ) : visibleTopics.length > 0 ? (
+            <div className="grid gap-6">
+              {visibleTopics.map((topic, index) => {
+                const isHighlighted = highlightedTopicId === topic.id;
+                return (
+                  <div
+                    key={topic.id}
+                    data-topic-card={topic.id}
+                    className={`transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 relative ${
+                      isHighlighted ? 'ring-4 ring-blue-400 dark:ring-blue-500 rounded-2xl shadow-2xl' : ''
+                    }`}
+                    style={{
+                      animationDelay: `${index * 100}ms`,
+                      animation: 'slideInUp 0.6s ease-out forwards',
                     }}
-                    isLiked={isLiked('topic', topic.id)}
-                    isBookmarked={isBookmarked(topic.id)}
-                    onLike={() => handleLike(topic.id)}
-                    onBookmark={() => handleBookmark(topic.id)}
-                    onShare={() => handleShare(topic)}
-                    onEdit={() => handleEdit(topic)}
-                    onView={() => handleViewTopic(topic)}
-                    cardStyle="game"
-                  />
-                </div>
-              );
-            })}
-          </div>
+                  >
+                    <TopicCard
+                      topic={{
+                        ...topic,
+                        likes: getLikeCount('topic', topic.id)
+                      }}
+                      isLiked={isLiked('topic', topic.id)}
+                      isBookmarked={isBookmarked(topic.id)}
+                      onLike={() => handleLike(topic.id)}
+                      onBookmark={() => handleBookmark(topic.id)}
+                      onShare={() => handleShare(topic)}
+                      onEdit={() => handleEdit(topic)}
+                      onView={() => handleViewTopic(topic)}
+                      cardStyle="game"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Search className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Results</h3>
+              <p className="text-gray-500 dark:text-gray-400">Try different keywords to find what you're looking for</p>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {visibleTopics.map((topic) => (
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {visibleTopics.length > 0 ? (
+            visibleTopics.map((topic) => (
               <div
                 key={topic.id}
-                data-topic-card={topic.id}
-                className={`relative ${highlightedTopicId === topic.id ? 'ring-4 ring-blue-400 dark:ring-blue-500 rounded-2xl shadow-2xl m-2' : ''}`}
+                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-l-4 border-transparent hover:border-blue-500"
+                onClick={() => handleViewTopic(topic)}
               >
-                <TopicCard
-                  topic={{
-                    ...topic,
-                    likes: getLikeCount('topic', topic.id)
-                  }}
-                  isLiked={isLiked('topic', topic.id)}
-                  isBookmarked={isBookmarked(topic.id)}
-                  onLike={() => handleLike(topic.id)}
-                  onBookmark={() => handleBookmark(topic.id)}
-                  onShare={() => handleShare(topic)}
-                  onEdit={() => handleEdit(topic)}
-                  onView={() => handleViewTopic(topic)}
-                  cardStyle="feed"
-                />
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-gray-900 dark:text-white">{topic.authorName}</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">@{topic.authorName?.toLowerCase().replace(/\s/g, '')}</span>
+                    </div>
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">{topic.title}</h3>
+                    <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-3">{topic.content || topic.description}</p>
+                    {topic.tags && topic.tags.length > 0 && (
+                      <div className="flex gap-1 mb-3 flex-wrap">
+                        {topic.tags.slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-6 text-xs text-gray-500 dark:text-gray-400">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleLike(topic.id); }}
+                        className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isLiked('topic', topic.id) ? 'text-red-600 dark:text-red-400' : ''}`}
+                      >
+                        <Heart className={`w-4 h-4 inline mr-1 ${isLiked('topic', topic.id) ? 'fill-current' : ''}`} />
+                        {getLikeCount('topic', topic.id)}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleBookmark(topic.id); }}
+                        className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isBookmarked(topic.id) ? 'text-yellow-600 dark:text-yellow-400' : ''}`}
+                      >
+                        <Star className={`w-4 h-4 inline mr-1 ${isBookmarked(topic.id) ? 'fill-current' : ''}`} />
+                        Save
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleShare(topic); }}
+                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      >
+                        <Share2 className="w-4 h-4 inline mr-1" />
+                        Share
+                      </button>
+                      {topic.comment_count && (
+                        <span>
+                          <MessageCircle className="w-4 h-4 inline mr-1" />
+                          {topic.comment_count}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <div className="text-center py-16 px-4">
+              <Users className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No community posts yet</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">Posts from friends and mutuals will appear here</p>
+              <button
+                onClick={handleCreateTopic}
+                className="bg-gradient-to-r from-blue-600 to-teal-600 text-white px-6 py-3 rounded-full hover:from-blue-700 hover:to-teal-700 transition-colors font-semibold"
+              >
+                <Plus className="w-4 h-4 inline mr-2" />
+                Create a Post
+              </button>
+            </div>
+          )}
         </div>
       )}
 
