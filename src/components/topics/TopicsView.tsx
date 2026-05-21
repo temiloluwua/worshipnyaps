@@ -186,7 +186,6 @@ export function TopicsView({
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  // For Topics tab: search-only view (no featured cards)
   const hasSearchQuery = normalizedQuery.length > 0;
   const shouldShowFeaturedCard = false;
   const showTopicOfTheDayCard = false;
@@ -223,7 +222,7 @@ export function TopicsView({
     return matchesSearch && matchesCategory;
   });
 
-  const displayTopics = activeTab === 'topics' && hasSearchQuery ? filteredTopics : (activeTab === 'topics' ? [] : filteredTopics);
+  const displayTopics = filteredTopics;
   const visibleTopics = displayTopics.slice(0, visibleCount);
   const hasMoreTopics = displayTopics.length > visibleTopics.length;
 
@@ -565,13 +564,7 @@ export function TopicsView({
 
       {activeTab === 'topics' ? (
         <div className="p-4">
-          {!hasSearchQuery ? (
-            <div className="text-center py-16">
-              <Search className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Search for Topics</h3>
-              <p className="text-gray-500 dark:text-gray-400">Enter keywords to find discussion cards, questions, and more</p>
-            </div>
-          ) : visibleTopics.length > 0 ? (
+          {visibleTopics.length > 0 ? (
             <div className="grid gap-6">
               {visibleTopics.map((topic, index) => {
                 const isHighlighted = highlightedTopicId === topic.id;
