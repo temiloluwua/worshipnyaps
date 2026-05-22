@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CAPACITOR_DEBUG</key>
+	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Worship and Yapps</string>
+	<string>Worship N Yaps</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,12 +25,24 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
+	<string>LaunchScreen.storyboard</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Worship and Yapps uses your location to show nearby Bible studies, events, and meetups in your area.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Worship and Yapps needs access to your photo library so you can upload a profile picture or cover photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Worship and Yapps may save images you share or download from the community to your photo library.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Worship and Yapps uses the camera so you can take a profile picture or share photos with the community.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Worship and Yapps may use the microphone when you record audio or video to share with the community.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

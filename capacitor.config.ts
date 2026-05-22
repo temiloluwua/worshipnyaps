@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.worshipandyapps.app',
+  appId: 'com.worshipnyapps.app',
   appName: 'Worship and Yapps',
   webDir: 'dist',
   plugins: {
