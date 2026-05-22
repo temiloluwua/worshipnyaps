@@ -1,7 +1,9 @@
-import React from 'react';
-import { Sun, Moon, Monitor, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
+import { useAuth } from '../hooks/useAuth';
 import { Modal, ModalBody } from './ui/Modal';
 
 interface SettingsModalProps {
@@ -15,9 +17,28 @@ const languages = [
   { code: 'fr', label: 'Français', flag: 'FR' },
 ];
 
+const DELETE_CONFIRM_PHRASE = 'DELETE';
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { i18n } = useTranslation();
   const { theme, setTheme, resetToSystem, isSystemPreference } = useTheme();
+  const { user, deleteAccount } = useAuth();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (confirmText !== DELETE_CONFIRM_PHRASE) return;
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      toast.success('Your account has been deleted.');
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete account. Please try again.');
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Settings">
@@ -99,6 +120,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </button>
             </div>
           </div>
+
+          {user && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Trash2 size={18} className="text-red-600 dark:text-red-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Account</h3>
+              </div>
+
+              {!showDeleteConfirm ? (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
+                >
+                  <Trash2 size={16} />
+                  <span className="flex-1">Delete account</span>
+                </button>
+              ) : (
+                <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/10 p-4 space-y-3">
+                  <div className="flex gap-2">
+                    <AlertTriangle size={18} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-700 dark:text-red-300">
+                      <p className="font-semibold mb-1">This permanently deletes your account.</p>
+                      <p>Your profile, posts, comments, events, messages, and connections will be removed. This cannot be undone.</p>
+                    </div>
+                  </div>
+                  <label className="block text-xs text-gray-700 dark:text-gray-300">
+                    Type <span className="font-mono font-semibold">{DELETE_CONFIRM_PHRASE}</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder={DELETE_CONFIRM_PHRASE}
+                    autoCapitalize="characters"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    disabled={isDeleting}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setConfirmText('');
+                      }}
+                      disabled={isDeleting}
+                      className="flex-1 px-4 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={confirmText !== DELETE_CONFIRM_PHRASE || isDeleting}
+                      className="flex-1 px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete forever'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </ModalBody>
     </Modal>

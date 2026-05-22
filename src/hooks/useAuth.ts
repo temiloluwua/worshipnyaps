@@ -77,11 +77,21 @@ export function useAuth() {
     setProfile(null);
   };
 
+  const deleteAccount = async () => {
+    const { error } = await supabase.rpc('delete_user_account');
+    if (error) throw error;
+    await supabase.auth.signOut();
+    setProfile(null);
+    setUser(null);
+    setSession(null);
+  };
+
   return {
     user,
     session,
     profile,
     loading,
     signOut,
+    deleteAccount,
   };
 }
