@@ -541,25 +541,6 @@ export function TopicsView({
             </div>
           )}
 
-          {activeTab === 'community' && (
-            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm ${
-                    selectedCategory === category
-                      ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-md'
-                      : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:shadow-md'
-                  }`}
-                >
-                  {category === 'all'
-                    ? t('topics.allTopics')
-                    : category.replace('-', ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
