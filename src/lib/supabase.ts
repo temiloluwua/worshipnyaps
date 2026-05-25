@@ -52,6 +52,7 @@ export interface UserProfile {
   phone?: string;
   role: 'member' | 'host' | 'admin';
   is_approved: boolean;
+  is_verified?: boolean;
   avatar_url?: string;
   bio?: string;
   created_at: string;

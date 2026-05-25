@@ -12,6 +12,7 @@ import { useLikes } from '../../hooks/useLikes';
 import { Topic } from '../../lib/supabase';
 import { TopicCard } from '../topics/TopicCard';
 import { EditProfileModal } from './EditProfileModal';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { format } from 'date-fns';
 
 interface ProfilePageProps {
@@ -220,7 +221,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           <div className="mb-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{viewingProfile.name}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-1.5">
+              <span>{viewingProfile.name}</span>
+              <VerifiedBadge verified={(viewingProfile as any).is_verified} size={20} />
+            </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">@{viewingProfile.email?.split('@')[0]}</p>
           </div>
 

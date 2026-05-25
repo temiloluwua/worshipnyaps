@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEventInvitations } from '../../hooks/useEventInvitations';
 import { useEvents } from '../../hooks/useEvents';
 import { CommunityChat } from '../community/CommunityChat';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { supabase, UserProfile } from '../../lib/supabase';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -213,7 +214,10 @@ export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <h3 className="text-lg font-semibold text-gray-900">{member.name}</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1">
+                              <span>{member.name}</span>
+                              <VerifiedBadge verified={(member as any).is_verified} size={18} />
+                            </h3>
                             {isPending ? (
                               <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
                                 Pending
@@ -268,7 +272,10 @@ export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps
                       </div>
 
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{friend.name}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1">
+                          <span>{friend.name}</span>
+                          <VerifiedBadge verified={(friend as any).is_verified} size={18} />
+                        </h3>
                         <p className="text-green-600 text-sm font-medium capitalize">{friend.role}</p>
                       </div>
 

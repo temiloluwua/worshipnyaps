@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, AlertTriangle, Flag } from 'lucide-react';
+import { UserPlus, AlertTriangle, Flag, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 import toast from 'react-hot-toast';
 
 interface Attendee {
   user_id: string;
   status: string;
-  user?: { id: string; name: string; avatar_url?: string };
+  user?: { id: string; name: string; avatar_url?: string; is_verified?: boolean };
 }
 
 interface Connection {
@@ -51,9 +52,9 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
     try {
       const { data, error } = await supabase
         .from('event_attendees')
-        .select('user_id, status, user:users!user_id(id, name, avatar_url)')
+        .select('user_id, status, user:users!user_id(id, name, avatar_url, is_verified)')
         .eq('event_id', eventId)
-        .eq('status', 'registered');
+        .in('status', ['registered', 'attended']);
 
       if (error) throw error;
       setAttendees((data || []) as Attendee[]);
@@ -104,6 +105,24 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
       } else {
         toast.error(err.message || 'Failed to send request');
       }
+    }
+  };
+
+  const handleMarkAttended = async (attendeeUserId: string) => {
+    if (!isHost) return;
+    try {
+      const { error } = await supabase
+        .from('event_attendees')
+        .update({ status: 'attended' })
+        .eq('event_id', eventId)
+        .eq('user_id', attendeeUserId);
+      if (error) throw error;
+      setAttendees(prev =>
+        prev.map(a => (a.user_id === attendeeUserId ? { ...a, status: 'attended' } : a))
+      );
+      toast.success('Marked as attended');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to mark attended');
     }
   };
 
@@ -182,14 +201,29 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
                   />
                 )}
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {attendee.user?.name}
-                    {isSelf && <span className="text-xs ml-2 text-blue-600">you</span>}
+                  <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
+                    <span>{attendee.user?.name}</span>
+                    <VerifiedBadge verified={attendee.user?.is_verified} />
+                    {isSelf && <span className="text-xs ml-1 text-blue-600">you</span>}
                   </p>
+                  {attendee.status === 'attended' && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Attended</p>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
+                {isHost && !isSelf && attendee.status !== 'attended' && (
+                  <button
+                    onClick={() => handleMarkAttended(attendee.user_id)}
+                    className="px-3 py-1 text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors flex items-center gap-1"
+                    title="Mark this attendee as having attended the event"
+                  >
+                    <Check className="w-3 h-3" />
+                    Mark attended
+                  </button>
+                )}
+
                 {!isSelf && !isHost && !isFriend && (
                   <button
                     onClick={() => handleAddFriend(attendee.user_id || '')}

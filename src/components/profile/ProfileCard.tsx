@@ -2,6 +2,7 @@ import React from 'react';
 import { UserPlus, UserMinus, MessageCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useConnections } from '../../hooks/useConnections';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 
 interface ProfileCardProps {
   user: {
@@ -12,6 +13,7 @@ interface ProfileCardProps {
     bio?: string;
     interests?: string[];
     spiritual_gifts?: string[];
+    is_verified?: boolean;
   };
   onViewProfile?: () => void;
   onStartChat?: () => void;
@@ -72,8 +74,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 dark:text-white truncate">
-            {user.name}
+          <p className="font-medium text-gray-900 dark:text-white truncate flex items-center gap-1">
+            <span className="truncate">{user.name}</span>
+            <VerifiedBadge verified={user.is_verified} />
           </p>
           {user.email && (
             <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
@@ -124,8 +127,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           </div>
         </div>
 
-        <h3 className="font-bold text-gray-900 dark:text-white truncate">
-          {user.name}
+        <h3 className="font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
+          <span className="truncate">{user.name}</span>
+          <VerifiedBadge verified={user.is_verified} size={18} />
         </h3>
         {user.email && (
           <p className="text-sm text-gray-500 dark:text-gray-400 truncate mb-2">
