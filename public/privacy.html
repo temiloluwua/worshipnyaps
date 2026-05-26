@@ -1,79 +1,356 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Privacy Policy — Worship and Yapps</title>
-<meta name="description" content="Privacy policy for the Worship and Yapps mobile and web application." />
-<style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 760px; margin: 0 auto; padding: 32px 20px; line-height: 1.6; color: #1f2937; background: #ffffff; }
-  @media (prefers-color-scheme: dark) { body { background: #0f172a; color: #e5e7eb; } a { color: #93c5fd; } h1, h2 { color: #ffffff; } }
-  h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.15rem; margin-top: 1.75rem; }
-  .meta { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; }
-  a { color: #2563eb; }
-  ul { padding-left: 1.25rem; }
-  hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Worship &amp; Yapps</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue-600: #2563eb;
+      --blue-700: #1d4ed8;
+      --blue-50: #eff6ff;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-700);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    header {
+      background: var(--blue-600);
+      color: #fff;
+      padding: 0 24px;
+    }
+
+    .header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+
+    .back-link {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: #fff; }
+
+    .hero {
+      background: linear-gradient(135deg, var(--blue-600) 0%, #1e40af 100%);
+      color: #fff;
+      padding: 64px 24px 56px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: rgba(255,255,255,0.8);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .last-updated {
+      display: inline-block;
+      margin-top: 16px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    .toc {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 48px;
+    }
+
+    .toc h2 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray-500);
+      margin-bottom: 12px;
+    }
+
+    .toc ol {
+      padding-left: 20px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .toc a {
+      color: var(--blue-600);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .toc a:hover { text-decoration: underline; }
+
+    section {
+      margin-bottom: 48px;
+    }
+
+    section h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--blue-50);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--blue-600);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    p { margin-bottom: 14px; }
+    p:last-child { margin-bottom: 0; }
+
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 14px;
+    }
+
+    li { margin-bottom: 6px; }
+
+    .highlight-box {
+      background: var(--blue-50);
+      border-left: 4px solid var(--blue-600);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      margin: 20px 0;
+      font-size: 15px;
+    }
+
+    .contact-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .contact-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+    }
+
+    .contact-card p { color: var(--gray-500); margin-bottom: 16px; }
+
+    .contact-email {
+      display: inline-block;
+      background: var(--blue-600);
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      transition: background 0.15s;
+    }
+    .contact-email:hover { background: var(--blue-700); }
+
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--gray-200);
+      color: var(--gray-500);
+      font-size: 13px;
+    }
+
+    footer a { color: var(--blue-600); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 28px; }
+      main { padding: 32px 16px 64px; }
+    }
+  </style>
 </head>
 <body>
-<h1>Privacy Policy</h1>
-<p class="meta">Worship and Yapps · Last updated May 22, 2026</p>
 
-<p>This Privacy Policy describes how Worship and Yapps ("we", "us", or "the app") collects, uses, and protects information you provide when you use our iOS app and website at worshipnyaps.com.</p>
+<header>
+  <div class="header-inner">
+    <a href="/" class="logo">Worship &amp; Yapps</a>
+    <a href="/" class="back-link">&#8592; Back to App</a>
+  </div>
+</header>
 
-<h2>1. Information we collect</h2>
-<p>We collect only what is necessary to operate the app:</p>
-<ul>
-  <li><strong>Account information</strong> — name, email address, and (if you choose phone sign-in) phone number, used to create and secure your account.</li>
-  <li><strong>Profile content</strong> — profile photo, cover photo, bio, spiritual gifts, and any other information you choose to add to your profile.</li>
-  <li><strong>User-generated content</strong> — topics, comments, event posts, RSVPs, direct messages, and group messages you create within the app.</li>
-  <li><strong>Connections</strong> — the list of users you connect with or follow.</li>
-  <li><strong>Approximate location</strong> — only when you grant permission, and only to display nearby events on the map. Your precise location is never stored.</li>
-  <li><strong>Photos</strong> — only when you choose to upload them as a profile picture, cover image, or event photo.</li>
-  <li><strong>Authentication data from third parties</strong> — if you sign in with Google or Apple, we receive your name and email address from that provider only.</li>
-</ul>
+<div class="hero">
+  <h1>Privacy Policy</h1>
+  <p>How we collect, use, and protect your personal information.</p>
+  <span class="last-updated">Last updated: May 22, 2026</span>
+</div>
 
-<h2>2. How we use your information</h2>
-<ul>
-  <li>To create and manage your account.</li>
-  <li>To display your profile, posts, and events to other users in accordance with your visibility settings.</li>
-  <li>To deliver direct and group messages.</li>
-  <li>To show nearby events on the map.</li>
-  <li>To send security verification codes when signing in by phone.</li>
-  <li>To protect the service from spam, fraud, and abuse (for example using Google reCAPTCHA Enterprise).</li>
-</ul>
+<main>
 
-<h2>3. Who we share information with</h2>
-<p>We do not sell your personal information. We share information only with the following service providers, who process it on our behalf:</p>
-<ul>
-  <li><strong>Supabase</strong> — database, authentication, and file storage.</li>
-  <li><strong>Google</strong> — optional Google sign-in and reCAPTCHA Enterprise for abuse prevention.</li>
-  <li><strong>Apple</strong> — optional Sign in with Apple.</li>
-  <li><strong>Square</strong> — payment processing for the in-app shop. Payment card details are entered directly with Square and are never stored by us.</li>
-</ul>
+  <div class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#information-we-collect">Information We Collect</a></li>
+      <li><a href="#how-we-use">How We Use Your Information</a></li>
+      <li><a href="#sharing">Information Sharing</a></li>
+      <li><a href="#data-storage">Data Storage &amp; Security</a></li>
+      <li><a href="#your-rights">Your Rights &amp; Choices</a></li>
+      <li><a href="#children">Children's Privacy</a></li>
+      <li><a href="#changes">Changes to This Policy</a></li>
+      <li><a href="#contact">Contact Us</a></li>
+    </ol>
+  </div>
 
-<h2>4. How we store and protect your information</h2>
-<p>All data is stored in Supabase with row-level security policies that restrict access to your own data and content you have permission to view. Data is transmitted using HTTPS/TLS encryption.</p>
+  <div class="highlight-box">
+    Worship &amp; Yapps is a community platform for the Calgary Bible Study community. We are committed to protecting your privacy and handling your data with respect and transparency.
+  </div>
 
-<h2>5. Your rights</h2>
-<ul>
-  <li><strong>Access and edit</strong> — you can view and edit your profile, posts, comments, and events from within the app at any time.</li>
-  <li><strong>Delete your account</strong> — open the app, go to <em>Settings → Account → Delete account</em>. This permanently deletes your account and all associated content from our database. You may also email us to request deletion.</li>
-  <li><strong>Withdraw consent</strong> — you can revoke permission for location, photos, camera, and notifications at any time in your device's iOS Settings.</li>
-</ul>
+  <section id="information-we-collect">
+    <h2><span class="section-num">1</span> Information We Collect</h2>
 
-<h2>6. Children</h2>
-<p>Worship and Yapps is intended for users aged 13 and older. We do not knowingly collect data from children under 13. If you believe a child has provided us with personal information, please contact us so we can delete it.</p>
+    <p><strong>Account Information:</strong> When you create an account, we collect your name, email address, and a password hash. You may optionally provide a profile photo, bio, and spiritual gifts.</p>
 
-<h2>7. Changes to this policy</h2>
-<p>We may update this Privacy Policy from time to time. The "Last updated" date at the top will reflect the most recent revision.</p>
+    <p><strong>Content You Create:</strong> Discussion topics, comments, event posts, direct messages, and community posts you submit are stored on our servers.</p>
 
-<h2>8. Contact</h2>
-<p>For any privacy questions, requests, or account deletion help, email us at <a href="mailto:rootality@gmail.com">rootality@gmail.com</a>.</p>
+    <p><strong>Usage Data:</strong> We collect information about how you interact with the app — pages viewed, topics opened, events RSVP'd, and similar activity — to improve the experience.</p>
 
-<hr />
-<p><a href="/">← Back to Worship and Yapps</a> · <a href="/support.html">Support</a></p>
+    <p><strong>Device Information:</strong> When you access the app, we may log your device type, operating system, browser, and IP address for security and diagnostic purposes.</p>
+
+    <p><strong>Communications:</strong> If you contact us for support, we retain those communications to resolve your request.</p>
+  </section>
+
+  <section id="how-we-use">
+    <h2><span class="section-num">2</span> How We Use Your Information</h2>
+
+    <p>We use the information we collect to:</p>
+    <ul>
+      <li>Create and maintain your account</li>
+      <li>Provide the discussion, event, messaging, and community features</li>
+      <li>Send notifications about activity relevant to you (replies, RSVPs, connection requests)</li>
+      <li>Improve, debug, and develop new features</li>
+      <li>Ensure the safety and integrity of our platform</li>
+      <li>Respond to your support requests</li>
+    </ul>
+
+    <p>We do <strong>not</strong> sell your personal data to third parties. We do not use your data for advertising profiling.</p>
+  </section>
+
+  <section id="sharing">
+    <h2><span class="section-num">3</span> Information Sharing</h2>
+
+    <p><strong>With Other Users:</strong> Your display name, profile photo, and public content (discussion posts, event RSVPs) are visible to other app users. Direct messages are visible only to the conversation participants.</p>
+
+    <p><strong>Service Providers:</strong> We use Supabase for database hosting and authentication, and Stripe for payment processing. These providers process data only on our behalf under strict data agreements.</p>
+
+    <p><strong>Legal Requirements:</strong> We may disclose information if required by law, court order, or to protect the rights and safety of our users and community.</p>
+  </section>
+
+  <section id="data-storage">
+    <h2><span class="section-num">4</span> Data Storage &amp; Security</h2>
+
+    <p>Your data is stored on Supabase infrastructure hosted in secure cloud environments. We implement row-level security policies, encrypted connections (TLS), and hashed password storage.</p>
+
+    <p>No method of transmission or storage is 100% secure. We take commercially reasonable measures to protect your information but cannot guarantee absolute security.</p>
+
+    <p>We retain your data for as long as your account is active. If you delete your account, your personal data is removed within 30 days, except where we are required by law to retain it.</p>
+  </section>
+
+  <section id="your-rights">
+    <h2><span class="section-num">5</span> Your Rights &amp; Choices</h2>
+
+    <p>You have the right to:</p>
+    <ul>
+      <li><strong>Access</strong> the personal data we hold about you</li>
+      <li><strong>Correct</strong> inaccurate information via your profile settings</li>
+      <li><strong>Delete</strong> your account and associated data</li>
+      <li><strong>Export</strong> your data upon request</li>
+      <li><strong>Opt out</strong> of non-essential notifications in your settings</li>
+    </ul>
+
+    <p>To exercise any of these rights, contact us at the address below. We will respond within 30 days.</p>
+  </section>
+
+  <section id="children">
+    <h2><span class="section-num">6</span> Children's Privacy</h2>
+
+    <p>Worship &amp; Yapps is not directed to children under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that a child under 13 has provided us with personal information, we will delete it promptly.</p>
+  </section>
+
+  <section id="changes">
+    <h2><span class="section-num">7</span> Changes to This Policy</h2>
+
+    <p>We may update this Privacy Policy from time to time. We will notify you of material changes by posting the new policy on this page and updating the "Last updated" date. Continued use of the app after changes take effect constitutes acceptance of the revised policy.</p>
+  </section>
+
+  <section id="contact">
+    <h2><span class="section-num">8</span> Contact Us</h2>
+
+    <div class="contact-card">
+      <h3>Questions about your privacy?</h3>
+      <p>We're happy to help. Reach out and we'll respond within 2 business days.</p>
+      <a href="mailto:privacy@worshipandyapps.com" class="contact-email">privacy@worshipandyapps.com</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>&copy; 2026 Worship &amp; Yapps — Calgary Bible Study Community &nbsp;&middot;&nbsp; <a href="/support.html">Support</a> &nbsp;&middot;&nbsp; <a href="/privacy.html">Privacy Policy</a></p>
+</footer>
+
 </body>
 </html>

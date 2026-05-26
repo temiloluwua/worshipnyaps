@@ -15,10 +15,21 @@ const config: CapacitorConfig = {
     },
   }),
   plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      launchFadeOutDuration: 400,
+      backgroundColor: '#2650eb',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
     StatusBar: {
-      style: 'dark',
-      backgroundColor: '#1f2937',
-      overlaysWebView: true,
+      style: 'light',
+      backgroundColor: '#2650eb',
+      overlaysWebView: false,
     },
     Keyboard: {
       resize: 'body',
