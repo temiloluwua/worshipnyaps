@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, AlertTriangle, Flag, Check } from 'lucide-react';
+import { UserPlus, AlertTriangle, Flag, Check, ShieldAlert, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
@@ -28,6 +28,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
   const { user } = useAuth();
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [connections, setConnections] = useState<Set<string>>(new Set());
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showFlagModal, setShowFlagModal] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState<string | null>(null);
@@ -45,8 +46,23 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
     fetchAttendees();
     if (user) {
       fetchConnections();
+      fetchBlocked();
     }
   }, [eventId, user]);
+
+  const fetchBlocked = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_user_id')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setBlockedIds(new Set((data || []).map((b: { blocked_user_id: string }) => b.blocked_user_id)));
+    } catch (err) {
+      console.error('Error fetching blocked users:', err);
+    }
+  };
 
   const fetchAttendees = async () => {
     try {
@@ -178,14 +194,35 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
     return <div className="p-6 text-center text-gray-500">Loading attendees...</div>;
   }
 
+  const blockedAttending = attendees.filter(a => blockedIds.has(a.user_id));
+
   return (
     <div className="space-y-4">
+      {blockedAttending.length > 0 && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-red-700 dark:text-red-300">
+              Heads up: {blockedAttending.length === 1 ? 'someone' : `${blockedAttending.length} people`} you've blocked {blockedAttending.length === 1 ? 'is' : 'are'} attending this event.
+            </p>
+            <p className="text-red-600/80 dark:text-red-400/80 mt-0.5">
+              You won't see them in the attendee list below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {attendees.length === 0 ? (
         <p className="text-center text-gray-500 dark:text-gray-400 py-8">No attendees yet</p>
       ) : (
-        attendees.map((attendee) => {
+        attendees
+          .filter(a => !blockedIds.has(a.user_id))
+          .map((attendee) => {
           const isSelf = user?.id === attendee.user_id;
           const isFriend = connections.has(attendee.user_id);
+          // Non-host viewers only see identities of friends and themselves.
+          // Host sees everyone (needed for attendance marking).
+          const showIdentity = isHost || isSelf || isFriend;
 
           return (
             <div
@@ -193,18 +230,34 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
               className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
             >
               <div className="flex items-center gap-3 flex-1">
-                {attendee.user?.avatar_url && (
-                  <img
-                    src={attendee.user.avatar_url}
-                    alt={attendee.user?.name}
-                    className="w-10 h-10 rounded-full"
-                  />
+                {showIdentity ? (
+                  attendee.user?.avatar_url ? (
+                    <img
+                      src={attendee.user.avatar_url}
+                      alt={attendee.user?.name}
+                      className="w-10 h-10 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium">
+                      {attendee.user?.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                    <EyeOff className="w-5 h-5" />
+                  </div>
                 )}
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
-                    <span>{attendee.user?.name}</span>
-                    <VerifiedBadge verified={attendee.user?.is_verified} />
-                    {isSelf && <span className="text-xs ml-1 text-blue-600">you</span>}
+                    {showIdentity ? (
+                      <>
+                        <span>{attendee.user?.name}</span>
+                        <VerifiedBadge verified={attendee.user?.is_verified} />
+                        {isSelf && <span className="text-xs ml-1 text-blue-600">you</span>}
+                      </>
+                    ) : (
+                      <span className="text-gray-500 dark:text-gray-400">Community member</span>
+                    )}
                   </p>
                   {attendee.status === 'attended' && (
                     <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Attended</p>
@@ -224,7 +277,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
                   </button>
                 )}
 
-                {!isSelf && !isHost && !isFriend && (
+                {isHost && !isSelf && !isFriend && (
                   <button
                     onClick={() => handleAddFriend(attendee.user_id || '')}
                     className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-1"
@@ -244,7 +297,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
                   </button>
                 )}
 
-                {!isHost && !isSelf && (
+                {!isHost && !isSelf && showIdentity && (
                   <button
                     onClick={() => setShowReportModal(attendee.user_id || '')}
                     className="px-2 py-1 text-sm text-gray-500 hover:text-red-600 transition-colors"

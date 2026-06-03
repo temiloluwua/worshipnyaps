@@ -17,7 +17,8 @@ export const useTopics = () => {
         .select(`
           *,
           users!topics_author_id_fkey (
-            name
+            name,
+            city
           )
         `)
         .order('is_pinned', { ascending: false })
@@ -39,6 +40,11 @@ export const useTopics = () => {
     category: string;
     content: string;
     tags: string[];
+    visibility?: 'public' | 'friends_only';
+    community_category?: string;
+    topic_type?: 'preselected' | 'community';
+    bible_verse?: string;
+    questions?: string[];
   }) => {
     if (!user) return null;
 

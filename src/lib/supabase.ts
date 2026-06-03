@@ -55,6 +55,7 @@ export interface UserProfile {
   is_verified?: boolean;
   avatar_url?: string;
   bio?: string;
+  city?: string;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +82,7 @@ export interface Event {
   attendees?: number;
   is_private: boolean;
   visibility: 'public' | 'private' | 'friends_only';
+  address_visibility?: 'general_area' | 'attendees_only' | 'public';
   invite_code?: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_at: string;

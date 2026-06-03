@@ -29,6 +29,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     capacity: event.capacity,
     description: event.description || '',
     visibility: event.visibility as 'public' | 'private' | 'friends_only',
+    addressVisibility: (event.address_visibility || 'public') as 'general_area' | 'attendees_only' | 'public',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -53,6 +54,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         capacity: formData.capacity,
         visibility: formData.visibility,
         is_private: formData.visibility === 'private',
+        address_visibility: formData.addressVisibility,
         updated_at: new Date().toISOString(),
       };
 
@@ -239,6 +241,39 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
                     name="visibility"
                     value={option.value}
                     checked={formData.visibility === option.value}
+                    onChange={handleInputChange}
+                    className="mt-1 mr-3"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">{option.label}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{option.description}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address privacy</label>
+            <div className="space-y-2">
+              {[
+                { value: 'general_area', label: 'General area only', description: "Show neighborhood/city. Exact address is never revealed." },
+                { value: 'attendees_only', label: 'Visible to RSVPs only', description: 'Public sees the area. Full address unlocks after RSVP.' },
+                { value: 'public', label: 'Public address', description: 'Anyone can see the full address.' },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex items-start p-3 border rounded-lg cursor-pointer transition-all ${
+                    formData.addressVisibility === option.value
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="addressVisibility"
+                    value={option.value}
+                    checked={formData.addressVisibility === option.value}
                     onChange={handleInputChange}
                     className="mt-1 mr-3"
                   />

@@ -118,6 +118,8 @@ export const useChat = (channel: string = 'community') => {
   useEffect(() => {
     if (!user || channel === 'direct') return;
 
+    let mounted = true;
+
     const subscription = supabase
       .channel(`chat:${channel}`)
       .on(
@@ -135,6 +137,7 @@ export const useChat = (channel: string = 'community') => {
             .eq('id', payload.new.sender_id)
             .maybeSingle();
 
+          if (!mounted) return;
           const newMessage: ChatMessage = {
             ...payload.new as ChatMessage,
             sender: data || undefined
@@ -156,6 +159,7 @@ export const useChat = (channel: string = 'community') => {
       .subscribe();
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [user, channel]);

@@ -68,13 +68,38 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
 
   const fetchAttendees = async () => {
     try {
-      const { data, error } = await supabase
-        .from('event_attendees')
-        .select('users!user_id(id, name, avatar_url)')
-        .eq('event_id', eventId)
-        .eq('status', 'registered');
-      if (error) throw error;
-      setAttendees((data || []).map((d: any) => d.users).filter(Boolean));
+      // Combine event attendees AND the host's connections so the host can
+      // request help/food from friends who haven't RSVP'd yet.
+      const [attendeesResult, connectionsResult] = await Promise.all([
+        supabase
+          .from('event_attendees')
+          .select('users!user_id(id, name, avatar_url)')
+          .eq('event_id', eventId)
+          .eq('status', 'registered'),
+        user
+          ? supabase
+              .from('connections')
+              .select('connected_user:users!connections_connected_user_id_fkey(id, name, avatar_url)')
+              .eq('user_id', user.id)
+              .eq('status', 'active')
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (attendeesResult.error) throw attendeesResult.error;
+      const attending = (attendeesResult.data || []).map((d: any) => d.users).filter(Boolean);
+      const friends = (connectionsResult.data || [])
+        .map((d: any) => d.connected_user)
+        .filter(Boolean);
+
+      // De-duplicate by id, keeping attendees first.
+      const seen = new Set<string>();
+      const combined: AttendeeUser[] = [];
+      for (const u of [...attending, ...friends]) {
+        if (!u || seen.has(u.id)) continue;
+        seen.add(u.id);
+        combined.push(u);
+      }
+      setAttendees(combined);
     } catch (err) {
       console.error(err);
     }
@@ -165,22 +190,81 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   const handleAssign = async (item: UnifiedHelpItem, userId: string) => {
     try {
       if (item.source === 'help_request') {
+        // Set assigned_user_id but keep status='open' so the assignee can
+        // accept or decline. `completed=false` for food is the equivalent.
         const { error } = await supabase
           .from('event_help_requests')
-          .update({ assigned_user_id: userId, status: 'filled' })
+          .update({ assigned_user_id: userId, status: 'open' })
           .eq('id', item.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('food_items')
-          .update({ assigned_to: userId })
+          .update({ assigned_to: userId, completed: false })
+          .eq('id', item.id.replace('food_', ''));
+        if (error) throw error;
+      }
+
+      if (userId !== user?.id) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          type: 'role_request',
+          title: `You've been asked to help with "${item.title}"`,
+          body: item.source === 'food_item'
+            ? `The host asked if you can bring ${item.title}.`
+            : `The host asked you to help with ${item.title}.`,
+          payload: { event_id: eventId, item_id: item.id, source: item.source },
+        });
+      }
+
+      await fetchItems();
+      toast.success('Request sent!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to assign');
+    }
+  };
+
+  const handleAcceptRequest = async (item: UnifiedHelpItem) => {
+    try {
+      if (item.source === 'help_request') {
+        const { error } = await supabase
+          .from('event_help_requests')
+          .update({ status: 'filled' })
+          .eq('id', item.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('food_items')
+          .update({ completed: true })
           .eq('id', item.id.replace('food_', ''));
         if (error) throw error;
       }
       await fetchItems();
-      toast.success('Assigned!');
+      toast.success("You're in! 🙌");
     } catch (err: any) {
-      toast.error(err.message || 'Failed to assign');
+      toast.error(err.message || 'Failed to accept');
+    }
+  };
+
+  const handleDeclineRequest = async (item: UnifiedHelpItem) => {
+    try {
+      if (item.source === 'help_request') {
+        const { error } = await supabase
+          .from('event_help_requests')
+          .update({ assigned_user_id: null, status: 'open' })
+          .eq('id', item.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('food_items')
+          .update({ assigned_to: null, completed: false })
+          .eq('id', item.id.replace('food_', ''));
+        if (error) throw error;
+      }
+      await fetchItems();
+      toast('Declined — the host has been notified.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to decline');
     }
   };
 
@@ -294,13 +378,17 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
         {items.map((item) => {
           const isMine = user && item.assigned_user_id === user.id;
           const isOpen = !item.is_filled && !item.assigned_user_id;
+          // Host asked someone but they haven't accepted yet.
+          const isPending = !item.is_filled && !!item.assigned_user_id;
           return (
             <div
               key={item.id}
               className={`border rounded-xl p-4 transition-all ${
                 item.is_filled
                   ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                  : isPending
+                    ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -327,17 +415,39 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                       {isMine && <span className="text-green-500 ml-1">(you)</span>}
                     </div>
                   )}
+                  {isPending && item.assigned_user && (
+                    <div className="flex items-center gap-1 mt-2 text-amber-700 dark:text-amber-300 text-xs">
+                      <span>Asked {(item.assigned_user as any).name} · waiting on response</span>
+                    </div>
+                  )}
                   {isHost && !item.is_filled && attendees.length > 0 && (
                     <select
                       onChange={(e) => { if (e.target.value) { handleAssign(item, e.target.value); e.target.value = ''; } }}
                       className="mt-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
-                      <option value="">Assign to someone...</option>
+                      <option value="">{isPending ? 'Reassign to...' : 'Send request to...'}</option>
                       {attendees.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Accept / Decline buttons for the person who was asked */}
+                  {isMine && isPending && (
+                    <>
+                      <button
+                        onClick={() => handleDeclineRequest(item)}
+                        className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-xs font-medium"
+                      >
+                        Decline
+                      </button>
+                      <button
+                        onClick={() => handleAcceptRequest(item)}
+                        className="px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
+                      >
+                        Accept
+                      </button>
+                    </>
+                  )}
                   {isOpen && user && !isHost && (
                     <button
                       onClick={() => handleVolunteer(item)}
@@ -346,7 +456,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                       I'll do it
                     </button>
                   )}
-                  {isMine && (
+                  {isMine && item.is_filled && (
                     <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
                       <Check className="w-3 h-3" /> You
                     </span>

@@ -22,11 +22,15 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
+    if (error) {
+      console.error('Failed to fetch profile:', error);
+      return;
+    }
     setProfile(data);
   };
 

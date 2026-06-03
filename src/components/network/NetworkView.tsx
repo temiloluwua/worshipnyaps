@@ -191,9 +191,24 @@ export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
             ) : discoverUsers.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No new people to discover</p>
+              <div className="text-center py-16 px-6 max-w-md mx-auto">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-base font-medium text-gray-700 mb-2">
+                  {searchQuery ? `No one matching "${searchQuery}"` : "You've connected with everyone here!"}
+                </p>
+                <p className="text-sm text-gray-500 mb-5">
+                  {searchQuery
+                    ? "Try a different name or check your spelling."
+                    : "Show up to an event in the Events tab to meet new people."}
+                </p>
+                {searchQuery ? (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Clear search
+                  </button>
+                ) : null}
               </div>
             ) : (
               <div className="grid gap-4">
@@ -403,9 +418,12 @@ export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps
             )}
 
             {invitations.length === 0 && pendingIncoming.length === 0 && (
-              <div className="text-center py-12 bg-gray-50 rounded-xl">
-                <Bell className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-600">No pending invitations</p>
+              <div className="text-center py-16 px-6 bg-gray-50 rounded-xl max-w-md mx-auto">
+                <Bell className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-base font-medium text-gray-700 mb-2">All caught up</p>
+                <p className="text-sm text-gray-500">
+                  When friends invite you to an event or send a connection request, you'll see it here.
+                </p>
               </div>
             )}
           </div>

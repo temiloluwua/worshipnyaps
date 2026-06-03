@@ -161,15 +161,15 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="text-center py-12 px-4">
+          <div className="text-center py-16 px-6 max-w-sm mx-auto">
             <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 mb-2">
-              No notifications yet
+            <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+              You're all caught up!
             </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {activeCategory === 'all'
-                ? "When you get notifications, they'll show up here"
-                : `No ${activeCategory} notifications`}
+                ? "New RSVPs, messages, and connection requests will show up here. RSVP to an event or send a connection request to get the ball rolling."
+                : `Nothing in ${activeCategory} right now — check back later.`}
             </p>
           </div>
         ) : (

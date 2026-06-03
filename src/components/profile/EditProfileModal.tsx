@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { X, Camera, Plus, Check, Sparkles, MapPin, User, FileText, Image, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
+import { X, Camera, Plus, Check, Sparkles, User, FileText, Image, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
+import { SUPPORTED_CITIES } from '../../lib/cities';
 import toast from 'react-hot-toast';
 
 interface EditProfileModalProps {
@@ -31,7 +32,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
 
   const [name, setName] = useState(profile.name);
   const [bio, setBio] = useState(profile.bio || '');
-  const [location, setLocation] = useState(profile.location_text || '');
+  const [city, setCity] = useState(profile.city || '');
   const [interests, setInterests] = useState<string[]>(profile.interests || []);
   const [newInterest, setNewInterest] = useState('');
   const [spiritualGifts, setSpiritualGifts] = useState<string[]>(profile.spiritual_gifts || []);
@@ -105,7 +106,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
       const success = await updateProfile({
         name: name.trim(),
         bio: bio.trim(),
-        location_text: location.trim(),
+        city: city.trim(),
         interests,
         spiritual_gifts: spiritualGifts,
         avatar_url: avatarUrl,
@@ -132,7 +133,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
     {
       id: 'basics',
       label: 'Basic Info',
-      description: `${name}${location ? ` · ${location}` : ''}`,
+      description: name,
       icon: <User className="w-4 h-4" />,
     },
     {
@@ -245,16 +246,21 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location</span>
+                City
               </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                maxLength={60}
-                placeholder="e.g. Calgary, AB"
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
+              >
+                <option value="">Pick a city...</option>
+                {SUPPORTED_CITIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Used to show you posts and events from people in your city.
+              </p>
             </div>
           </div>
         );
@@ -264,7 +270,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Bio</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Tell others about yourself — your faith journey, passions, and what makes you unique.
+              Tell others about yourself — your faith journey, where you're based (e.g. Calgary, AB), passions, and what makes you unique.
             </p>
             <textarea
               value={bio}

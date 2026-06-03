@@ -131,10 +131,21 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         )}
 
         {!loading && searchInput.trim() && !hasResults && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              No results found for "{searchInput}"
+          <div className="text-center py-16 px-6 max-w-md mx-auto">
+            <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+              No matches for "{searchInput}"
             </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+              Try a different keyword, fewer words, or check the spelling.
+            </p>
+            <button
+              onClick={() => setSearchInput('')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Clear search
+            </button>
           </div>
         )}
 

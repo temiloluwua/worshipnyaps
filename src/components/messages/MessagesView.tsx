@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Search, Plus, Send, Image, Smile,
-  MoreHorizontal, Check, CheckCheck, X
+  MoreHorizontal, Check, CheckCheck, X, Users as UsersIcon
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useDirectMessages, Conversation, DirectMessage } from '../../hooks/useDirectMessages';
 import { useAuth } from '../../hooks/useAuth';
 import { useConnections } from '../../hooks/useConnections';
@@ -28,11 +29,13 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     totalUnread,
     fetchMessages,
     sendMessage,
-    startConversation
+    startConversation,
+    createGroupConversation
   } = useDirectMessages();
   const { connections } = useConnections();
 
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -239,12 +242,22 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             </span>
           )}
         </div>
-        <button
-          onClick={() => setShowNewMessage(true)}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <Plus className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowNewGroup(true)}
+            title="New group chat"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <UsersIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          </button>
+          <button
+            onClick={() => setShowNewMessage(true)}
+            title="New message"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <Plus className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          </button>
+        </div>
       </div>
 
       <div className="px-4 py-3">
@@ -349,6 +362,21 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           connections={connections}
         />
       )}
+
+      {showNewGroup && (
+        <NewGroupModal
+          onClose={() => setShowNewGroup(false)}
+          connections={connections}
+          onCreate={async (name, ids) => {
+            const conv = await createGroupConversation(name, ids);
+            if (conv) {
+              setActiveConversation(conv);
+              setShowNewGroup(false);
+              toast.success('Group chat created');
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -431,6 +459,148 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+interface NewGroupModalProps {
+  onClose: () => void;
+  connections: any[];
+  onCreate: (name: string, participantIds: string[]) => Promise<void>;
+}
+
+const NewGroupModal: React.FC<NewGroupModalProps> = ({ onClose, connections, onCreate }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+
+  const filteredConnections = connections.filter(conn =>
+    conn.connected_user?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const toggleSelect = (userId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const canCreate = groupName.trim().length > 0 && selectedIds.size >= 2;
+
+  const handleCreate = async () => {
+    if (!canCreate || submitting) return;
+    setSubmitting(true);
+    try {
+      await onCreate(groupName.trim(), Array.from(selectedIds));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="New Group Chat">
+      <div className="p-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Group name
+          </label>
+          <input
+            type="text"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            placeholder="e.g., Saturday Bible Study"
+            maxLength={60}
+            className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Add friends ({selectedIds.size} selected — need at least 2)
+          </label>
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search connections..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="max-h-64 overflow-y-auto -mx-1 px-1">
+            {filteredConnections.length === 0 ? (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-6 text-sm">
+                {connections.length === 0
+                  ? "Add friends in the Community tab before creating a group."
+                  : 'No connections match your search.'}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {filteredConnections.map(conn => {
+                  const userId = conn.connected_user_id;
+                  const selected = selectedIds.has(userId);
+                  return (
+                    <button
+                      key={conn.id}
+                      type="button"
+                      onClick={() => toggleSelect(userId)}
+                      className={`w-full flex items-center p-3 rounded-lg transition-colors ${
+                        selected
+                          ? 'bg-blue-50 dark:bg-blue-900/30'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 mr-3 flex-shrink-0">
+                        {conn.connected_user?.avatar_url ? (
+                          <img src={conn.connected_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white font-bold">
+                            {conn.connected_user?.name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {conn.connected_user?.name || 'Unknown'}
+                        </p>
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                        selected
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}>
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={!canCreate || submitting}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Creating...' : 'Create group'}
+          </button>
         </div>
       </div>
     </Modal>

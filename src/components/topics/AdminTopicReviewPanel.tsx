@@ -18,7 +18,7 @@ export const AdminTopicReviewPanel: React.FC<AdminTopicReviewPanelProps> = ({ is
     try {
       const { data, error } = await supabase
         .from('topic_requests')
-        .select('*, requester:users!topic_requests_requested_by_fkey(name, avatar_url)')
+        .select('*, requester:users!topic_requests_requested_by_users_fkey(name, avatar_url)')
         .eq('status', 'pending')
         .order('created_at', { ascending: true });
 

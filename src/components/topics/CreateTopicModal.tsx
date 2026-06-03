@@ -26,6 +26,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     bibleReference: '',
     tags: [] as string[],
     questions: [''],
+    visibility: 'public' as 'public' | 'friends_only',
   });
   const [newTag, setNewTag] = useState('');
 
@@ -109,6 +110,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
       topic_type: topicType,
       bible_verse: topicType === 'preselected' ? formData.bibleReference : undefined,
       community_category: isCommunityPost ? formData.communityCategory : undefined,
+      visibility: isCommunityPost ? formData.visibility : 'public',
     };
 
     const result = await createTopic(topicData);
@@ -125,6 +127,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         bibleReference: '',
         tags: [],
         questions: [''],
+        visibility: 'public',
       });
     }
   };
@@ -172,27 +175,29 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="topic-category"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Category
-              </label>
-              <select
-                id="topic-category"
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isCommunityPost && (
+              <div>
+                <label
+                  htmlFor="topic-category"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Category
+                </label>
+                <select
+                  id="topic-category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {isCommunityPost && (
               <div>
@@ -221,6 +226,34 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                       }`}
                     >
                       {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isCommunityPost && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Who can see this?
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'public', label: 'Everyone', desc: 'Public on the community feed' },
+                    { value: 'friends_only', label: 'Friends only', desc: 'Just your connections' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, visibility: opt.value as 'public' | 'friends_only' }))}
+                      className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
+                        formData.visibility === opt.value
+                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <div>{opt.label}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">{opt.desc}</div>
                     </button>
                   ))}
                 </div>

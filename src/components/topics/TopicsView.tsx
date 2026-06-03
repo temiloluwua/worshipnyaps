@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, ShoppingBag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
 import { useAuth } from '../../hooks/useAuth';
 import { useLikes } from '../../hooks/useLikes';
 import { useBookmarks } from '../../hooks/useBookmarks';
+import { useConnections } from '../../hooks/useConnections';
 import { discussionTopics } from '../../data/topics';
 import { TopicCard } from './TopicCard';
 import { CreateTopicModal } from './CreateTopicModal';
@@ -94,6 +95,8 @@ interface TopicsViewProps {
   onViewHashtag?: (hashtagName: string) => void;
   focusTopicId?: string | null;
   onFocusedTopicHandled?: () => void;
+  onViewShop?: () => void;
+  openCreateRequest?: number;
 }
 
 export function TopicsView({
@@ -101,6 +104,8 @@ export function TopicsView({
   onViewHashtag,
   focusTopicId,
   onFocusedTopicHandled,
+  onViewShop,
+  openCreateRequest,
 }: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -127,8 +132,11 @@ export function TopicsView({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdminReview, setShowAdminReview] = useState(false);
-  const [locationFilter, setLocationFilter] = useState<'all' | 'nearby'>('all');
+  const [audienceFilter, setAudienceFilter] = useState<'friends' | 'local'>('friends');
+  const { connections } = useConnections();
   const isAdmin = profile?.role === 'admin';
+  const myCity = profile?.city?.trim().toLowerCase();
+  const friendIds = new Set((connections || []).map((c: any) => c.connected_user_id));
 
   const sanitizedSupabaseTopics = topics
     .map(sanitizeTopic)
@@ -198,13 +206,17 @@ export function TopicsView({
     ? communityTopics
     : communityTopics.filter((t: any) => t.community_category === communitySub);
 
-  // For community tab, only show posts from friends/mutuals
+  // Community tab respects the Friends / Local audience chip.
   const friendsOnlyFiltered = user ? communityFiltered.filter((t: any) => {
-    // Show own posts
-    if (t.author_id === user.id || t.authorId === user.id) return true;
-    // Show posts from friends (this would require checking connections)
-    // For now, show all for the feed
-    return true;
+    const authorId = t.author_id || t.authorId;
+    if (authorId === user.id) return true;
+    if (audienceFilter === 'friends') {
+      return friendIds.has(authorId);
+    }
+    // 'local' — match by author city against the current user's city
+    const authorCity = (t.users?.city || t.authorCity || '').trim().toLowerCase();
+    if (!myCity) return false;
+    return authorCity === myCity;
   }) : [];
 
   const currentFeedTopics = activeTab === 'topics' ? primaryTopics : friendsOnlyFiltered;
@@ -253,13 +265,23 @@ export function TopicsView({
       } else if (currentScrollY < lastScrollY.current) {
         setShowSearch(true);
       }
-
       lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (openCreateRequest && openCreateRequest > 0) {
+      if (!user) {
+        setShowAuthModal(true);
+      } else {
+        setActiveTab('community');
+        setShowCreateModal(true);
+      }
+    }
+  }, [openCreateRequest, user]);
 
   useEffect(() => {
     if (topics.length > 0) {
@@ -517,24 +539,25 @@ export function TopicsView({
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => setLocationFilter('all')}
+                  onClick={() => setAudienceFilter('friends')}
                   className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    locationFilter === 'all'
+                    audienceFilter === 'friends'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  All Locations
+                  Friends
                 </button>
                 <button
-                  onClick={() => setLocationFilter('nearby')}
+                  onClick={() => setAudienceFilter('local')}
                   className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    locationFilter === 'nearby'
+                    audienceFilter === 'local'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
+                  title={myCity ? `Posts from people in ${profile?.city}` : 'Set your city in your profile'}
                 >
-                  Calgary
+                  {profile?.city || 'Local'}
                 </button>
               </div>
             </div>
@@ -580,10 +603,18 @@ export function TopicsView({
               })}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <Search className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Results</h3>
-              <p className="text-gray-500 dark:text-gray-400">Try different keywords to find what you're looking for</p>
+            <div className="text-center py-16 px-6 max-w-md mx-auto">
+              <Search className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">No topics match your search</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Try a different keyword or browse all topics.</p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           )}
         </div>

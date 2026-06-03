@@ -47,16 +47,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
   const [plusOneCount, setPlusOneCount] = useState(0);
   const [attendeeNotes, setAttendeeNotes] = useState('');
 
-  const [existingFoodItems] = useState<FoodItem[]>([
-    { id: '1', item: 'Main Dish', category: 'main', assignedTo: 'Sarah M.', completed: true, servingSize: 'Serves 12' },
-    { id: '2', item: 'Garden Salad', category: 'side', assignedTo: 'Michael C.', completed: true, servingSize: 'Large bowl' },
-    { id: '3', item: 'Garlic Bread', category: 'side', completed: false, servingSize: 'For 12 people' },
-    { id: '4', item: 'Chocolate Cake', category: 'dessert', completed: false, servingSize: 'Whole cake' },
-    { id: '5', item: 'Coffee & Tea', category: 'beverage', assignedTo: 'Host', completed: true },
-    { id: '6', item: 'Juice & Water', category: 'beverage', completed: false, servingSize: '2-3 bottles each' },
-    { id: '7', item: 'Paper Plates & Napkins', category: 'setup', completed: false, servingSize: 'For 12 people' },
-    { id: '8', item: 'Cups & Utensils', category: 'setup', assignedTo: 'Emily R.', completed: true }
-  ]);
+  const [existingFoodItems] = useState<FoodItem[]>([]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -267,9 +258,13 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
   const renderFoodTab = () => (
     <div className="p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Food Coordination</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">See what's needed and what others are already bringing:</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+        {existingFoodItems.length > 0
+          ? 'See what\'s needed and what others are already bringing:'
+          : 'Want to bring something? Add it below.'}
+      </p>
       <div className="space-y-5">
-        {foodCategories.map((category) => {
+        {existingFoodItems.length > 0 && foodCategories.map((category) => {
           const Icon = category.icon;
           const items = getItemsByCategory(category.id);
           return (

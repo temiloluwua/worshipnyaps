@@ -235,7 +235,10 @@ export const useDirectMessages = () => {
 
     try {
       const { data: convId, error } = await supabase
-        .rpc('get_or_create_dm_conversation', { other_user_id: otherUserId });
+        .rpc('get_or_create_dm_conversation', {
+          p_user_id: user.id,
+          p_other_user_id: otherUserId,
+        });
 
       if (error) throw error;
 
@@ -279,32 +282,38 @@ export const useDirectMessages = () => {
     if (!user) return null;
 
     try {
-      const { data: conv, error: convError } = await supabase
-        .from('conversations')
-        .insert({ is_group: true, name })
-        .select()
-        .single();
+      const { data: convId, error: rpcError } = await supabase
+        .rpc('create_group_conversation', {
+          p_name: name,
+          p_participant_ids: participantIds.filter(id => id !== user.id),
+        });
 
-      if (convError) throw convError;
+      if (rpcError) throw rpcError;
+      if (!convId) throw new Error('No conversation id returned');
 
-      const allParticipants = [user.id, ...participantIds.filter(id => id !== user.id)];
-      const { error: partError } = await supabase
-        .from('conversation_participants')
-        .insert(
-          allParticipants.map(userId => ({
-            conversation_id: conv.id,
-            user_id: userId
-          }))
-        );
+      const [{ data: convData }, { data: participants }] = await Promise.all([
+        supabase.from('conversations').select('*').eq('id', convId).maybeSingle(),
+        supabase
+          .from('conversation_participants')
+          .select(`*, users:user_id (id, name, avatar_url)`)
+          .eq('conversation_id', convId),
+      ]);
 
-      if (partError) throw partError;
+      const newConv: Conversation = {
+        id: convId,
+        is_group: true,
+        name: convData?.name ?? name,
+        created_at: convData?.created_at ?? new Date().toISOString(),
+        updated_at: convData?.updated_at ?? new Date().toISOString(),
+        participants: (participants || []).map((p: any) => ({ ...p, user: p.users })),
+        unread_count: 0,
+      };
 
       await fetchConversations();
-      toast.success('Group created');
-      return conv.id;
-    } catch (error) {
+      return newConv;
+    } catch (error: any) {
       console.error('Error creating group:', error);
-      toast.error('Failed to create group');
+      toast.error(error?.message || 'Failed to create group');
       return null;
     }
   }, [user, fetchConversations]);

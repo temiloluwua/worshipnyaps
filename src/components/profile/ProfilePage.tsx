@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Camera, MapPin, Calendar, MessageCircle,
+  Camera, Calendar, MessageCircle,
   UserPlus, UserMinus, ArrowLeft, Heart, Bookmark,
   Sparkles, Settings, LayoutGrid, LayoutList, Link as LinkIcon, Edit2
 } from 'lucide-react';
@@ -242,12 +242,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           ) : null}
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {viewingProfile.location_text && (
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                {viewingProfile.location_text}
-              </span>
-            )}
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 shrink-0" />
               Joined {format(new Date(viewingProfile.created_at), 'MMMM yyyy')}
@@ -331,11 +325,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600" />
           </div>
         ) : topics.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400 dark:text-gray-600">
-            {activeTab === 'posts' && <LayoutGrid className="w-8 h-8" />}
-            {activeTab === 'likes' && <Heart className="w-8 h-8" />}
-            {activeTab === 'bookmarks' && <Bookmark className="w-8 h-8" />}
-            <p className="text-sm">{emptyMessages[activeTab]}</p>
+          <div className="flex flex-col items-center justify-center py-16 px-6 gap-3 text-gray-400 dark:text-gray-600 text-center">
+            {activeTab === 'posts' && <LayoutGrid className="w-10 h-10" />}
+            {activeTab === 'likes' && <Heart className="w-10 h-10" />}
+            {activeTab === 'bookmarks' && <Bookmark className="w-10 h-10" />}
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{emptyMessages[activeTab]}</p>
+            {isOwnProfile && activeTab === 'posts' && (
+              <p className="text-xs text-gray-500 dark:text-gray-500 max-w-xs">
+                Share a Bible verse, ask a question, or start a discussion — your posts will live here.
+              </p>
+            )}
+            {isOwnProfile && activeTab === 'likes' && (
+              <p className="text-xs text-gray-500 dark:text-gray-500 max-w-xs">
+                Topics you tap the heart on will be saved here for easy access.
+              </p>
+            )}
+            {isOwnProfile && activeTab === 'bookmarks' && (
+              <p className="text-xs text-gray-500 dark:text-gray-500 max-w-xs">
+                Bookmark topics from the Home tab to revisit them later.
+              </p>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">

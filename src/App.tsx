@@ -1,11 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { BottomNavigation, TabType } from './components/BottomNavigation';
 import { TopicsView } from './components/topics/TopicsView';
-import { LocationsView } from './components/locations/LocationsView';
 import { CommunityView } from './components/network/NetworkView';
-import { ShopPage } from './components/shop/ShopPage';
-import { SuccessPage } from './components/shop/SuccessPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { SkipLinks } from './components/ui/SkipLinks';
@@ -14,7 +11,13 @@ import { SearchPage } from './components/search/SearchPage';
 import { MessagesView } from './components/messages/MessagesView';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import { HashtagPage } from './components/hashtags/HashtagPage';
-import { EventDetailView } from './components/events/EventDetailView';
+
+const LocationsView = lazy(() => import('./components/locations/LocationsView').then(m => ({ default: m.LocationsView })));
+const ShopPage = lazy(() => import('./components/shop/ShopPage').then(m => ({ default: m.ShopPage })));
+const SuccessPage = lazy(() => import('./components/shop/SuccessPage').then(m => ({ default: m.SuccessPage })));
+const EventDetailView = lazy(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })));
+
+import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
@@ -36,7 +39,9 @@ function App() {
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
   const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
-  const { loading, user } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
+  const { loading, user, profile } = useAuth();
   const { theme } = useTheme();
   const { totalUnread: unreadMessages } = useDirectMessages();
   const { unreadCount: unreadNotifications } = useNotifications();
@@ -45,6 +50,37 @@ function App() {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
   }, [theme]);
+
+  // Skip landing page on reload if the user is already signed in,
+  // unless they're explicitly visiting /shop or /event/...
+  useEffect(() => {
+    if (!loading && user) {
+      const path = window.location.pathname;
+      const isDeepLink = path.startsWith('/shop') || path.startsWith('/event/');
+      if (!isDeepLink) {
+        setShowLanding(false);
+      }
+    }
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (!user || !profile) {
+      setShowOnboarding(false);
+      return;
+    }
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem(`wny_onboarding_done_${user.id}`) === '1';
+    } catch {
+      dismissed = false;
+    }
+    const profileIsBlank = !profile.avatar_url && !profile.bio;
+    if (!dismissed && profileIsBlank) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [user, profile]);
 
   useEffect(() => {
     const applyPathState = () => {
@@ -154,6 +190,12 @@ function App() {
     setViewState({ type: 'network' });
   };
 
+  const loadingFallback = (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" aria-hidden="true" />
+    </div>
+  );
+
   if (loading) {
     return (
       <div
@@ -173,7 +215,11 @@ function App() {
   }
 
   if (showSuccessPage) {
-    return <SuccessPage onBackToShop={handleBackToShop} onBackToHome={handleBackToHome} />;
+    return (
+      <Suspense fallback={loadingFallback}>
+        <SuccessPage onBackToShop={handleBackToShop} onBackToHome={handleBackToHome} />
+      </Suspense>
+    );
   }
 
   if (showLanding) {
@@ -189,10 +235,12 @@ function App() {
 
   if (activeEventId) {
     return (
-      <EventDetailView
-        eventId={activeEventId}
-        onBack={handleCloseEvent}
-      />
+      <Suspense fallback={loadingFallback}>
+        <EventDetailView
+          eventId={activeEventId}
+          onBack={handleCloseEvent}
+        />
+      </Suspense>
     );
   }
 
@@ -271,6 +319,8 @@ function App() {
             onViewHashtag={handleViewHashtag}
             focusTopicId={focusedTopicId}
             onFocusedTopicHandled={() => setFocusedTopicId(null)}
+            onViewShop={() => setActiveTab('shop')}
+            openCreateRequest={openCreatePostRequest}
           />
         )}
         {activeTab === 'search' && (
@@ -282,7 +332,9 @@ function App() {
           />
         )}
         {activeTab === 'locations' && (
-          <LocationsView onOpenEvent={handleOpenEvent} />
+          <Suspense fallback={loadingFallback}>
+            <LocationsView onOpenEvent={handleOpenEvent} />
+          </Suspense>
         )}
         {activeTab === 'messages' && (
           <MessagesView
@@ -297,7 +349,11 @@ function App() {
             onViewEvent={handleOpenEvent}
           />
         )}
-        {activeTab === 'shop' && <ShopPage />}
+        {activeTab === 'shop' && (
+          <Suspense fallback={loadingFallback}>
+            <ShopPage />
+          </Suspense>
+        )}
       </main>
 
       <BottomNavigation
@@ -317,6 +373,23 @@ function App() {
         onClose={() => setShowAuthModal(false)}
         initialMode="login"
       />
+
+      {showOnboarding && (
+        <OnboardingFlow
+          onComplete={() => {
+            setShowOnboarding(false);
+            if (user) {
+              setShowLanding(false);
+              setViewState({ type: 'profile', userId: user.id });
+            }
+          }}
+          onCreatePost={() => {
+            setActiveTab('topics');
+            setOpenCreatePostRequest(n => n + 1);
+          }}
+          onBrowseEvents={() => setActiveTab('locations')}
+        />
+      )}
     </div>
   );
 }

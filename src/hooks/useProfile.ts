@@ -83,7 +83,6 @@ export const useProfile = () => {
 
     try {
       const payload: Record<string, any> = {
-        id: user.id,
         updated_at: new Date().toISOString()
       };
       if (updates.name !== undefined) payload.name = updates.name;
@@ -93,10 +92,12 @@ export const useProfile = () => {
       if (updates.interests !== undefined) payload.interests = updates.interests;
       if (updates.spiritual_gifts !== undefined) payload.spiritual_gifts = updates.spiritual_gifts;
       if (updates.location_text !== undefined) payload.location_text = updates.location_text;
+      if (updates.city !== undefined) payload.city = updates.city;
 
       const { error } = await supabase
         .from('users')
-        .upsert(payload, { onConflict: 'id' });
+        .update(payload)
+        .eq('id', user.id);
 
       if (error) throw error;
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, MapPin, Users, ShoppingBag, Search, Mail, Bell } from 'lucide-react';
+import { MessageSquare, MapPin, Search, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export type TabType = 'topics' | 'locations' | 'network' | 'shop' | 'search' | 'messages' | 'notifications';
@@ -24,7 +24,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     { id: 'search' as const, nameKey: 'nav.search', icon: Search },
     { id: 'locations' as const, nameKey: 'nav.events', icon: MapPin },
     { id: 'messages' as const, nameKey: 'nav.messages', icon: Mail, badge: unreadMessages },
-    { id: 'shop' as const, nameKey: 'nav.shop', icon: ShoppingBag },
   ];
 
   return (

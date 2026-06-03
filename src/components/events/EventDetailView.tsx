@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, ChevronDown } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -53,42 +53,6 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
   }
 };
 
-const ORGANIZER_CHECKLIST_KEY = 'event_organizer_checklist_v1';
-const CHECKLIST_ITEMS = [
-  'Confirm venue & address',
-  'Send reminders to attendees',
-  'Assign worship leader',
-  'Assign hospitality coordinator',
-  'Assign discussion leader',
-  'Assign prayer leader',
-  'Confirm food/drinks list',
-  'Prepare discussion questions',
-  'Test audio/visual setup',
-  'Post-event follow-up planned'
-] as const;
-
-const getCachedChecklist = (eventId: string) => {
-  try {
-    const raw = window.localStorage.getItem(ORGANIZER_CHECKLIST_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, Record<string, boolean>>;
-    return parsed[eventId] || {};
-  } catch {
-    return {};
-  }
-};
-
-const setCachedChecklist = (eventId: string, checklist: Record<string, boolean>) => {
-  try {
-    const raw = window.localStorage.getItem(ORGANIZER_CHECKLIST_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, boolean>>) : {};
-    parsed[eventId] = checklist;
-    window.localStorage.setItem(ORGANIZER_CHECKLIST_KEY, JSON.stringify(parsed));
-  } catch {
-    // Ignore cache write issues
-  }
-};
-
 export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack }) => {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -109,11 +73,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [orgMessageContent, setOrgMessageContent] = useState('');
   const [sending, setSending] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
-  const [organizerChecklist, setOrganizerChecklist] = useState<Record<string, boolean>>({});
   const [showEditModal, setShowEditModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [showHostActions, setShowHostActions] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showPostponeModal, setShowPostponeModal] = useState(false);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeTime, setPostponeTime] = useState('');
+  const [postponing, setPostponing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
@@ -185,8 +153,19 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     setAttendeeCount(0);
     setDisplayCapacity(getCachedEventCapacity(eventId));
     setIsRsvped(false);
-    setActiveTab('details');
-    setOrganizerChecklist(getCachedChecklist(eventId));
+    // If we just created this event, jump straight to the Help tab so the
+    // host can add help/food requests right away.
+    let justCreated = false;
+    try {
+      const stored = sessionStorage.getItem('wny_event_just_created');
+      if (stored === eventId) {
+        justCreated = true;
+        sessionStorage.removeItem('wny_event_just_created');
+      }
+    } catch {
+      // ignore
+    }
+    setActiveTab(justCreated ? 'help' : 'details');
     fetchEvent();
     if (user) {
       checkRsvpStatus();
@@ -838,7 +817,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
   const cancelEvent = async () => {
     if (!event || !isHost) return;
-    if (!window.confirm('Are you sure you want to cancel this event? All attendees will be notified.')) return;
     setCancellingEvent(true);
     try {
       const { error } = await supabase
@@ -846,12 +824,85 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', event.id);
       if (error) throw error;
+
+      // Notify attendees so they see the cancellation in their notifications.
+      const { data: attendees } = await supabase
+        .from('event_attendees')
+        .select('user_id')
+        .eq('event_id', event.id)
+        .in('status', ['registered', 'attended']);
+      if (attendees && attendees.length > 0) {
+        const notifications = attendees
+          .filter(a => a.user_id !== user?.id)
+          .map(a => ({
+            user_id: a.user_id,
+            type: 'event_cancelled',
+            title: `Event cancelled: ${event.title}`,
+            body: 'The host cancelled this event.',
+            payload: { event_id: event.id },
+          }));
+        if (notifications.length > 0) {
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+
       toast.success('Event cancelled');
+      setShowCancelConfirm(false);
       onBack();
     } catch (err: any) {
       toast.error(err.message || 'Failed to cancel event');
     } finally {
       setCancellingEvent(false);
+    }
+  };
+
+  const postponeEvent = async () => {
+    if (!event || !isHost) return;
+    if (!postponeDate || !postponeTime) {
+      toast.error('Pick a new date and time');
+      return;
+    }
+    setPostponing(true);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          date: postponeDate,
+          time: postponeTime,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', event.id);
+      if (error) throw error;
+
+      const { data: attendees } = await supabase
+        .from('event_attendees')
+        .select('user_id')
+        .eq('event_id', event.id)
+        .in('status', ['registered', 'attended']);
+      if (attendees && attendees.length > 0) {
+        const notifications = attendees
+          .filter(a => a.user_id !== user?.id)
+          .map(a => ({
+            user_id: a.user_id,
+            type: 'event_postponed',
+            title: `Event rescheduled: ${event.title}`,
+            body: `New date: ${postponeDate} at ${postponeTime}`,
+            payload: { event_id: event.id, new_date: postponeDate, new_time: postponeTime },
+          }));
+        if (notifications.length > 0) {
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+
+      toast.success('Event rescheduled — attendees notified');
+      setShowPostponeModal(false);
+      setPostponeDate('');
+      setPostponeTime('');
+      await fetchEvent();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reschedule event');
+    } finally {
+      setPostponing(false);
     }
   };
 
@@ -957,7 +1008,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-30">
           <div className="flex items-center justify-between p-4">
             <button
               onClick={onBack}
@@ -1007,14 +1058,25 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                         <CalendarPlus className="w-4 h-4" />
                         Download .ics
                       </button>
+                      <button
+                        onClick={() => {
+                          setShowHostActions(false);
+                          setPostponeDate(event?.date || '');
+                          setPostponeTime(event?.time || '');
+                          setShowPostponeModal(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <CalendarClock className="w-4 h-4" />
+                        Postpone Event
+                      </button>
                       <div className="border-t border-gray-100 dark:border-gray-700" />
                       <button
-                        onClick={() => { cancelEvent(); setShowHostActions(false); }}
-                        disabled={cancellingEvent}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                        onClick={() => { setShowHostActions(false); setShowCancelConfirm(true); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
                         <XCircle className="w-4 h-4" />
-                        {cancellingEvent ? 'Cancelling...' : 'Cancel Event'}
+                        Cancel Event
                       </button>
                     </div>
                   )}
@@ -1192,7 +1254,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                   {event.locations?.name || t('events.locationTBD')}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {event.locations?.address || t('events.addressAfterRSVP')}
+                  {(() => {
+                    const visibility = event.address_visibility || 'public';
+                    const canSeeAddress = isHost || isRsvped || visibility === 'public';
+                    if (canSeeAddress) {
+                      return event.locations?.address || t('events.addressAfterRSVP');
+                    }
+                    if (visibility === 'general_area') {
+                      return 'General area only — exact address is hidden.';
+                    }
+                    return 'Address shown after you RSVP.';
+                  })()}
                 </div>
               </div>
             </div>
@@ -1285,8 +1357,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           )}
 
           <div className="space-y-6 mt-8">
-            {/* Open in Maps */}
-            {event.locations?.address && (
+            {/* Open in Maps — only when the viewer is allowed to see the address */}
+            {event.locations?.address && (() => {
+              const visibility = event.address_visibility || 'public';
+              const canSeeAddress = isHost || isRsvped || visibility === 'public';
+              return canSeeAddress;
+            })() && (
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <a
                   href={`https://www.google.com/maps/search/${encodeURIComponent(event.locations.address)}`}
@@ -1328,37 +1404,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             {/* Check-in - only for hosts and organizers */}
             {(isHost || isOrganizer) && (
               <CheckInButton eventId={eventId} isHost={isHost} isRsvped={isRsvped} />
-            )}
-
-            {/* Organizer Checklist */}
-            {isHost && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Host Checklist</h3>
-                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                    {Object.values(organizerChecklist).filter(Boolean).length}/{CHECKLIST_ITEMS.length} done
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {CHECKLIST_ITEMS.map((item) => (
-                    <label key={item} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={organizerChecklist[item] || false}
-                        onChange={(e) => {
-                          const newChecklist = { ...organizerChecklist, [item]: e.target.checked };
-                          setOrganizerChecklist(newChecklist);
-                          setCachedChecklist(eventId, newChecklist);
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 cursor-pointer"
-                      />
-                      <span className={`text-sm ${organizerChecklist[item] ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {item}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
             )}
 
             {/* Post-event friend suggestions */}
@@ -1507,9 +1552,97 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
       {showHostActions && (
         <div
-          className="fixed inset-0 z-10"
+          className="fixed inset-0 z-20"
           onClick={() => setShowHostActions(false)}
         />
+      )}
+
+      {showCancelConfirm && event && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !cancellingEvent && setShowCancelConfirm(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cancel this event?</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  Everyone who RSVP'd will be notified that "{event.title}" was cancelled. This can't be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={cancellingEvent}
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Never mind
+              </button>
+              <button
+                onClick={cancelEvent}
+                disabled={cancellingEvent}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {cancellingEvent ? 'Cancelling...' : 'Cancel event'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPostponeModal && event && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !postponing && setShowPostponeModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <CalendarClock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Postpone event</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  Pick a new date and time. Everyone who RSVP'd will be notified.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New date</label>
+                <input
+                  type="date"
+                  value={postponeDate}
+                  onChange={e => setPostponeDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New time</label>
+                <input
+                  type="time"
+                  value={postponeTime}
+                  onChange={e => setPostponeTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowPostponeModal(false)}
+                disabled={postponing}
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={postponeEvent}
+                disabled={postponing || !postponeDate || !postponeTime}
+                className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50"
+              >
+                {postponing ? 'Saving...' : 'Reschedule & notify'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

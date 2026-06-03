@@ -378,9 +378,12 @@ export const useEvents = () => {
           is_active: true
         }));
 
-        await supabase
+        const { error: volunteerError } = await supabase
           .from('volunteer_roles')
-          .upsert(volunteerData);
+          .upsert(volunteerData, { onConflict: 'user_id,role_type' });
+        if (volunteerError) {
+          console.error('Failed to save volunteer roles:', volunteerError);
+        }
       }
 
       // Add food items if any
