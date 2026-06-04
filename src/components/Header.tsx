@@ -10,6 +10,7 @@ interface HeaderProps {
   onViewProfile?: () => void;
   onViewNotifications?: () => void;
   onViewNetwork?: () => void;
+  onShowLanding?: () => void;
   unreadNotifications?: number;
 }
 
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onViewProfile,
   onViewNotifications,
   onViewNetwork,
+  onShowLanding,
   unreadNotifications = 0
 }) => {
   const { user, profile, signOut } = useAuth();
@@ -110,7 +112,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onShowLanding={onShowLanding ? () => { setShowSettings(false); onShowLanding(); } : undefined}
+      />
     </header>
   );
 };

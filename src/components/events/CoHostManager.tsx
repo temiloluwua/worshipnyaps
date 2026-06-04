@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 interface CoHost {
   id: string;
   user_id: string;
+  can_edit?: boolean;
   user: {
     name: string;
     avatar_url?: string;
@@ -30,6 +31,7 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost })
   const [friends, setFriends] = useState<Friend[]>([]);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [grantEdit, setGrantEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost })
         .select(`
           id,
           user_id,
+          can_edit,
           user:users!event_cohosts_user_id_fkey (
             name, avatar_url
           )
@@ -86,13 +89,19 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost })
     try {
       const { error } = await supabase
         .from('event_cohosts')
-        .insert({ event_id: eventId, user_id: friendId, added_by: user.id });
+        .insert({
+          event_id: eventId,
+          user_id: friendId,
+          added_by: user.id,
+          can_edit: grantEdit,
+        });
 
       if (error) throw error;
-      toast.success('Co-host added!');
+      toast.success(grantEdit ? 'Co-host added with edit access!' : 'Co-host added!');
       await fetchCoHosts();
       setShowAdd(false);
       setSearch('');
+      setGrantEdit(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to add co-host');
     } finally {
@@ -158,6 +167,11 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost })
                 )}
               </div>
               <span className="flex-1 text-sm text-gray-800 dark:text-gray-200">{coHost.user?.name}</span>
+              {coHost.can_edit && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                  Editor
+                </span>
+              )}
               {isHost && (
                 <button
                   onClick={() => handleRemove(coHost.id)}
@@ -175,6 +189,32 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost })
 
       {showAdd && isHost && (
         <div className="border-t border-gray-200 dark:border-gray-600 pt-3 space-y-2">
+          {/* What co-hosts can do */}
+          <div className="text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600 leading-relaxed">
+            <p className="font-semibold text-gray-900 dark:text-white mb-1">Co-hosts can:</p>
+            <ul className="space-y-0.5">
+              <li>✓ Post announcements & message attendees</li>
+              <li>✓ Mark people as attended</li>
+              <li>✓ Assign help / food requests</li>
+              <li>✓ Use the organizer chat</li>
+            </ul>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">
+              By default, only you (the host) can edit, cancel, or postpone the event. Toggle "Can edit event" below to give this co-host the same powers as you.
+            </p>
+          </div>
+
+          <label className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={grantEdit}
+              onChange={(e) => setGrantEdit(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-800 dark:text-gray-200">
+              Can edit / cancel / postpone the event
+            </span>
+          </label>
+
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input

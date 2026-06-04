@@ -75,6 +75,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [orgMessageContent, setOrgMessageContent] = useState('');
   const [sending, setSending] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [canEditEvent, setCanEditEvent] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
@@ -446,6 +447,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           .eq('status', 'filled')
           .limit(1);
         setIsOrganizer(Boolean(helpAssignment && helpAssignment.length > 0));
+
+        // Co-host with can_edit also gets host-level edit/cancel/postpone powers.
+        const { data: cohostRow } = await supabase
+          .from('event_cohosts')
+          .select('can_edit')
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setCanEditEvent(Boolean(cohostRow?.can_edit));
+      } else {
+        setCanEditEvent(false);
       }
     } catch (error) {
       console.error('Error fetching event:', error);
@@ -819,7 +831,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   };
 
   const cancelEvent = async () => {
-    if (!event || !isHost) return;
+    if (!event || !(isHost || canEditEvent)) return;
     setCancellingEvent(true);
     try {
       const { error } = await supabase
@@ -860,7 +872,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   };
 
   const postponeEvent = async () => {
-    if (!event || !isHost) return;
+    if (!event || !(isHost || canEditEvent)) return;
     if (!postponeDate || !postponeTime) {
       toast.error('Pick a new date and time');
       return;
@@ -1021,7 +1033,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </button>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Event Details</h1>
             <div className="flex items-center gap-1">
-              {isHost && (
+              {(isHost || canEditEvent) && (
                 <div className="relative">
                   <button
                     onClick={() => setShowHostActions(!showHostActions)}

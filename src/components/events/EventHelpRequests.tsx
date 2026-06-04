@@ -50,6 +50,22 @@ const categoryLabel: Record<string, string> = {
   main: 'Main Dish', side: 'Side', dessert: 'Dessert', beverage: 'Drinks', food: 'Food',
 };
 
+// What each role actually involves at the event. Shown as helper text in the
+// form so volunteers know what they're signing up for.
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  prayer: 'Open and/or close the gathering in prayer. Lift up shared requests.',
+  worship: 'Lead the music portion — bring an instrument, pick a few songs.',
+  tech: 'Handle audio/video setup, projector, sound, or hybrid attendees.',
+  discussion: 'Facilitate the conversation. Prepare a few questions, guide the group.',
+  hospitality: 'Greet people as they arrive, make them feel welcome, organize food.',
+  setup: 'Show up early to arrange chairs, set up the space, tear down after.',
+  other: 'Anything not covered by the standard roles.',
+  main: 'A main dish that feeds several people.',
+  side: 'A side dish — salad, bread, fruit, etc.',
+  dessert: 'A dessert to share.',
+  beverage: 'Drinks — coffee, tea, juice, water.',
+};
+
 export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -448,6 +464,11 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                   {item.description && (
                     <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">{item.description}</p>
                   )}
+                  {item.source === 'help_request' && ROLE_DESCRIPTIONS[item.category] && (
+                    <p className="text-gray-400 dark:text-gray-500 text-xs mt-1 italic">
+                      {ROLE_DESCRIPTIONS[item.category]}
+                    </p>
+                  )}
                   {item.is_filled && item.assigned_user && (
                     <div className="flex items-center gap-1 mt-2 text-green-700 dark:text-green-300 text-xs">
                       <Check className="w-3 h-3" />
@@ -564,6 +585,11 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
               <option key={type} value={type}>{typeIcons[type]} {categoryLabel[type]}</option>
             ))}
           </select>
+          {ROLE_DESCRIPTIONS[newHelp.request_type] && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 -mt-1 px-1 italic">
+              {ROLE_DESCRIPTIONS[newHelp.request_type]}
+            </p>
+          )}
           <input
             type="text"
             value={newHelp.title}

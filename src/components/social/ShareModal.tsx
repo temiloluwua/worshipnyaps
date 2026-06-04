@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
-  X, Repeat, MessageSquare, Link2, Copy, Check,
+  Repeat, MessageSquare, Link2, Copy, Check,
   Send, Twitter, Facebook
 } from 'lucide-react';
 import { Topic } from '../../lib/supabase';
 import { useReposts } from '../../hooks/useReposts';
+import { useConnections } from '../../hooks/useConnections';
+import { useDirectMessages } from '../../hooks/useDirectMessages';
 import { Modal } from '../ui/Modal';
 import toast from 'react-hot-toast';
 
@@ -20,12 +22,42 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   onStartChat
 }) => {
   const { createRepost, hasReposted } = useReposts();
+  const { connections } = useConnections();
+  const { startConversation, sendMessage } = useDirectMessages();
   const [quoteText, setQuoteText] = useState('');
   const [showQuoteInput, setShowQuoteInput] = useState(false);
+  const [showFriendPicker, setShowFriendPicker] = useState(false);
+  const [friendSearch, setFriendSearch] = useState('');
+  const [sendingToFriendId, setSendingToFriendId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const shareUrl = `${window.location.origin}/topic/${topic.id}`;
   const shareText = `Check out "${topic.title}" on Worship and Yapps`;
+
+  const filteredConnections = (connections || []).filter((c: any) =>
+    !friendSearch.trim() ||
+    c.connected_user?.name?.toLowerCase().includes(friendSearch.trim().toLowerCase())
+  );
+
+  const handleSendToFriend = async (friendId: string) => {
+    setSendingToFriendId(friendId);
+    try {
+      const conv = await startConversation(friendId);
+      const convId = typeof conv === 'string' ? conv : (conv as any)?.id;
+      if (!convId) throw new Error('No conversation id');
+      const body = quoteText.trim()
+        ? `${quoteText.trim()}\n\n"${topic.title}"\n${shareUrl}`
+        : `Thought you'd like this — "${topic.title}"\n${shareUrl}`;
+      const ok = await sendMessage(convId, body);
+      if (ok === false) throw new Error('Send failed');
+      toast.success('Sent!');
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not send');
+    } finally {
+      setSendingToFriendId(null);
+    }
+  };
 
   const handleRepost = async () => {
     if (hasReposted(topic.id)) {
@@ -81,9 +113,78 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           </p>
         </div>
 
-        <div className="space-y-3">
+        {showFriendPicker && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => { setShowFriendPicker(false); setFriendSearch(''); }}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ← Back
+              </button>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Send to a friend</h3>
+              <div className="w-12" />
+            </div>
+            <input
+              type="text"
+              value={friendSearch}
+              onChange={(e) => setFriendSearch(e.target.value)}
+              placeholder="Search connections..."
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <div className="max-h-72 overflow-y-auto -mx-1 px-1">
+              {filteredConnections.length === 0 ? (
+                <p className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
+                  {connections.length === 0 ? 'Add friends in the Community tab first.' : 'No matching friends.'}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {filteredConnections.map((conn: any) => (
+                    <button
+                      key={conn.id}
+                      onClick={() => handleSendToFriend(conn.connected_user_id)}
+                      disabled={sendingToFriendId === conn.connected_user_id}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 overflow-hidden flex items-center justify-center text-white font-medium flex-shrink-0">
+                        {conn.connected_user?.avatar_url ? (
+                          <img src={conn.connected_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (conn.connected_user?.name?.charAt(0) || '?')
+                        )}
+                      </div>
+                      <span className="flex-1 text-left text-sm font-medium text-gray-900 dark:text-white">
+                        {conn.connected_user?.name || 'Unknown'}
+                      </span>
+                      {sendingToFriendId === conn.connected_user_id ? (
+                        <span className="text-xs text-gray-500">Sending...</span>
+                      ) : (
+                        <Send className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className={`space-y-3 ${showFriendPicker ? 'hidden' : ''}`}>
           {!showQuoteInput && (
             <>
+              <button
+                onClick={() => setShowFriendPicker(true)}
+                className="w-full flex items-center space-x-3 p-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Send className="w-5 h-5 text-blue-600" />
+                <div className="text-left">
+                  <p className="font-medium text-gray-900 dark:text-white">Send in a message</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Share directly with a friend on the app
+                  </p>
+                </div>
+              </button>
+
               <button
                 onClick={handleRepost}
                 disabled={hasReposted(topic.id)}

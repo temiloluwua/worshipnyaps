@@ -274,6 +274,7 @@ function App() {
           onViewProfile={user ? () => handleViewProfile(user.id) : undefined}
           onViewNotifications={() => setActiveTab('notifications')}
           onViewNetwork={handleViewNetwork}
+          onShowLanding={() => setShowLanding(true)}
           unreadNotifications={unreadNotifications}
         />
         <main className="pb-16">
@@ -309,6 +310,7 @@ function App() {
         onViewProfile={user ? () => handleViewProfile(user.id) : undefined}
         onViewNotifications={() => setActiveTab('notifications')}
         onViewNetwork={handleViewNetwork}
+        onShowLanding={() => setShowLanding(true)}
         unreadNotifications={unreadNotifications}
       />
 

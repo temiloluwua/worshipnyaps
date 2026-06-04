@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
@@ -9,6 +9,7 @@ import { Modal, ModalBody } from './ui/Modal';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onShowLanding?: () => void;
 }
 
 const languages = [
@@ -19,7 +20,7 @@ const languages = [
 
 const DELETE_CONFIRM_PHRASE = 'DELETE';
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onShowLanding }) => {
   const { i18n } = useTranslation();
   const { theme, setTheme, resetToSystem, isSystemPreference } = useTheme();
   const { user, deleteAccount } = useAuth();
@@ -120,6 +121,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </button>
             </div>
           </div>
+
+          {onShowLanding && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <button
+                onClick={onShowLanding}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Sparkles size={16} className="text-blue-500" />
+                <span className="flex-1">View welcome tour</span>
+              </button>
+            </div>
+          )}
 
           {user && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
