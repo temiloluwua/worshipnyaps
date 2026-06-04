@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 // 12-hour time picker. Stores value as 24h "HH:mm" string but displays in 12h
 // (e.g. 7:30 PM). Use for any event time input across the app.
@@ -29,6 +29,14 @@ export function TwelveHourTimePicker({
     const mm = String(m).padStart(2, '0');
     onChange(`${hh}:${mm}`);
   };
+
+  // If parent passed an empty string, push the shown default ("7:30 PM" → 19:00)
+  // up to parent state so the form submission has a valid time even when the
+  // user never interacts with the picker.
+  useEffect(() => {
+    if (!value) commit(hour12, minute, period);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cls = "px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm";
 

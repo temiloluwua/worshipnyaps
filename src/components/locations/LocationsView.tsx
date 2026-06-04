@@ -596,6 +596,12 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
       return;
     }
 
+    if (!formData.eventDate || !formData.eventTime) {
+      toast.error('Please pick a date and time');
+      setSubmitting(false);
+      return;
+    }
+
     // Geocode the address so the event lands on the map. If it fails (no
     // result, network error), save with 0/0 — the event still works, the
     // map just won't show a pin until someone refines the address.
@@ -715,36 +721,43 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Event type selector — first choice */}
+          {/* What kind of gathering? — unified chip selector with Bible Study + Yap vibes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering?</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setFormData(p => ({ ...p, event_type: 'bible_study', eventType: 'bible-study' }))}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  formData.event_type === 'bible_study'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <div className="text-2xl mb-1">📖</div>
-                <div className="font-semibold text-gray-900 dark:text-white text-sm">Bible Study</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A structured spiritual gathering</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData(p => ({ ...p, event_type: 'yap', eventType: 'other' }))}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  formData.event_type === 'yap'
-                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <div className="text-2xl mb-1">💬</div>
-                <div className="font-semibold text-gray-900 dark:text-white text-sm">Yap</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A casual community hangout</div>
-              </button>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering is this?</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'bible_study', label: '📖 Bible Study', eventType: 'bible_study' as const, vibe: '' },
+                { value: 'games', label: '🎲 Games', eventType: 'yap' as const, vibe: 'games' },
+                { value: 'food', label: '🍽️ Food / Potluck', eventType: 'yap' as const, vibe: 'food' },
+                { value: 'sports', label: '🏅 Sports', eventType: 'yap' as const, vibe: 'sports' },
+                { value: 'music', label: '🎶 Music / Worship', eventType: 'yap' as const, vibe: 'music' },
+                { value: 'hanging', label: '🗣️ Just hanging', eventType: 'yap' as const, vibe: 'hanging' },
+              ].map(opt => {
+                const selected = opt.value === 'bible_study'
+                  ? formData.event_type === 'bible_study'
+                  : formData.event_type === 'yap' && formData.yap_vibe === opt.vibe;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData(p => ({
+                      ...p,
+                      event_type: opt.eventType,
+                      eventType: opt.eventType === 'bible_study' ? 'bible-study' : 'other',
+                      yap_vibe: opt.vibe,
+                    }))}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                      selected
+                        ? opt.value === 'bible_study'
+                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                          : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -806,17 +819,6 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Why is this gathering different from your last one?</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Growth, healing, accountability, exploring doubt, building friendship?</p>
-                <textarea
-                  value={formData.session_purpose}
-                  onChange={(e) => setFormData(p => ({ ...p, session_purpose: e.target.value.slice(0, 300) }))}
-                  maxLength={300}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none text-sm"
-                />
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Opening ritual</label>
@@ -860,45 +862,18 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
             </>
           )}
 
-          {/* Yap only */}
+          {/* Yap only — extra "bring something" prompt */}
           {formData.event_type === 'yap' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of Yap is this?</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'games', label: '🎲 Games' },
-                    { value: 'food', label: '🍽️ Food / Potluck' },
-                    { value: 'sports', label: '🏅 Sports' },
-                    { value: 'music', label: '🎶 Music / Worship' },
-                    { value: 'hanging', label: '🗣️ Just hanging' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setFormData(p => ({ ...p, yap_vibe: opt.value }))}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                        formData.yap_vibe === opt.value
-                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
-                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Anything to bring? (optional)</label>
-                <input
-                  type="text"
-                  value={formData.bring_note}
-                  onChange={(e) => setFormData(p => ({ ...p, bring_note: e.target.value }))}
-                  placeholder="e.g. A dish to share, your guitar, nothing at all"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Anything to bring? (optional)</label>
+              <input
+                type="text"
+                value={formData.bring_note}
+                onChange={(e) => setFormData(p => ({ ...p, bring_note: e.target.value }))}
+                placeholder="e.g. A dish to share, your guitar, nothing at all"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           )}
 
           <div>
