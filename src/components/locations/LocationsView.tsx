@@ -431,6 +431,11 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                     <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
                       <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                       <span className="truncate">{event.locations?.name || 'Location TBD'}</span>
+                      {event.location_type && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex-shrink-0">
+                          {({ home: '🏠 Home', church: '⛪ Church', park: '🌿 Outdoors', cafe: '☕ Café', online: '💻 Online' } as Record<string, string>)[event.location_type] || event.location_type}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
                       <Users className="w-4 h-4 mr-2 flex-shrink-0" />
