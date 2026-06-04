@@ -12,6 +12,8 @@ import { CheckInButton } from './CheckInButton';
 import { AttendeeList } from './AttendeeList';
 import { PostEventFriendSuggestions } from './PostEventFriendSuggestions';
 import { EditEventModal } from './EditEventModal';
+import { TwelveHourTimePicker } from '../ui/TimePicker';
+import { RSVPDisclaimerModal } from './RSVPDisclaimerModal';
 import { InviteFriendsModal } from './InviteFriendsModal';
 import { CoHostManager } from './CoHostManager';
 import { EventAnnouncements } from './EventAnnouncements';
@@ -82,6 +84,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
   const [postponing, setPostponing] = useState(false);
+  const [showRsvpDisclaimer, setShowRsvpDisclaimer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
@@ -1230,6 +1233,69 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             return null;
           })()}
 
+          {/* Event-type badge + structured info */}
+          {(event.event_type || event.location_type || event.study_topic || event.session_purpose || event.opening_ritual || event.closing_ritual || event.yap_vibe || event.bring_note) && (
+            <div className="mb-6 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                  event.event_type === 'yap'
+                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                }`}>
+                  {event.event_type === 'yap' ? '💬 Yap' : '📖 Bible Study'}
+                </span>
+                {event.location_type && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {({ home: '🏠 Home', church: '⛪ Church', park: '🌿 Park / Outdoors', cafe: '☕ Café', online: '💻 Online' } as Record<string, string>)[event.location_type] || event.location_type}
+                  </span>
+                )}
+                {event.yap_vibe && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {({ games: '🎲 Games', food: '🍽️ Food / Potluck', sports: '🏅 Sports', music: '🎶 Music / Worship', hanging: '🗣️ Just hanging' } as Record<string, string>)[event.yap_vibe] || event.yap_vibe}
+                  </span>
+                )}
+              </div>
+
+              {event.study_topic && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">Studying</p>
+                  <p className="text-sm text-blue-900 dark:text-blue-100">{event.study_topic}</p>
+                </div>
+              )}
+
+              {event.session_purpose && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Tonight's intention</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{event.session_purpose}</p>
+                </div>
+              )}
+
+              {(event.opening_ritual || event.closing_ritual) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {event.opening_ritual && (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Opening</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-200">{event.opening_ritual}</p>
+                    </div>
+                  )}
+                  {event.closing_ritual && (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Closing</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-200">{event.closing_ritual}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {event.bring_note && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-1">Bring</p>
+                  <p className="text-sm text-amber-900 dark:text-amber-100">{event.bring_note}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-4 mb-6">
             <div className="flex items-start">
               <Calendar className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
@@ -1335,7 +1401,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           {!isRsvped && !isHost && (
             <button
-              onClick={handleRSVP}
+              onClick={() => setShowRsvpDisclaimer(true)}
               disabled={isEventFull}
               className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
                 isEventFull
@@ -1550,6 +1616,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         />
       )}
 
+      {showRsvpDisclaimer && event && (
+        <RSVPDisclaimerModal
+          event={event}
+          isOpen={showRsvpDisclaimer}
+          onClose={() => setShowRsvpDisclaimer(false)}
+          onConfirm={async () => {
+            await handleRSVP();
+            setShowRsvpDisclaimer(false);
+          }}
+        />
+      )}
+
       {showHostActions && (
         <div
           className="fixed inset-0 z-20"
@@ -1617,12 +1695,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New time</label>
-                <input
-                  type="time"
-                  value={postponeTime}
-                  onChange={e => setPostponeTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                />
+                <TwelveHourTimePicker value={postponeTime} onChange={setPostponeTime} />
               </div>
             </div>
             <div className="flex gap-2">

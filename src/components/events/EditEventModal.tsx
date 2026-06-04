@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { EventDescriptionForm } from './EventDescriptionTemplate';
+import { TwelveHourTimePicker } from '../ui/TimePicker';
 
 interface EditEventModalProps {
   event: DbEvent;
@@ -179,13 +180,9 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
-              <input
-                type="time"
-                name="time"
+              <TwelveHourTimePicker
                 value={formData.time}
-                onChange={handleInputChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                onChange={(v) => setFormData(prev => ({ ...prev, time: v }))}
               />
             </div>
           </div>

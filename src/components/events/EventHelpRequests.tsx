@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HeartHandshake, Plus, X, Check, Utensils } from 'lucide-react';
+import { HeartHandshake, Plus, X, Check, Utensils, Share2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -162,6 +162,31 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
     fetchAttendees();
   }, [eventId]);
 
+  const handleShareItem = async (item: UnifiedHelpItem) => {
+    const url = `${window.location.origin}/event/${eventId}`;
+    const message = item.source === 'food_item'
+      ? `Can you bring "${item.title}" for our event? Tap to RSVP and sign up: ${url}`
+      : `Can you help with "${item.title}" at our event? Tap to RSVP and sign up: ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: item.title, text: message, url });
+      } else {
+        await navigator.clipboard.writeText(message);
+        toast.success('Invite link copied!');
+      }
+    } catch (err: any) {
+      // User cancelled share — not an error worth surfacing.
+      if (err?.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(message);
+          toast.success('Invite link copied!');
+        } catch {
+          toast.error('Could not share');
+        }
+      }
+    }
+  };
+
   const handleVolunteer = async (item: UnifiedHelpItem) => {
     if (!user) { toast.error('Please sign in'); return; }
     try {
@@ -173,9 +198,22 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
           .eq('status', 'open');
         if (error) throw error;
       } else {
+        // Generic "Bring a [category]" — prompt the volunteer for what they're actually bringing.
+        let updatedItemName: string | null = null;
+        if (item.title.toLowerCase().startsWith('bring a ')) {
+          const userInput = window.prompt(
+            `What are you bringing? (currently: "${item.title}")`,
+            ''
+          );
+          if (userInput === null) return; // cancelled
+          if (userInput.trim()) updatedItemName = userInput.trim();
+        }
+        const updatePayload: Record<string, any> = { assigned_to: user.id };
+        if (updatedItemName) updatePayload.item = updatedItemName;
+
         const { error } = await supabase
           .from('food_items')
-          .update({ assigned_to: user.id })
+          .update(updatePayload)
           .eq('id', item.id.replace('food_', ''))
           .is('assigned_to', null);
         if (error) throw error;
@@ -314,11 +352,13 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
 
   const handleAddFood = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFood.item.trim()) return;
+    // Item can be empty — that means "open call for this category".
+    // A volunteer will fill it in when they sign up.
+    const itemValue = newFood.item.trim() || `Bring a ${categoryLabel[newFood.category]?.toLowerCase() || 'dish'}`;
     try {
       const { error } = await supabase.from('food_items').insert({
         event_id: eventId,
-        item: newFood.item.trim(),
+        item: itemValue,
         category: newFood.category,
         notes: newFood.notes.trim() || null,
         assigned_to: newFood.assigned_to || null,
@@ -461,10 +501,20 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                       <Check className="w-3 h-3" /> You
                     </span>
                   )}
+                  {isHost && !item.is_filled && (
+                    <button
+                      onClick={() => handleShareItem(item)}
+                      className="p-1 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+                      title="Share with a friend"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                  )}
                   {isHost && (
                     <button
                       onClick={() => handleRemove(item)}
                       className="p-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
+                      title="Remove"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -560,10 +610,12 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
             type="text"
             value={newFood.item}
             onChange={(e) => setNewFood(p => ({ ...p, item: e.target.value }))}
-            placeholder="e.g. Potato salad, Lemonade..."
+            placeholder="e.g. Potato salad — or leave blank for an open call"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-            required
           />
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+            Leave the item blank to let volunteers choose what to bring (e.g. "Bring a main").
+          </p>
           <select
             value={newFood.category}
             onChange={(e) => setNewFood(p => ({ ...p, category: e.target.value as any }))}

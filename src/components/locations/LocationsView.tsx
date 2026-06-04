@@ -8,7 +8,10 @@ import { RSVPModal } from './RSVPModal';
 import { InteractiveMap } from './InteractiveMap';
 import { AuthModal } from '../auth/AuthModal';
 import { EventDescriptionForm } from '../events/EventDescriptionTemplate';
+import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
+import { TwelveHourTimePicker } from '../ui/TimePicker';
+import { geocodeAddress } from '../../lib/geocode';
 
 interface LocationsViewProps {
   onOpenEvent?: (eventId: string) => void;
@@ -111,8 +114,17 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   // Backward-compat alias used by code below.
   const myRsvpEvents = myCombinedEvents;
 
+  // Only show events on the map when:
+  //  - event visibility is public (no friends-only or private events leak)
+  //  - host chose to make the address public (no precise pin for general_area
+  //    or attendees_only)
+  //  - lat/lng are non-zero (skip events where geocoding failed)
   const mapEvents = filteredEvents
-    .filter(e => e.locations?.latitude && e.locations?.longitude)
+    .filter(e =>
+      e.visibility === 'public' &&
+      (e.address_visibility ?? 'public') === 'public' &&
+      e.locations?.latitude && e.locations?.longitude
+    )
     .map(e => ({
       id: e.id,
       title: e.title,
@@ -531,6 +543,7 @@ interface HostEventModalProps {
 function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
   const { t } = useTranslation();
   const { createEvent } = useEvents();
+  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [useTemplate, setUseTemplate] = useState(false);
   const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>({
@@ -543,12 +556,23 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
   const [formData, setFormData] = useState({
     eventTitle: '',
     eventType: 'bible-study',
+    event_type: 'bible_study' as 'bible_study' | 'yap',
     eventDate: '',
     eventTime: '',
+    eventLocationName: '',
+    eventAddress: '',
     capacity: 12,
     description: '',
     visibility: 'public' as 'public' | 'private' | 'friends_only',
-    addressVisibility: 'attendees_only' as 'general_area' | 'attendees_only' | 'public'
+    addressVisibility: 'attendees_only' as 'general_area' | 'attendees_only' | 'public',
+    study_topic: '',
+    session_purpose: '',
+    location_type: '' as '' | 'home' | 'church' | 'park' | 'cafe' | 'online',
+    opening_ritual: '',
+    closing_ritual: '',
+    guest_covenant: '',
+    yap_vibe: '',
+    bring_note: '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -566,15 +590,61 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
       return;
     }
 
+    if (!formData.eventLocationName.trim() || !formData.eventAddress.trim()) {
+      toast.error('Please enter a location name and address');
+      setSubmitting(false);
+      return;
+    }
+
+    // Geocode the address so the event lands on the map. If it fails (no
+    // result, network error), save with 0/0 — the event still works, the
+    // map just won't show a pin until someone refines the address.
+    let locationId: string | null = null;
+    try {
+      const geo = await geocodeAddress(formData.eventAddress);
+      const { data: locData, error: locError } = await supabase
+        .from('locations')
+        .insert({
+          name: formData.eventLocationName.trim(),
+          address: formData.eventAddress.trim(),
+          latitude: geo?.latitude ?? 0,
+          longitude: geo?.longitude ?? 0,
+          capacity: formData.capacity,
+          host_id: user?.id,
+          is_approved: true,
+        })
+        .select()
+        .single();
+      if (locError) throw locError;
+      locationId = locData?.id || null;
+      if (!geo) {
+        toast("Couldn't find that address on the map, but the event is saved.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save location');
+      setSubmitting(false);
+      return;
+    }
+
     const eventData: Record<string, any> = {
       title: formData.eventTitle,
       type: formData.eventType,
+      event_type: formData.event_type,
       date: formData.eventDate,
       time: formData.eventTime,
       capacity: formData.capacity,
       visibility: formData.visibility,
       is_private: formData.visibility === 'private',
-      address_visibility: formData.addressVisibility
+      address_visibility: formData.addressVisibility,
+      location_id: locationId,
+      location_type: formData.location_type || null,
+      study_topic: formData.event_type === 'bible_study' ? (formData.study_topic.trim() || null) : null,
+      session_purpose: formData.event_type === 'bible_study' ? (formData.session_purpose.trim() || null) : null,
+      opening_ritual: formData.event_type === 'bible_study' ? (formData.opening_ritual || null) : null,
+      closing_ritual: formData.event_type === 'bible_study' ? (formData.closing_ritual || null) : null,
+      guest_covenant: formData.event_type === 'bible_study' ? (formData.guest_covenant.trim() || null) : null,
+      yap_vibe: formData.event_type === 'yap' ? (formData.yap_vibe || null) : null,
+      bring_note: formData.event_type === 'yap' ? (formData.bring_note.trim() || null) : null,
     };
 
     if (useTemplate) {
@@ -645,6 +715,39 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Event type selector — first choice */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering?</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData(p => ({ ...p, event_type: 'bible_study', eventType: 'bible-study' }))}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  formData.event_type === 'bible_study'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className="text-2xl mb-1">📖</div>
+                <div className="font-semibold text-gray-900 dark:text-white text-sm">Bible Study</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A structured spiritual gathering</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData(p => ({ ...p, event_type: 'yap', eventType: 'other' }))}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  formData.event_type === 'yap'
+                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className="text-2xl mb-1">💬</div>
+                <div className="font-semibold text-gray-900 dark:text-white text-sm">Yap</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A casual community hangout</div>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('events.eventTitle')}</label>
             <input
@@ -658,25 +761,173 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('events.eventType')}</label>
-              <select
-                name="eventType"
-                value={formData.eventType}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="bible-study">Bible Study</option>
-                <option value="basketball-yap">Basketball & Yap</option>
-                <option value="hiking-yap">Hiking & Yap</option>
-                <option value="other">Other</option>
-              </select>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('events.capacity')}</label>
+            <input type="number" name="capacity" value={formData.capacity} onChange={handleInputChange} min="4" max="300" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          {/* Location type chips — shared by both event types */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Where is it?</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'home', label: '🏠 Home' },
+                { value: 'church', label: '⛪ Church' },
+                { value: 'park', label: '🌿 Park / Outdoors' },
+                { value: 'cafe', label: '☕ Café' },
+                { value: 'online', label: '💻 Online' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, location_type: opt.value as any }))}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                    formData.location_type === opt.value
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('events.capacity')}</label>
-              <input type="number" name="capacity" value={formData.capacity} onChange={handleInputChange} min="4" max="300" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500" />
-            </div>
+          </div>
+
+          {/* Bible Study only */}
+          {formData.event_type === 'bible_study' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What are you studying?</label>
+                <input
+                  type="text"
+                  value={formData.study_topic}
+                  onChange={(e) => setFormData(p => ({ ...p, study_topic: e.target.value }))}
+                  placeholder="e.g. Romans 8 — Life in the Spirit"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Why is this gathering different from your last one?</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Growth, healing, accountability, exploring doubt, building friendship?</p>
+                <textarea
+                  value={formData.session_purpose}
+                  onChange={(e) => setFormData(p => ({ ...p, session_purpose: e.target.value.slice(0, 300) }))}
+                  maxLength={300}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Opening ritual</label>
+                  <select
+                    value={formData.opening_ritual}
+                    onChange={(e) => setFormData(p => ({ ...p, opening_ritual: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="">Host's choice</option>
+                    <option value="Opening prayer">Opening prayer</option>
+                    <option value="A reading aloud">A reading aloud</option>
+                    <option value="A check-in question">A check-in question</option>
+                    <option value="Moment of silence">Moment of silence</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Closing ritual</label>
+                  <select
+                    value={formData.closing_ritual}
+                    onChange={(e) => setFormData(p => ({ ...p, closing_ritual: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="">Host's choice</option>
+                    <option value="Group prayer">Group prayer</option>
+                    <option value="One-word takeaway round">One-word takeaway round</option>
+                    <option value="A blessing spoken by host">A blessing spoken by host</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group agreement (optional)</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">e.g. What's shared here stays here. Phones away.</p>
+                <textarea
+                  value={formData.guest_covenant}
+                  onChange={(e) => setFormData(p => ({ ...p, guest_covenant: e.target.value.slice(0, 500) }))}
+                  maxLength={500}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Yap only */}
+          {formData.event_type === 'yap' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of Yap is this?</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'games', label: '🎲 Games' },
+                    { value: 'food', label: '🍽️ Food / Potluck' },
+                    { value: 'sports', label: '🏅 Sports' },
+                    { value: 'music', label: '🎶 Music / Worship' },
+                    { value: 'hanging', label: '🗣️ Just hanging' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, yap_vibe: opt.value }))}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                        formData.yap_vibe === opt.value
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Anything to bring? (optional)</label>
+                <input
+                  type="text"
+                  value={formData.bring_note}
+                  onChange={(e) => setFormData(p => ({ ...p, bring_note: e.target.value }))}
+                  placeholder="e.g. A dish to share, your guitar, nothing at all"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location name</label>
+            <input
+              type="text"
+              name="eventLocationName"
+              value={formData.eventLocationName}
+              onChange={handleInputChange}
+              placeholder="e.g. Hillhurst Community Hall"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
+            <input
+              type="text"
+              name="eventAddress"
+              value={formData.eventAddress}
+              onChange={handleInputChange}
+              placeholder="e.g. 1320 5 Ave NW, Calgary, AB"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              required
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Visibility set by the "Address privacy" option below.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -686,7 +937,10 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('events.time')}</label>
-              <input type="time" name="eventTime" value={formData.eventTime} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500" required />
+              <TwelveHourTimePicker
+                value={formData.eventTime}
+                onChange={(v) => setFormData(p => ({ ...p, eventTime: v }))}
+              />
             </div>
           </div>
 

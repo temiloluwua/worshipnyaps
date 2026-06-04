@@ -87,21 +87,18 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <div className="font-medium text-gray-900 dark:text-white text-sm">
                   {topic.authorName || topic.users?.name || 'Anonymous'}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {topic.createdAt || topic.created_at || 'Just now'}
-                </div>
               </div>
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">{safeTitle}</h1>
 
-            {topic.bibleReference && (
+            {(topic.bibleReference || topic.bible_verse) && (
               <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
                 <div className="flex items-center gap-2 mb-2">
                   <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Scripture</span>
                 </div>
-                <p className="font-bold text-amber-900 dark:text-amber-200 mb-3">{topic.bibleReference}</p>
+                <p className="font-bold text-amber-900 dark:text-amber-200 mb-3">{topic.bibleReference || topic.bible_verse}</p>
                 {topic.bible_verse_text && (
                   <blockquote className="border-l-4 border-amber-300 dark:border-amber-600 pl-4 mb-3 italic text-amber-800 dark:text-amber-300 text-sm leading-relaxed">
                     {topic.bible_verse_text}
@@ -109,14 +106,14 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 )}
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => openESV(topic.bibleReference)}
+                    onClick={() => openESV(topic.bibleReference || topic.bible_verse)}
                     className="inline-flex items-center gap-1.5 bg-amber-600 text-white px-3 py-1.5 rounded-md hover:bg-amber-700 transition-colors text-xs font-medium"
                   >
                     <BookOpen className="w-3 h-3" />
                     Read ESV
                   </button>
                   <button
-                    onClick={() => openBibleReference(topic.bibleReference)}
+                    onClick={() => openBibleReference(topic.bibleReference || topic.bible_verse)}
                     className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-700 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-md hover:bg-amber-50 dark:hover:bg-gray-600 transition-colors border border-amber-300 dark:border-amber-700 text-xs font-medium"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -168,7 +165,6 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
             <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-6">
               <span>{commentCount} comments</span>
               <span>{topic.likes || 0} likes</span>
-              <span>{topic.views || topic.view_count || 0} views</span>
             </div>
 
             <div className="flex items-center gap-4 border-t border-b border-gray-200 dark:border-gray-700 py-3 mb-6">

@@ -83,6 +83,15 @@ export interface Event {
   is_private: boolean;
   visibility: 'public' | 'private' | 'friends_only';
   address_visibility?: 'general_area' | 'attendees_only' | 'public';
+  event_type?: 'bible_study' | 'yap';
+  study_topic?: string;
+  session_purpose?: string;
+  location_type?: 'home' | 'church' | 'park' | 'cafe' | 'online';
+  opening_ritual?: string;
+  closing_ritual?: string;
+  guest_covenant?: string;
+  yap_vibe?: string;
+  bring_note?: string;
   invite_code?: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_at: string;
