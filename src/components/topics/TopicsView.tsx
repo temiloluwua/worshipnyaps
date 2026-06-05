@@ -175,10 +175,13 @@ export function TopicsView({
   const topicOfTheDay = getTopicOfTheDay();
 
   const pickRandomTopic = () => {
-    if (topicsFiltered.length > 0) {
-      const randomIndex = Math.floor(Math.random() * topicsFiltered.length);
-      setRandomTopic(topicsFiltered[randomIndex] as Topic);
+    const pool = topicsFiltered.length > 0 ? topicsFiltered : displayTopicsSource;
+    if (pool.length === 0) {
+      toast('No topics to shuffle yet — check back when there are more.');
+      return;
     }
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    handleViewTopic(pool[randomIndex]);
   };
 
   const categories = [
