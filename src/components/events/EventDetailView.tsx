@@ -1184,7 +1184,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 )}
               </button>
             )}
-            {(isRsvped || isHost) && (
+            {(isRsvped || isHost || isOrganizer) && (
               <button
                 onClick={() => setActiveTab('people')}
                 className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
@@ -1529,7 +1529,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           <EventHelpRequests eventId={eventId} isHost={isHost} />
         ) : activeTab === 'people' ? (
           <div className="p-6">
-            <AttendeeList eventId={eventId} isHost={isHost} />
+            <AttendeeList
+              eventId={eventId}
+              isHost={isHost}
+              isRsvped={isRsvped}
+              onRsvp={() => setShowRsvpDisclaimer(true)}
+            />
           </div>
         ) : activeTab === 'organizer' ? (
           <div className="flex flex-col h-[calc(100vh-120px)]">

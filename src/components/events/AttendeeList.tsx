@@ -18,13 +18,15 @@ interface Connection {
 interface AttendeeListProps {
   eventId: string;
   isHost: boolean;
+  isRsvped?: boolean;
+  onRsvp?: () => void;
 }
 
 const FLAG_TYPES = ['behaviour', 'safety', 'attendance', 'follow_up', 'positive', 'other'] as const;
 const SEVERITY_LEVELS = ['low', 'medium', 'high'] as const;
 const REPORT_CATEGORIES = ['inappropriate_behavior', 'safety_concern', 'harassment', 'spam', 'other'] as const;
 
-export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) => {
+export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost, isRsvped = false, onRsvp }) => {
   const { user } = useAuth();
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [connections, setConnections] = useState<Set<string>>(new Set());
@@ -192,6 +194,28 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost }) =
 
   if (loading) {
     return <div className="p-6 text-center text-gray-500">Loading attendees...</div>;
+  }
+
+  if (!isHost && !isRsvped) {
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+          <EyeOff className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Guest list is private</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto mb-4">
+          RSVP to this event to see who's attending.
+        </p>
+        {onRsvp && (
+          <button
+            onClick={onRsvp}
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            RSVP
+          </button>
+        )}
+      </div>
+    );
   }
 
   const blockedAttending = attendees.filter(a => blockedIds.has(a.user_id));
