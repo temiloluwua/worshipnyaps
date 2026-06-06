@@ -239,6 +239,7 @@ function App() {
         <EventDetailView
           eventId={activeEventId}
           onBack={handleCloseEvent}
+          onViewProfile={handleViewProfile}
         />
       </Suspense>
     );

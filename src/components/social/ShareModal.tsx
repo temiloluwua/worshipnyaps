@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Repeat, MessageSquare, Link2, Copy, Check,
-  Send, Twitter, Facebook
+  Send, Twitter, Facebook, Users
 } from 'lucide-react';
-import { Topic } from '../../lib/supabase';
+import { Topic, supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 import { useReposts } from '../../hooks/useReposts';
 import { useConnections } from '../../hooks/useConnections';
 import { useDirectMessages } from '../../hooks/useDirectMessages';
@@ -16,11 +17,19 @@ interface ShareModalProps {
   onStartChat?: (userId: string) => void;
 }
 
+interface EventChat {
+  conversationId: string;
+  eventId: string;
+  title: string;
+  date: string;
+}
+
 export const ShareModal: React.FC<ShareModalProps> = ({
   topic,
   onClose,
   onStartChat
 }) => {
+  const { user } = useAuth();
   const { createRepost, hasReposted } = useReposts();
   const { connections } = useConnections();
   const { startConversation, sendMessage } = useDirectMessages();
@@ -30,9 +39,75 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [friendSearch, setFriendSearch] = useState('');
   const [sendingToFriendId, setSendingToFriendId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showEventPicker, setShowEventPicker] = useState(false);
+  const [eventChats, setEventChats] = useState<EventChat[]>([]);
+  const [eventChatsLoading, setEventChatsLoading] = useState(false);
+  const [sendingToEventId, setSendingToEventId] = useState<string | null>(null);
 
   const shareUrl = `${window.location.origin}/topic/${topic.id}`;
   const shareText = `Check out "${topic.title}" on Worship and Yapps`;
+
+  useEffect(() => {
+    if (!showEventPicker || !user) return;
+    let cancelled = false;
+    (async () => {
+      setEventChatsLoading(true);
+      try {
+        const { data: parts, error: partsErr } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', user.id);
+        if (partsErr) throw partsErr;
+        const convIds = (parts || []).map((p: any) => p.conversation_id).filter(Boolean);
+        if (convIds.length === 0) {
+          if (!cancelled) setEventChats([]);
+          return;
+        }
+
+        const { data: convs, error: convsErr } = await supabase
+          .from('conversations')
+          .select('id, event_id, events!conversations_event_id_fkey(id, title, date)')
+          .in('id', convIds)
+          .not('event_id', 'is', null);
+        if (convsErr) throw convsErr;
+
+        const todayIso = new Date().toISOString().split('T')[0];
+        const chats: EventChat[] = (convs || [])
+          .map((c: any) => {
+            const ev = Array.isArray(c.events) ? c.events[0] : c.events;
+            if (!ev) return null;
+            return { conversationId: c.id, eventId: ev.id, title: ev.title, date: ev.date };
+          })
+          .filter((c): c is EventChat => c !== null && c.date >= todayIso)
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (!cancelled) setEventChats(chats);
+      } catch (err) {
+        console.error('Failed to load event chats:', err);
+        if (!cancelled) setEventChats([]);
+      } finally {
+        if (!cancelled) setEventChatsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [showEventPicker, user]);
+
+  const handleSendToEventChat = async (chat: EventChat) => {
+    setSendingToEventId(chat.eventId);
+    try {
+      const body = quoteText.trim()
+        ? `${quoteText.trim()}\n\n📖 "${topic.title}"\n${shareUrl}`
+        : `📖 Shared a topic: "${topic.title}"\n${shareUrl}`;
+      const ok = await sendMessage(chat.conversationId, body, topic.id);
+      if (ok === false) throw new Error('Send failed');
+      toast.success(`Shared to ${chat.title}`);
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not send');
+    } finally {
+      setSendingToEventId(null);
+    }
+  };
 
   const filteredConnections = (connections || []).filter((c: any) =>
     !friendSearch.trim() ||
@@ -169,7 +244,64 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           </div>
         )}
 
-        <div className={`space-y-3 ${showFriendPicker ? 'hidden' : ''}`}>
+        {showEventPicker && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowEventPicker(false)}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ← Back
+              </button>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Send to event group chat</h3>
+              <div className="w-12" />
+            </div>
+            <div className="max-h-72 overflow-y-auto -mx-1 px-1">
+              {eventChatsLoading ? (
+                <p className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+              ) : eventChats.length === 0 ? (
+                <p className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
+                  No upcoming events you're part of. Host or RSVP to an event first.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {eventChats.map((chat) => {
+                    const formatted = (() => {
+                      try {
+                        return new Date(chat.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                      } catch {
+                        return chat.date;
+                      }
+                    })();
+                    return (
+                      <button
+                        key={chat.eventId}
+                        onClick={() => handleSendToEventChat(chat)}
+                        disabled={sendingToEventId === chat.eventId}
+                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 overflow-hidden flex items-center justify-center text-white">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{chat.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatted}</p>
+                        </div>
+                        {sendingToEventId === chat.eventId ? (
+                          <span className="text-xs text-gray-500">Sending...</span>
+                        ) : (
+                          <Send className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className={`space-y-3 ${showFriendPicker || showEventPicker ? 'hidden' : ''}`}>
           {!showQuoteInput && (
             <>
               <button
@@ -181,6 +313,19 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   <p className="font-medium text-gray-900 dark:text-white">Send in a message</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Share directly with a friend on the app
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setShowEventPicker(true)}
+                className="w-full flex items-center space-x-3 p-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Users className="w-5 h-5 text-purple-600" />
+                <div className="text-left">
+                  <p className="font-medium text-gray-900 dark:text-white">Send to event group chat</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Share with everyone at your upcoming event
                   </p>
                 </div>
               </button>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { setSentryUser } from '../lib/sentry';
 
 interface Profile {
   id: string;
@@ -47,6 +48,7 @@ export function useAuth() {
       if (!mounted) return;
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
+      setSentryUser(currentSession?.user ? { id: currentSession.user.id, email: currentSession.user.email } : null);
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
       }
@@ -61,6 +63,7 @@ export function useAuth() {
       if (!mounted) return;
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
+      setSentryUser(currentSession?.user ? { id: currentSession.user.id, email: currentSession.user.email } : null);
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
       } else {

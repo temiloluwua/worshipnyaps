@@ -21,6 +21,7 @@ import { EventAnnouncements } from './EventAnnouncements';
 interface EventDetailViewProps {
   eventId: string;
   onBack: () => void;
+  onViewProfile?: (userId: string) => void;
 }
 
 type TabType = 'details' | 'help' | 'chat' | 'organizer' | 'people';
@@ -55,7 +56,7 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
   }
 };
 
-export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack }) => {
+export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile }) => {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
   const [event, setEvent] = useState<DbEvent | null>(null);
@@ -395,7 +396,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             longitude
           ),
           users!events_host_id_fkey (
-            name
+            name,
+            avatar_url
           )
         `)
         .eq('id', eventId)
@@ -1349,13 +1351,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
             <div className="flex items-start">
               <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">
-                  {t('events.hostedBy', { name: event.users?.name || 'Host' })}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('events.attending', { count: attendeeCount, capacity: safeCapacity })}
-                </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {t('events.attending', { count: attendeeCount, capacity: safeCapacity })}
               </div>
             </div>
           </div>
@@ -1476,8 +1473,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               </div>
             )}
 
-            {/* Co-hosts */}
-            <CoHostManager eventId={eventId} isHost={isHost} />
+            {/* Hosts */}
+            <CoHostManager
+              eventId={eventId}
+              isHost={isHost}
+              eventTitle={event?.title}
+              eventDate={event?.date}
+              eventTime={event?.time}
+              hostName={event?.users?.name}
+              hostId={event?.host_id}
+              hostAvatarUrl={(event?.users as { avatar_url?: string } | undefined)?.avatar_url}
+              onViewProfile={onViewProfile}
+            />
 
             {/* Check-in - only for hosts and organizers */}
             {(isHost || isOrganizer) && (
