@@ -1208,9 +1208,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           <div>
           {(() => {
             const imageUrl = (event as { image_url?: string | null }).image_url;
-            const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || '✨';
-            const fallbackGradient = (event as { event_type?: string }).event_type === 'bible_study'
-              ? 'from-indigo-500 via-purple-500 to-blue-600'
+            const ev = event as { event_type?: string };
+            const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨' };
+            const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[ev.event_type || ''] || '✨';
+            const fallbackGradient =
+              ev.event_type === 'bible_study' ? 'from-indigo-500 via-purple-500 to-blue-600'
+              : ev.event_type === 'church'    ? 'from-violet-500 via-fuchsia-500 to-rose-600'
               : 'from-amber-500 via-orange-500 to-rose-600';
             return (
               <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden">

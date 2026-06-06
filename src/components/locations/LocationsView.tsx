@@ -391,9 +391,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                 )}
                 {(() => {
                   const imageUrl = (event as { image_url?: string | null }).image_url;
-                  const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || '✨';
-                  const fallbackGradient = event.event_type === 'bible_study'
-                    ? 'from-indigo-400 via-purple-400 to-blue-500'
+                  const evType = (event as { event_type?: string }).event_type || '';
+                  const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨' };
+                  const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[evType] || '✨';
+                  const fallbackGradient =
+                    evType === 'bible_study' ? 'from-indigo-400 via-purple-400 to-blue-500'
+                    : evType === 'church'    ? 'from-violet-400 via-fuchsia-400 to-rose-500'
                     : 'from-amber-400 via-orange-400 to-rose-500';
                   return (
                     <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden">
@@ -575,7 +578,7 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
   const [formData, setFormData] = useState({
     eventTitle: '',
     eventType: 'bible-study',
-    event_type: 'bible_study' as 'bible_study' | 'yap',
+    event_type: 'bible_study' as 'bible_study' | 'yap' | 'church',
     eventDate: '',
     eventTime: '',
     eventLocationName: '',
@@ -748,17 +751,23 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering is this?</label>
             <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'bible_study', label: '📖 Bible Study', eventType: 'bible_study' as const, vibe: '' },
-                { value: 'games', label: '🎲 Games', eventType: 'yap' as const, vibe: 'games' },
-                { value: 'food', label: '🍽️ Food / Potluck', eventType: 'yap' as const, vibe: 'food' },
-                { value: 'sports', label: '🏅 Sports', eventType: 'yap' as const, vibe: 'sports' },
-                { value: 'music', label: '🎶 Music / Worship', eventType: 'yap' as const, vibe: 'music' },
-                { value: 'hanging', label: '🗣️ Just hanging', eventType: 'yap' as const, vibe: 'hanging' },
-              ].map(opt => {
-                const selected = opt.value === 'bible_study'
-                  ? formData.event_type === 'bible_study'
-                  : formData.event_type === 'yap' && formData.yap_vibe === opt.vibe;
+              {([
+                { value: 'bible_study', label: '📖 Bible Study', eventType: 'bible_study', vibe: '', tone: 'blue' },
+                { value: 'church',      label: '⛪ Church',      eventType: 'church',      vibe: '', tone: 'violet' },
+                { value: 'games',       label: '🎲 Games',       eventType: 'yap',         vibe: 'games', tone: 'amber' },
+                { value: 'food',        label: '🍽️ Food / Potluck', eventType: 'yap',     vibe: 'food', tone: 'amber' },
+                { value: 'sports',      label: '🏅 Sports',      eventType: 'yap',         vibe: 'sports', tone: 'amber' },
+                { value: 'music',       label: '🎶 Music / Worship', eventType: 'yap',     vibe: 'music', tone: 'amber' },
+                { value: 'hanging',     label: '🗣️ Just hanging', eventType: 'yap',        vibe: 'hanging', tone: 'amber' },
+              ] as Array<{ value: string; label: string; eventType: 'bible_study' | 'yap' | 'church'; vibe: string; tone: 'blue' | 'violet' | 'amber' }>).map(opt => {
+                const selected = opt.eventType === 'yap'
+                  ? formData.event_type === 'yap' && formData.yap_vibe === opt.vibe
+                  : formData.event_type === opt.eventType;
+                const selectedClasses: Record<string, string> = {
+                  blue:   'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700',
+                  violet: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700',
+                  amber:  'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700',
+                };
                 return (
                   <button
                     key={opt.value}
@@ -766,14 +775,12 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
                     onClick={() => setFormData(p => ({
                       ...p,
                       event_type: opt.eventType,
-                      eventType: opt.eventType === 'bible_study' ? 'bible-study' : 'other',
+                      eventType: opt.eventType === 'bible_study' ? 'bible-study' : opt.eventType === 'church' ? 'church' : 'other',
                       yap_vibe: opt.vibe,
                     }))}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                       selected
-                        ? opt.value === 'bible_study'
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                          : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                        ? selectedClasses[opt.tone]
                         : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
                     }`}
                   >
