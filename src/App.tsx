@@ -29,6 +29,7 @@ interface ViewState {
   userId?: string;
   hashtagName?: string;
   initialChatUserId?: string;
+  returnEventId?: string;
 }
 
 function App() {
@@ -166,7 +167,19 @@ function App() {
   };
 
   const handleViewProfile = (userId: string) => {
-    setViewState({ type: 'profile', userId });
+    const fromEventId = activeEventId;
+    setViewState({ type: 'profile', userId, returnEventId: fromEventId ?? undefined });
+    if (fromEventId) setActiveEventId(null);
+  };
+
+  const handleBackFromProfile = () => {
+    if (viewState.returnEventId) {
+      const eventId = viewState.returnEventId;
+      setViewState({ type: 'main' });
+      setActiveEventId(eventId);
+    } else {
+      setViewState({ type: 'main' });
+    }
   };
 
   const handleViewHashtag = (hashtagName: string) => {
@@ -249,7 +262,7 @@ function App() {
     return (
       <ProfilePage
         userId={viewState.userId}
-        onBack={handleBackToMain}
+        onBack={handleBackFromProfile}
         onStartChat={handleStartChat}
         onViewTopic={handleViewTopic}
       />
