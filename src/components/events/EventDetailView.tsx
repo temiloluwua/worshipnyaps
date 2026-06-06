@@ -17,6 +17,7 @@ import { RSVPDisclaimerModal } from './RSVPDisclaimerModal';
 import { InviteFriendsModal } from './InviteFriendsModal';
 import { CoHostManager } from './CoHostManager';
 import { EventAnnouncements } from './EventAnnouncements';
+import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
 
 interface EventDetailViewProps {
   eventId: string;
@@ -780,7 +781,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       shareUrl.searchParams.set('invite', event.invite_code);
     }
 
-    const shareText = `Join us for ${event.title} on ${event.date} at ${event.time}!`;
+    const shareText = `Join us for ${event.title} on ${formatDateShort(event.date)} at ${formatTime12h(event.time)}!`;
 
     if (navigator.share) {
       try {
@@ -1338,7 +1339,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             <div className="flex items-start">
               <Calendar className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">{event.date}</div>
+                <div className="font-medium text-gray-900 dark:text-white">{formatDateShort(event.date)}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">{t('events.date')}</div>
               </div>
             </div>
@@ -1346,7 +1347,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             <div className="flex items-start">
               <Clock className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">{event.time}</div>
+                <div className="font-medium text-gray-900 dark:text-white">{formatTime12h(event.time)}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">{t('events.time')}</div>
               </div>
             </div>

@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress } from '../../lib/geocode';
+import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
 interface LocationsViewProps {
   onOpenEvent?: (eventId: string) => void;
@@ -169,7 +170,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
   const shareEvent = async (event: DbEvent) => {
     const shareUrl = buildShareUrl(event);
-    const shareText = `Join us for ${event.title} on ${event.date} at ${event.time}!`;
+    const shareText = `Join us for ${event.title} on ${formatDateShort(event.date)} at ${formatTime12h(event.time)}!`;
     if (navigator.share) {
       try {
         await navigator.share({ title: event.title, text: shareText, url: shareUrl });
@@ -407,12 +408,15 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                           <span className="text-6xl opacity-90 drop-shadow-sm" aria-hidden="true">{locEmoji}</span>
                         </div>
                       )}
+                      <div className="absolute top-2 left-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow text-xs font-semibold text-gray-900 dark:text-white">
+                        {formatEventTypeLabel(event as any)}
+                      </div>
                       <div className="absolute top-2 right-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-blue-500" />
-                        <span>{event.date}</span>
+                        <span>{formatDateShort(event.date)}</span>
                         <span className="text-gray-400">·</span>
                         <Clock className="w-3 h-3 text-blue-500" />
-                        <span>{event.time}</span>
+                        <span>{formatTime12h(event.time)}</span>
                       </div>
                     </div>
                   );
@@ -423,23 +427,22 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex-1">{event.title}</h3>
                       {event.is_private && <EyeOff className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />}
                     </div>
-                    <div className="flex items-center flex-wrap gap-1">
-                      <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs font-medium rounded-full">
-                        {event.type?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
-                      {event.visibility === 'friends_only' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
-                          <UserCheck className="w-3 h-3" />
-                          Friends
-                        </span>
-                      )}
-                      {event.visibility === 'private' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full">
-                          <Lock className="w-3 h-3" />
-                          Private
-                        </span>
-                      )}
-                    </div>
+                    {(event.visibility === 'friends_only' || event.visibility === 'private') && (
+                      <div className="flex items-center flex-wrap gap-1">
+                        {event.visibility === 'friends_only' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
+                            <UserCheck className="w-3 h-3" />
+                            Friends
+                          </span>
+                        )}
+                        {event.visibility === 'private' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full">
+                            <Lock className="w-3 h-3" />
+                            Private
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-2">{event.description}</p>
@@ -447,10 +450,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                   <div className="space-y-2 mb-3">
                     <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
                       <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">{event.locations?.name || 'Location TBD'}</span>
-                      {event.location_type && (
+                      <span className="truncate">{formatLocationNameOrType(event as any)}</span>
+                      {event.locations?.name && event.location_type && (
                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex-shrink-0">
-                          {({ home: '🏠 Home', church: '⛪ Church', park: '🌿 Outdoors', cafe: '☕ Café', online: '💻 Online' } as Record<string, string>)[event.location_type] || event.location_type}
+                          {formatLocationType(event.location_type)}
                         </span>
                       )}
                     </div>
