@@ -1205,6 +1205,28 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         </div>
 
         {activeTab === 'details' ? (
+          <div>
+          {(() => {
+            const imageUrl = (event as { image_url?: string | null }).image_url;
+            const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || '✨';
+            const fallbackGradient = (event as { event_type?: string }).event_type === 'bible_study'
+              ? 'from-indigo-500 via-purple-500 to-blue-600'
+              : 'from-amber-500 via-orange-500 to-rose-600';
+            return (
+              <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                {imageUrl ? (
+                  <img src={imageUrl} alt={event.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
+                    <span className="text-8xl opacity-90 drop-shadow-lg" aria-hidden="true">{locEmoji}</span>
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">{event.title}</h1>
+                </div>
+              </div>
+            );
+          })()}
           <div className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <span className="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
@@ -1223,7 +1245,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             )}
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{event.title}</h1>
 
           {(() => {
             const tmpl = event.description_template as DescriptionTemplate | null | undefined;
@@ -1497,6 +1518,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <PostEventFriendSuggestions eventId={eventId} eventTitle={event.title} />
               </div>
             )}
+          </div>
           </div>
           </div>
         ) : activeTab === 'help' ? (

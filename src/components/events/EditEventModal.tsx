@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { EventDescriptionForm } from './EventDescriptionTemplate';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
+import { EventImageUploader } from './EventImageUploader';
 
 interface EditEventModalProps {
   event: DbEvent;
@@ -32,6 +33,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     visibility: event.visibility as 'public' | 'private' | 'friends_only',
     addressVisibility: (event.address_visibility || 'public') as 'general_area' | 'attendees_only' | 'public',
   });
+  const [imageUrl, setImageUrl] = useState<string | null>((event as { image_url?: string | null }).image_url ?? null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -56,6 +58,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         visibility: formData.visibility,
         is_private: formData.visibility === 'private',
         address_visibility: formData.addressVisibility,
+        image_url: imageUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -125,6 +128,8 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <EventImageUploader value={imageUrl} onChange={setImageUrl} />
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Title</label>
             <input

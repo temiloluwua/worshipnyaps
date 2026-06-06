@@ -8,6 +8,7 @@ import { RSVPModal } from './RSVPModal';
 import { InteractiveMap } from './InteractiveMap';
 import { AuthModal } from '../auth/AuthModal';
 import { EventDescriptionForm } from '../events/EventDescriptionTemplate';
+import { EventImageUploader } from '../events/EventImageUploader';
 import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
@@ -388,40 +389,53 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                     You're hosting
                   </div>
                 )}
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{event.title}</h3>
-                        {event.is_private && <EyeOff className="w-4 h-4 text-gray-500 dark:text-gray-400" />}
-                      </div>
-                      <div className="flex items-center space-x-2 flex-wrap gap-1">
-                        <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs font-medium rounded-full">
-                          {event.type?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </span>
-                        {event.visibility === 'friends_only' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
-                            <UserCheck className="w-3 h-3" />
-                            Friends
-                          </span>
-                        )}
-                        {event.visibility === 'private' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full">
-                            <Lock className="w-3 h-3" />
-                            Private
-                          </span>
-                        )}
+                {(() => {
+                  const imageUrl = (event as { image_url?: string | null }).image_url;
+                  const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || '✨';
+                  const fallbackGradient = event.event_type === 'bible_study'
+                    ? 'from-indigo-400 via-purple-400 to-blue-500'
+                    : 'from-amber-400 via-orange-400 to-rose-500';
+                  return (
+                    <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={event.title} className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
+                          <span className="text-6xl opacity-90 drop-shadow-sm" aria-hidden="true">{locEmoji}</span>
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-blue-500" />
+                        <span>{event.date}</span>
+                        <span className="text-gray-400">·</span>
+                        <Clock className="w-3 h-3 text-blue-500" />
+                        <span>{event.time}</span>
                       </div>
                     </div>
-                    <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center gap-0.5 justify-end mb-1">
-                        <Calendar className="w-3 h-3" />
-                        {event.date}
-                      </div>
-                      <div className="flex items-center gap-0.5 justify-end">
-                        <Clock className="w-3 h-3" />
-                        {event.time}
-                      </div>
+                  );
+                })()}
+                <div className="p-4">
+                  <div className="mb-2">
+                    <div className="flex items-center space-x-2 mb-1.5">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex-1">{event.title}</h3>
+                      {event.is_private && <EyeOff className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />}
+                    </div>
+                    <div className="flex items-center flex-wrap gap-1">
+                      <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs font-medium rounded-full">
+                        {event.type?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                      {event.visibility === 'friends_only' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
+                          <UserCheck className="w-3 h-3" />
+                          Friends
+                        </span>
+                      )}
+                      {event.visibility === 'private' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full">
+                          <Lock className="w-3 h-3" />
+                          Private
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -579,6 +593,7 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
     yap_vibe: '',
     bring_note: '',
   });
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -644,6 +659,7 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
       date: formData.eventDate,
       time: formData.eventTime,
       capacity: formData.capacity,
+      image_url: imageUrl,
       visibility: formData.visibility,
       is_private: formData.visibility === 'private',
       address_visibility: formData.addressVisibility,
@@ -726,6 +742,8 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <EventImageUploader value={imageUrl} onChange={setImageUrl} />
+
           {/* What kind of gathering? — unified chip selector with Bible Study + Yap vibes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering is this?</label>
