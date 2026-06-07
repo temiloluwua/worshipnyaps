@@ -243,7 +243,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
         </button>
       </div>
 
-      {user && myCombinedEvents.length > 0 && (
+      {user && (
         <div className="flex gap-2 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <button
             onClick={() => setActiveTab('discover')}
@@ -384,12 +384,6 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                     : 'border border-gray-200 dark:border-gray-700'
                 }`}
               >
-                {isHosting && (
-                  <div className="px-4 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3" />
-                    You're hosting
-                  </div>
-                )}
                 {(() => {
                   const imageUrl = (event as { image_url?: string | null }).image_url;
                   const evType = (event as { event_type?: string }).event_type || '';
@@ -406,6 +400,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                       ) : (
                         <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
                           <span className="text-6xl opacity-90 drop-shadow-sm" aria-hidden="true">{locEmoji}</span>
+                        </div>
+                      )}
+                      {isHosting && (
+                        <div className="absolute bottom-2 left-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-1 rounded-full shadow-lg text-xs font-bold uppercase tracking-wide flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          You're hosting
                         </div>
                       )}
                       <div className="absolute top-2 left-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow text-xs font-semibold text-gray-900 dark:text-white">
