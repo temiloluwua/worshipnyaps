@@ -106,8 +106,23 @@ $$;
 GRANT EXECUTE ON FUNCTION public.can_user_see_event(uuid, uuid) TO authenticated;
 
 -- ----------------------------------------------------------------------------
--- Restore policies that CASCADE dropped
+-- Restore policies that CASCADE dropped — drop first in case any survived
+-- the cascade (e.g. policies that didn't reference the helper functions)
 -- ----------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Participants can read fellow participants" ON public.conversation_participants;
+DROP POLICY IF EXISTS "Participants can read their conversations" ON public.conversations;
+DROP POLICY IF EXISTS "Participants can read messages" ON public.direct_messages;
+DROP POLICY IF EXISTS "Participants can send messages" ON public.direct_messages;
+DROP POLICY IF EXISTS "Events: public, host, cohost, attendee, friend" ON public.events;
+DROP POLICY IF EXISTS "Anon can read public events" ON public.events;
+DROP POLICY IF EXISTS "Host or editor can delete events" ON public.events;
+DROP POLICY IF EXISTS "Users can RSVP to events they can see" ON public.event_attendees;
+DROP POLICY IF EXISTS "Attendees, hosts and co-hosts can read attendees" ON public.event_attendees;
+DROP POLICY IF EXISTS "Event participants can read help requests" ON public.event_help_requests;
+DROP POLICY IF EXISTS "Event participants can view cohosts" ON public.event_cohosts;
+DROP POLICY IF EXISTS "Locations visible to authorized event viewers" ON public.locations;
+DROP POLICY IF EXISTS "Anon sees locations of fully public events" ON public.locations;
+
 CREATE POLICY "Participants can read fellow participants"
   ON public.conversation_participants FOR SELECT TO authenticated
   USING (
