@@ -225,7 +225,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <span>{viewingProfile.name}</span>
               <VerifiedBadge verified={(viewingProfile as any).is_verified} size={20} />
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">@{viewingProfile.email?.split('@')[0]}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">@{(viewingProfile as { username?: string }).username || viewingProfile.email?.split('@')[0]}</p>
           </div>
 
           {viewingProfile.bio ? (

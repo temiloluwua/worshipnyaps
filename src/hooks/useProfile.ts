@@ -8,6 +8,7 @@ export interface ExtendedProfile extends UserProfile {
   interests?: string[];
   spiritual_gifts?: string[];
   location_text?: string;
+  username?: string;
   stats?: {
     posts_count: number;
     connections_count: number;

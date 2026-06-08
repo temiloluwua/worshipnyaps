@@ -1,7 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { X, Camera, Plus, Check, Sparkles, User, FileText, Image, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { X, Camera, Plus, Check, Sparkles, User, FileText, Image, ChevronRight, Loader2, ArrowLeft, AtSign } from 'lucide-react';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+
+const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 
 interface EditProfileModalProps {
   profile: ExtendedProfile;
@@ -30,6 +33,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
   const { updateProfile, uploadAvatar, uploadCoverPhoto } = useProfile();
 
   const [name, setName] = useState(profile.name);
+  const initialUsername = ((profile as { username?: string }).username || '').toLowerCase();
+  const [username, setUsername] = useState(initialUsername);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [bio, setBio] = useState(profile.bio || '');
   const [city, setCity] = useState(profile.city || '');
   const [interests, setInterests] = useState<string[]>(profile.interests || []);
@@ -46,6 +52,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Live username availability check (skipped when unchanged from initial)
+  useEffect(() => {
+    if (username === initialUsername) { setUsernameStatus('idle'); return; }
+    if (!username) { setUsernameStatus('idle'); return; }
+    if (!USERNAME_PATTERN.test(username)) { setUsernameStatus('invalid'); return; }
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_username_available', { p_username: username });
+        if (error) { setUsernameStatus('idle'); return; }
+        setUsernameStatus(data ? 'available' : 'taken');
+      } catch {
+        setUsernameStatus('idle');
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [username, initialUsername]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,6 +105,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error('Name is required'); return; }
+    if (username && !USERNAME_PATTERN.test(username)) {
+      toast.error('Username must be 3-20 lowercase letters, numbers, or underscores.');
+      return;
+    }
+    if (usernameStatus === 'taken') {
+      toast.error('That username is taken. Try another.');
+      return;
+    }
     setSaving(true);
     try {
       let avatarUrl = profile.avatar_url;
@@ -102,7 +134,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
         else { toast.error('Failed to upload cover photo'); setSaving(false); return; }
       }
 
-      const success = await updateProfile({
+      const updates: Record<string, any> = {
         name: name.trim(),
         bio: bio.trim(),
         city: city.trim(),
@@ -110,7 +142,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
         spiritual_gifts: spiritualGifts,
         avatar_url: avatarUrl,
         cover_photo_url: coverUrl,
-      });
+      };
+      if (username && username !== initialUsername) {
+        updates.username = username;
+      }
+      const success = await updateProfile(updates);
 
       if (success) onSave();
     } catch (err: any) {
@@ -242,6 +278,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">{name.length}/50</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Username
+              </label>
+              <div className="relative">
+                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  maxLength={20}
+                  placeholder="your_username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full pl-9 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                {usernameStatus === 'checking' && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">…</span>
+                )}
+                {usernameStatus === 'available' && (
+                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                )}
+                {(usernameStatus === 'taken' || usernameStatus === 'invalid') && (
+                  <X className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {usernameStatus === 'taken' && <span className="text-red-500">Taken — try another</span>}
+                {usernameStatus === 'invalid' && <span className="text-red-500">3-20 chars: lowercase letters, numbers, underscores only</span>}
+                {usernameStatus === 'available' && <span className="text-green-600">Available!</span>}
+                {(usernameStatus === 'idle' || usernameStatus === 'checking') && '3-20 chars — lowercase letters, numbers, underscores'}
+              </p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
