@@ -22,6 +22,7 @@ import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
 import { useNotifications } from './hooks/useNotifications';
+import { useDevicePush } from './hooks/useDevicePush';
 import { Topic } from './lib/supabase';
 
 interface ViewState {
@@ -189,6 +190,24 @@ function App() {
   const handleBackToMain = () => {
     setViewState({ type: 'main' });
   };
+
+  // Push notifications: capture device token + route on tap.
+  useDevicePush({
+    onNotificationOpened: (data) => {
+      const eventId = typeof data?.event_id === 'string' ? data.event_id : null;
+      const conversationId = typeof data?.conversation_id === 'string' ? data.conversation_id : null;
+      const userId = typeof data?.user_id === 'string' ? data.user_id : null;
+      if (eventId) {
+        handleOpenEvent(eventId);
+      } else if (conversationId) {
+        setActiveTab('messages');
+      } else if (userId) {
+        setViewState({ type: 'profile', userId });
+      } else {
+        setActiveTab('notifications');
+      }
+    },
+  });
 
   const handleStartChat = (userId: string) => {
     setViewState({ type: 'main', initialChatUserId: userId });
