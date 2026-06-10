@@ -134,14 +134,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             </div>
           )}
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <button
-              onClick={() => { throw new Error('Sentry test ' + Date.now()); }}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
-            >
-              Trigger test error
-            </button>
-          </div>
+          {import.meta.env.DEV && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <button
+                onClick={() => { throw new Error('Sentry test ' + Date.now()); }}
+                className="w-full text-left px-4 py-2.5 rounded-lg text-sm bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
+              >
+                Trigger test error (dev only)
+              </button>
+            </div>
+          )}
 
           {user && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
