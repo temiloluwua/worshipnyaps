@@ -33,7 +33,6 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     getActivityMessage
   } = useActivityFeed();
 
-  const [activeCategory, setActiveCategory] = useState<NotificationCategory>('all');
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -94,10 +93,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     }))
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const filteredNotifications = combinedNotifications.filter(n => {
-    if (activeCategory === 'all') return true;
-    return n.category === activeCategory;
-  });
+  const filteredNotifications = combinedNotifications;
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -137,21 +133,6 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
             </div>
           </div>
 
-          <div className="flex space-x-1 overflow-x-auto">
-            {(['all', 'social', 'events', 'system'] as NotificationCategory[]).map(category => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeCategory === category
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -167,9 +148,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
               You're all caught up!
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {activeCategory === 'all'
-                ? "New RSVPs, messages, and connection requests will show up here. RSVP to an event or send a connection request to get the ball rolling."
-                : `Nothing in ${activeCategory} right now — check back later.`}
+              New RSVPs, messages, and connection requests will show up here. RSVP to an event or send a connection request to get the ball rolling.
             </p>
           </div>
         ) : (
