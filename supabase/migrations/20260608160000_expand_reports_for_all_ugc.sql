@@ -35,7 +35,7 @@ ALTER TABLE public.reports
   ADD COLUMN IF NOT EXISTS reported_comment_id uuid REFERENCES public.comments(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS reported_message_id uuid REFERENCES public.direct_messages(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS reported_announcement_id uuid REFERENCES public.event_announcements(id) ON DELETE CASCADE,
-  ADD COLUMN IF NOT EXISTS reported_help_request_id uuid REFERENCES public.event_help_requests(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS reported_help_request_id bigint REFERENCES public.event_help_requests(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS content_snapshot jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_reports_topic ON public.reports(reported_topic_id) WHERE reported_topic_id IS NOT NULL;
