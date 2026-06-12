@@ -45,7 +45,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [sendingToEventId, setSendingToEventId] = useState<string | null>(null);
 
   const shareUrl = `${window.location.origin}/topic/${topic.id}`;
-  const shareText = `Check out "${topic.title}" on Worship and Yapps`;
+  const shareText = `Check out "${topic.title}" on Worship N Yaps`;
 
   useEffect(() => {
     if (!showEventPicker || !user) return;
