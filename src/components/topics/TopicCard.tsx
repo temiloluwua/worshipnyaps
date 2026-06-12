@@ -13,6 +13,7 @@ interface TopicCardProps {
   onShare: () => void;
   onEdit: () => void;
   onView: () => void;
+  onViewProfile?: (userId: string) => void;
   cardStyle?: 'feed' | 'game';
   frameTone?: 'default' | 'gold';
 }
@@ -26,9 +27,15 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   onShare,
   onEdit,
   onView,
+  onViewProfile,
   cardStyle = 'feed',
   frameTone = 'default'
 }) => {
+  const authorId: string | undefined = topic.author_id || topic.authorId || topic.users?.id;
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onViewProfile && authorId) onViewProfile(authorId);
+  };
   const { user, profile } = useAuth();
   const [showComments, setShowComments] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
@@ -273,9 +280,16 @@ export const TopicCard: React.FC<TopicCardProps> = ({
       <div className="flex space-x-4">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-            {(topic.authorName || topic.users?.name || 'A').charAt(0)}
-          </div>
+          <button
+            type="button"
+            onClick={handleProfileClick}
+            disabled={!onViewProfile || !authorId}
+            className="block rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default"
+          >
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+              {(topic.authorName || topic.users?.name || 'A').charAt(0)}
+            </div>
+          </button>
         </div>
 
         {/* Content */}
@@ -283,9 +297,14 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
-              <span className="font-semibold text-gray-900 hover:underline">
+              <button
+                type="button"
+                onClick={handleProfileClick}
+                disabled={!onViewProfile || !authorId}
+                className="font-semibold text-gray-900 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:no-underline"
+              >
                 {topic.authorName || topic.users?.name || 'Anonymous'}
-              </span>
+              </button>
               <span className="text-gray-500">·</span>
               <span className="text-gray-500 text-sm">
                 {formatTimeAgo(topic.createdAt || topic.created_at)}

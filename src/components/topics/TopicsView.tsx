@@ -628,6 +628,7 @@ export function TopicsView({
                       onShare={() => handleShare(topic)}
                       onEdit={() => handleEdit(topic)}
                       onView={() => handleViewTopic(topic)}
+                      onViewProfile={onViewProfile}
                       cardStyle="game"
                     />
                   </div>
