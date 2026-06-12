@@ -19,15 +19,14 @@ interface LocationsViewProps {
   onOpenEvent?: (eventId: string) => void;
 }
 
-type DateFilter = 'all' | 'today' | 'tomorrow' | 'week' | 'month';
+type CombinedFilter = 'all' | 'today' | 'bible_study_yaps' | 'church' | 'other';
 type EventTab = 'discover' | 'my-events';
 
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp } = useEvents();
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [combinedFilter, setCombinedFilter] = useState<CombinedFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
@@ -37,41 +36,42 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const [showHostModal, setShowHostModal] = useState(false);
   const [activeTab, setActiveTab] = useState<EventTab>('discover');
 
-  const categories = ['All', 'bible-study', 'basketball-yap', 'hiking-yap', 'other'];
+  const combinedOptions: { value: CombinedFilter; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'today', label: 'Today' },
+    { value: 'bible_study_yaps', label: '📖 Bible Study / Yaps' },
+    { value: 'church', label: '⛪ Church' },
+    { value: 'other', label: 'Other' },
+  ];
 
-  const getDateRange = (filter: DateFilter) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const start = new Date(today);
-    const end = new Date(today);
-
-    switch (filter) {
-      case 'today':
-        end.setHours(23, 59, 59, 999);
-        break;
-      case 'tomorrow':
-        start.setDate(start.getDate() + 1);
-        end.setDate(end.getDate() + 1);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case 'week':
-        end.setDate(end.getDate() + 7);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case 'month':
-        end.setDate(end.getDate() + 30);
-        end.setHours(23, 59, 59, 999);
-        break;
-      default:
-        return null;
+  const matchesCategory = (event: DbEvent, filter: CombinedFilter): boolean => {
+    if (filter === 'all') return true;
+    if (filter === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(today);
+      end.setHours(23, 59, 59, 999);
+      const eventDate = new Date(event.date);
+      eventDate.setHours(0, 0, 0, 0);
+      return eventDate >= today && eventDate <= end;
     }
-    return { start, end };
+    const evType = (event as { event_type?: string }).event_type;
+    if (filter === 'bible_study_yaps') {
+      if (evType === 'bible_study' || evType === 'yap') return true;
+      return ['bible-study', 'basketball-yap', 'hiking-yap'].includes(event.type || '');
+    }
+    if (filter === 'church') {
+      return evType === 'church';
+    }
+    if (filter === 'other') {
+      const known = evType === 'bible_study' || evType === 'yap' || evType === 'church';
+      return !known && !['bible-study', 'basketball-yap', 'hiking-yap'].includes(event.type || '');
+    }
+    return true;
   };
 
   const filteredEvents = useMemo(() => {
-    let result = selectedCategory === 'All'
-      ? events
-      : events.filter(event => event.type === selectedCategory);
+    let result = events.filter(event => matchesCategory(event, combinedFilter));
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -82,21 +82,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       );
     }
 
-    const dateRange = getDateRange(dateFilter);
-    if (dateRange) {
-      result = result.filter(event => {
-        const eventDate = new Date(event.date);
-        eventDate.setHours(0, 0, 0, 0);
-        return eventDate >= dateRange.start && eventDate <= dateRange.end;
-      });
-    }
-
     return result.sort((a, b) => {
       const aDate = new Date(`${a.date} ${a.time}`);
       const bDate = new Date(`${b.date} ${b.time}`);
       return aDate.getTime() - bDate.getTime();
     });
-  }, [events, selectedCategory, searchQuery, dateFilter]);
+  }, [events, combinedFilter, searchQuery]);
 
   const myCombinedEvents = useMemo(() => {
     if (!user) return [];
@@ -224,13 +215,6 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       <div className="p-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white">
         <h1 className="text-2xl font-bold mb-1">{t('events.nearYou')}</h1>
         <p className="text-blue-100 text-sm">{t('events.discover')}</p>
-        <button
-          onClick={() => setShowMap(!showMap)}
-          className="mt-3 flex items-center space-x-2 bg-white/20 px-3 py-2 rounded-lg text-sm hover:bg-white/30 transition-colors"
-        >
-          <Map className="w-4 h-4" />
-          <span>{showMap ? t('events.hideMap') : t('events.showMap')}</span>
-        </button>
       </div>
 
       <div className="p-4 bg-gradient-to-r from-green-500 to-blue-500">
@@ -303,35 +287,17 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {(['all', 'today', 'tomorrow', 'week', 'month'] as const).map((filter) => (
+              {combinedOptions.map((opt) => (
                 <button
-                  key={filter}
-                  onClick={() => setDateFilter(filter)}
+                  key={opt.value}
+                  onClick={() => setCombinedFilter(opt.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                    dateFilter === filter
+                    combinedFilter === opt.value
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
-                  {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-            <div className="flex gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                    selectedCategory === category
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {category === 'All' ? t('common.all') : category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -755,7 +721,7 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering is this?</label>
             <div className="flex flex-wrap gap-2">
               {([
-                { value: 'bible_study', label: '📖 Bible Study', eventType: 'bible_study', vibe: '', tone: 'blue' },
+                { value: 'bible_study', label: '📖 Bible Study / Yaps', eventType: 'bible_study', vibe: '', tone: 'blue' },
                 { value: 'church',      label: '⛪ Church',      eventType: 'church',      vibe: '', tone: 'violet' },
                 { value: 'games',       label: '🎲 Games',       eventType: 'yap',         vibe: 'games', tone: 'amber' },
                 { value: 'food',        label: '🍽️ Food / Potluck', eventType: 'yap',     vibe: 'food', tone: 'amber' },

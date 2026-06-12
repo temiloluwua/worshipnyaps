@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Settings, LogOut, User, Users } from 'lucide-react';
+import { Bell, Settings, LogOut, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { SettingsModal } from './SettingsModal';
@@ -45,17 +45,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {user && (
-              <button
-                onClick={onViewNetwork}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                title="Friends & Network"
-              >
-                <Users size={20} />
-                <span className="sr-only">Network</span>
-              </button>
-            )}
-
             <button
               onClick={onViewNotifications}
               className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors relative"
