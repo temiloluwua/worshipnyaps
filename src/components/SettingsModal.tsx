@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert } from 'lucide-react';
+import { AdminConsole } from './admin/AdminConsole';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
@@ -23,10 +24,12 @@ const DELETE_CONFIRM_PHRASE = 'DELETE';
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onShowLanding }) => {
   const { i18n } = useTranslation();
   const { theme, setTheme, resetToSystem, isSystemPreference } = useTheme();
-  const { user, deleteAccount } = useAuth();
+  const { user, profile, deleteAccount } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showAdminConsole, setShowAdminConsole] = useState(false);
+  const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
 
   const handleDeleteAccount = async () => {
     if (confirmText !== DELETE_CONFIRM_PHRASE) return;
@@ -42,6 +45,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   };
 
   return (
+    <>
+    {showAdminConsole && <AdminConsole onClose={() => setShowAdminConsole(false)} />}
     <Modal isOpen={isOpen} onClose={onClose} title="Settings">
       <ModalBody>
         <div className="space-y-6">
@@ -130,6 +135,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               >
                 <Sparkles size={16} className="text-blue-500" />
                 <span className="flex-1">View welcome tour</span>
+              </button>
+            </div>
+          )}
+
+          {isStaff && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <button
+                onClick={() => setShowAdminConsole(true)}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              >
+                <ShieldAlert size={16} />
+                <span className="flex-1 font-semibold">Admin Console</span>
+                <span className="text-xs uppercase tracking-wide opacity-70">{profile?.role}</span>
               </button>
             </div>
           )}
@@ -243,5 +261,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         </div>
       </ModalBody>
     </Modal>
+    </>
   );
 };

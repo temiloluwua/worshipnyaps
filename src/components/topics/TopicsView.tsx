@@ -237,7 +237,36 @@ export function TopicsView({
     return matchesSearch && matchesCategory;
   });
 
-  const displayTopics = filteredTopics;
+  // Daily seeded shuffle — everyone sees the same order today, and the
+  // order rotates at midnight so the feed feels fresh every day.
+  const dailySeed = (() => {
+    const today = new Date();
+    return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  })();
+
+  const seededRandom = (seed: number) => {
+    // xmur3 → mulberry32 — deterministic, fast, good distribution
+    let h = 2166136261 ^ seed;
+    h = Math.imul(h ^ (h >>> 13), 2654435761);
+    let t = (h + 0x6D2B79F5) | 0;
+    return () => {
+      t = (t + 0x6D2B79F5) | 0;
+      let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  const displayTopics = (() => {
+    if (hasSearchQuery || selectedCategory !== 'all') return filteredTopics;
+    const rng = seededRandom(dailySeed);
+    const arr = [...filteredTopics];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  })();
   const visibleTopics = displayTopics.slice(0, visibleCount);
   const hasMoreTopics = displayTopics.length > visibleTopics.length;
 
