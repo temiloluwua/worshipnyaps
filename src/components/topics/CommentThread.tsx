@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, MoreHorizontal, Send } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
+import { ReportButton } from '../moderation/ReportButton';
 import toast from 'react-hot-toast';
 
 interface Comment {
@@ -277,9 +278,16 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, onComment
                 </button>
               )}
 
-              <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
+              <ReportButton
+                target={{
+                  type: 'comment',
+                  id: comment.id,
+                  authorId: comment.author?.id,
+                  preview: comment.content?.slice(0, 200),
+                  contentSnapshot: { content: comment.content, author_name: comment.author?.name },
+                }}
+                variant="icon"
+              />
             </div>
 
             {/* Reply Input */}

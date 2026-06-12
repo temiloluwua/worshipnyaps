@@ -3,6 +3,7 @@ import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, Chev
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { CommentThread } from './CommentThread';
+import { ReportButton } from '../moderation/ReportButton';
 
 interface TopicDetailModalProps {
   topic: any;
@@ -71,6 +72,16 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <Edit className="w-4 h-4" />
               </button>
             )}
+            <ReportButton
+              target={{
+                type: 'topic',
+                id: topic.id,
+                authorId: topic.author_id || topic.authorId,
+                preview: (topic.title || topic.content || '').slice(0, 200),
+                contentSnapshot: { title: topic.title, content: topic.content, category: topic.category },
+              }}
+              className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            />
             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               <X className="w-5 h-5" />
             </button>

@@ -18,6 +18,7 @@ import { InviteFriendsModal } from './InviteFriendsModal';
 import { CoHostManager } from './CoHostManager';
 import { EventAnnouncements } from './EventAnnouncements';
 import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
+import { ReportButton } from '../moderation/ReportButton';
 
 interface EventDetailViewProps {
   eventId: string;
@@ -1115,6 +1116,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               >
                 <Share2 size={20} className="text-gray-700 dark:text-gray-300" />
               </button>
+              {event && (
+                <ReportButton
+                  target={{
+                    type: 'event',
+                    id: event.id,
+                    authorId: event.host_id,
+                    preview: `${event.title} — ${event.description?.slice(0, 150) || ''}`,
+                    contentSnapshot: { title: event.title, description: event.description, type: event.type },
+                  }}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-gray-300 hover:text-red-600 transition-colors"
+                />
+              )}
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Megaphone, Pin, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { ReportButton } from '../moderation/ReportButton';
 import toast from 'react-hot-toast';
 
 interface Announcement {
@@ -199,6 +200,15 @@ export const EventAnnouncements: React.FC<EventAnnouncementsProps> = ({ eventId,
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
+                <ReportButton
+                  target={{
+                    type: 'announcement',
+                    id: ann.id,
+                    preview: ann.content?.slice(0, 200),
+                    contentSnapshot: { content: ann.content, author_name: ann.author?.name },
+                  }}
+                  className="p-1 text-gray-300 hover:text-red-600 transition-colors shrink-0"
+                />
               </div>
             ))
           )}

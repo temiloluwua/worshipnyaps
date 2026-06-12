@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useConnections } from '../../hooks/useConnections';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { Modal } from '../ui/Modal';
+import { ReportButton } from '../moderation/ReportButton';
 
 interface MessagesViewProps {
   onBack?: () => void;
@@ -161,26 +162,40 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   </div>
                 )}
                 {!isOwn && !showAvatar && <div className="w-8 mr-2" />}
-                <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                    isOwn
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                  <div className={`flex items-center justify-end space-x-1 mt-1 ${
-                    isOwn ? 'text-blue-200' : 'text-gray-400'
-                  }`}>
-                    <span className="text-xs">
-                      {format(new Date(message.created_at), 'h:mm a')}
-                    </span>
-                    {isOwn && (
-                      message.is_read
-                        ? <CheckCheck className="w-3 h-3" />
-                        : <Check className="w-3 h-3" />
-                    )}
+                <div className="group/msg flex items-center gap-1">
+                  <div
+                    className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                      isOwn
+                        ? 'bg-blue-600 text-white rounded-br-md'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    <div className={`flex items-center justify-end space-x-1 mt-1 ${
+                      isOwn ? 'text-blue-200' : 'text-gray-400'
+                    }`}>
+                      <span className="text-xs">
+                        {format(new Date(message.created_at), 'h:mm a')}
+                      </span>
+                      {isOwn && (
+                        message.is_read
+                          ? <CheckCheck className="w-3 h-3" />
+                          : <Check className="w-3 h-3" />
+                      )}
+                    </div>
                   </div>
+                  {!isOwn && (
+                    <ReportButton
+                      target={{
+                        type: 'message',
+                        id: message.id,
+                        authorId: message.sender_id,
+                        preview: message.content?.slice(0, 200),
+                        contentSnapshot: { content: message.content, sender_name: message.sender?.name },
+                      }}
+                      className="opacity-0 group-hover/msg:opacity-100 p-1.5 text-gray-400 hover:text-red-600 transition-all"
+                    />
+                  )}
                 </div>
               </div>
             );

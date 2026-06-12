@@ -13,6 +13,7 @@ import { Topic } from '../../lib/supabase';
 import { TopicCard } from '../topics/TopicCard';
 import { EditProfileModal } from './EditProfileModal';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
+import { ReportButton } from '../moderation/ReportButton';
 import { format } from 'date-fns';
 
 interface ProfilePageProps {
@@ -215,6 +216,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       <><UserPlus className="w-3.5 h-3.5" /> Connect</>
                     )}
                   </button>
+                  <ReportButton
+                    target={{
+                      type: 'user',
+                      id: userId,
+                      authorId: userId,
+                      preview: `Profile of ${viewingProfile.name}`,
+                      contentSnapshot: { name: viewingProfile.name, bio: viewingProfile.bio },
+                    }}
+                    className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-full text-gray-400 hover:text-red-600 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  />
                 </>
               )}
             </div>
