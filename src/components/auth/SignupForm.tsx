@@ -243,6 +243,14 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
               'Create Account'
             )}
           </button>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+            By creating an account, you agree to our{' '}
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Terms of Service</a>
+            {' '}and{' '}
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Privacy Policy</a>.
+            Harassment and objectionable content are not tolerated — see our community guidelines for details.
+          </p>
         </form>
 
         <div className="mt-6">

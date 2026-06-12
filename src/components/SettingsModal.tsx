@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
@@ -133,6 +133,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               </button>
             </div>
           )}
+
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <ScrollText size={18} className="text-gray-600 dark:text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Legal &amp; community</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <a
+                href="/terms.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <FileText size={16} className="text-blue-500" />
+                <span className="flex-1">Terms of Service &amp; Community Guidelines</span>
+              </a>
+              <a
+                href="/privacy.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Shield size={16} className="text-blue-500" />
+                <span className="flex-1">Privacy Policy</span>
+              </a>
+              <a
+                href="/support.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <AlertTriangle size={16} className="text-blue-500" />
+                <span className="flex-1">Support &amp; report abuse</span>
+              </a>
+            </div>
+          </div>
 
           {import.meta.env.DEV && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
