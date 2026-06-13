@@ -204,6 +204,21 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           </div>
         )}
 
+        {/* Author byline — clickable to open profile */}
+        {(topic.authorName || topic.users?.name) && (
+          <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mb-4 relative z-10">
+            <span>shared by</span>
+            <button
+              type="button"
+              onClick={handleProfileClick}
+              disabled={!onViewProfile || !authorId}
+              className="font-semibold text-gray-700 hover:text-blue-600 hover:underline disabled:cursor-default disabled:no-underline disabled:hover:text-gray-700"
+            >
+              @{topic.users?.username || topic.authorName || topic.users?.name}
+            </button>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-center space-x-6 pt-6 border-t-2 border-gray-200 relative z-10">
           <button
