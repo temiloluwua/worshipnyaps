@@ -216,11 +216,12 @@ export function TopicsView({
     if (audienceFilter === 'friends') {
       return friendIds.has(authorId);
     }
-    // 'local' — match by author city against the current user's city
+    // 'local' — if the user hasn't set a city, fall back to showing all posts
+    // instead of filtering everything out (better than an empty feed)
+    if (!myCity) return true;
     const authorCity = (t.users?.city || t.authorCity || '').trim().toLowerCase();
-    if (!myCity) return false;
     return authorCity === myCity;
-  }) : [];
+  }) : communityFiltered;
 
   const currentFeedTopics = activeTab === 'topics' ? primaryTopics : friendsOnlyFiltered;
 
@@ -264,6 +265,18 @@ export function TopicsView({
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    // Lift the current user's own posts to the top so freshly-created
+    // content is immediately visible instead of buried by the shuffle.
+    if (user) {
+      const mine: any[] = [];
+      const rest: any[] = [];
+      for (const t of arr) {
+        const aid = t.author_id || t.authorId;
+        if (aid === user.id) mine.push(t);
+        else rest.push(t);
+      }
+      return [...mine, ...rest];
     }
     return arr;
   })();
