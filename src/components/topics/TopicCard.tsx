@@ -67,8 +67,20 @@ export const TopicCard: React.FC<TopicCardProps> = ({
     window.open(url, '_blank');
   };
 
-  const formatTimeAgo = (dateString: string) => {
-    return dateString || 'Just now';
+  const formatTimeAgo = (dateString?: string) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    const sec = Math.floor(diffMs / 1000);
+    if (sec < 60) return 'now';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h`;
+    const day = Math.floor(hr / 24);
+    if (day < 7) return `${day}d`;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   const getQuestionPreview = () => {
@@ -289,10 +301,10 @@ export const TopicCard: React.FC<TopicCardProps> = ({
     );
   }
 
-  // Twitter Feed Style (original)
+  // Twitter Feed Style (clean, compact)
   return (
-    <article className="p-6 hover:bg-gray-50/50 transition-colors cursor-pointer bg-white/80 backdrop-blur-sm" onClick={onView}>
-      <div className="flex space-x-4">
+    <article className="px-4 py-3 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors cursor-pointer" onClick={onView}>
+      <div className="flex gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
           <button
@@ -301,7 +313,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
             disabled={!onViewProfile || !authorId}
             className="block rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default"
           >
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+            <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
               {(topic.authorName || topic.users?.name || 'A').charAt(0)}
             </div>
           </button>
@@ -310,84 +322,52 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5 min-w-0 text-sm">
               <button
                 type="button"
                 onClick={handleProfileClick}
                 disabled={!onViewProfile || !authorId}
-                className="font-semibold text-gray-900 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:no-underline"
+                className="font-semibold text-gray-900 dark:text-white hover:underline truncate focus:outline-none disabled:no-underline"
               >
                 {topic.authorName || topic.users?.name || 'Anonymous'}
               </button>
-              <span className="text-gray-500">·</span>
-              <span className="text-gray-500 text-sm">
+              {(topic.authorUsername || topic.users?.username) && (
+                <span className="text-gray-500 dark:text-gray-400 truncate">@{topic.authorUsername || topic.users?.username}</span>
+              )}
+              <span className="text-gray-400">·</span>
+              <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">
                 {formatTimeAgo(topic.createdAt || topic.created_at)}
               </span>
               {(topic.isPinned || topic.is_pinned) && (
-                <div className="flex items-center space-x-1 text-yellow-600">
-                  <Crown className="w-4 h-4 fill-current" />
-                  <span className="text-xs font-medium">Pinned</span>
-                </div>
+                <Crown className="w-3.5 h-3.5 text-yellow-500 fill-current flex-shrink-0" />
               )}
             </div>
 
             {canEdit && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-                className="p-1 text-gray-500 hover:text-blue-600 rounded-full hover:bg-blue-50"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="p-1 text-gray-400 hover:text-blue-600 rounded-full flex-shrink-0"
               >
-                <Edit className="w-4 h-4" />
+                <Edit className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
           {/* Topic Title */}
-          <h2 className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
+          <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white leading-snug mb-1">
             {safeTitle}
           </h2>
 
-          {/* Category */}
-          <div className="flex items-center space-x-3 mb-3">
-            <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-              {safeCategory.replace('-', ' ').toUpperCase()}
-            </span>
-          </div>
-
-          {/* Bible Reference */}
+          {/* Bible Reference — inline, compact */}
           {safeBibleRef && (
-            <div className="mb-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
-              <div className="flex items-center space-x-2 mb-2">
-                <BookOpen className="w-4 h-4 text-amber-600" />
-                <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Scripture</span>
-              </div>
-              <p className="font-bold text-amber-900 mb-2">{safeBibleRef}</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openESV(safeBibleRef);
-                  }}
-                  className="inline-flex items-center space-x-1.5 bg-amber-600 text-white px-3 py-1.5 rounded-md hover:bg-amber-700 transition-all text-xs font-medium"
-                >
-                  <BookOpen className="w-3 h-3" />
-                  <span>Read ESV</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openBibleReference(safeBibleRef);
-                  }}
-                  className="inline-flex items-center space-x-1.5 bg-white text-amber-700 px-3 py-1.5 rounded-md hover:bg-amber-50 transition-all border border-amber-300 text-xs font-medium"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>Cross References</span>
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); openESV(safeBibleRef); }}
+              className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 italic mb-1"
+            >
+              <BookOpen className="w-3 h-3" />
+              {safeBibleRef}
+            </button>
           )}
 
           {/* Content Preview */}
