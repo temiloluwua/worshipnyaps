@@ -387,7 +387,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
   const fetchEvent = async () => {
     try {
-      const { data, error } = await supabase
+      let data: any = null;
+      const { data: directData, error: directError } = await supabase
         .from('events')
         .select(`
           *,
@@ -403,29 +404,31 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           )
         `)
         .eq('id', eventId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-
-      if (data.visibility === 'private') {
+      if (directData) {
+        data = directData;
+      } else {
+        // RLS hid the event (likely private + we're not host/cohost/attendee).
+        // If the URL has an invite code, ask the SECURITY DEFINER RPC.
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('invite');
-        const isEventHost = user && data.host_id === user.id;
-
-        if (!isEventHost) {
-          const { data: rsvpCheck } = user ? await supabase
-            .from('event_attendees')
-            .select('id')
-            .eq('event_id', eventId)
-            .eq('user_id', user.id)
-            .eq('status', 'registered')
-            .maybeSingle() : { data: null };
-
-          if (!rsvpCheck && (!inviteCode || inviteCode !== data.invite_code)) {
-            setAccessDenied(true);
-            setLoading(false);
-            return;
+        if (inviteCode) {
+          const { data: rpcData } = await supabase
+            .rpc('get_event_by_invite_code', { p_event_id: eventId, p_invite_code: inviteCode });
+          const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+          if (row) {
+            data = row;
+            // Note: this row has no joined locations/users — we accept that
+            // limitation for the invite landing view; once they RSVP via
+            // claim_event_invite the normal join works on subsequent loads.
           }
+        }
+        if (!data) {
+          if (directError && directError.code !== 'PGRST116') throw directError;
+          setAccessDenied(true);
+          setLoading(false);
+          return;
         }
       }
 
@@ -721,18 +724,34 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     }
 
     try {
-      const { error } = await supabase
-        .from('event_attendees')
-        .upsert(
-          {
-            event_id: eventId,
-            user_id: user.id,
-            status: 'registered',
-          },
-          { onConflict: 'event_id,user_id' }
-        );
+      // For private events visited via an invite link, the RLS INSERT
+      // policy blocks the upsert (the user can't "see" the event yet),
+      // so we route through the SECURITY DEFINER claim_event_invite RPC
+      // which validates the code and inserts the attendee row server-side.
+      const urlParams = new URLSearchParams(window.location.search);
+      const inviteCode = urlParams.get('invite');
+      const isPrivateInvite = event?.visibility === 'private' && inviteCode;
 
-      if (error) throw error;
+      if (isPrivateInvite) {
+        const { error } = await supabase.rpc('claim_event_invite', {
+          p_event_id: eventId,
+          p_invite_code: inviteCode,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('event_attendees')
+          .upsert(
+            {
+              event_id: eventId,
+              user_id: user.id,
+              status: 'registered',
+            },
+            { onConflict: 'event_id,user_id' }
+          );
+
+        if (error) throw error;
+      }
       setIsRsvped(true);
       await fetchAttendeeCount(eventId);
       if (event) {
