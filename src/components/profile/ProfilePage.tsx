@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Camera, Calendar, MessageCircle,
   UserPlus, UserMinus, ArrowLeft, Heart, Bookmark,
-  Sparkles, Settings, LayoutGrid, LayoutList, Link as LinkIcon, Edit2
+  Sparkles, Settings, LayoutGrid, LayoutList, Link as LinkIcon, Edit2,
+  PenSquare
 } from 'lucide-react';
+import { CreateTopicModal } from '../topics/CreateTopicModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
 import { useConnections } from '../../hooks/useConnections';
@@ -41,6 +43,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [posts, setPosts] = useState<Topic[]>([]);
   const [likedPosts, setLikedPosts] = useState<Topic[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
 
   const isOwnProfile = user?.id === userId;
@@ -383,6 +386,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           onSave={() => { setShowEditModal(false); fetchProfile(userId); }}
         />
       )}
+
+      {isOwnProfile && (
+        <button
+          onClick={() => setShowCreatePost(true)}
+          aria-label="Create new post"
+          className="fixed bottom-24 right-6 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex items-center justify-center transition-colors"
+        >
+          <PenSquare className="w-6 h-6" />
+        </button>
+      )}
+
+      <CreateTopicModal
+        isOpen={showCreatePost}
+        onClose={() => { setShowCreatePost(false); fetchProfile(userId); }}
+        topicType="community"
+      />
     </div>
   );
 };

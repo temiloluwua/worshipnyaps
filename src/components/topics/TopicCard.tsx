@@ -372,7 +372,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
 
           {/* Content Preview */}
           <div className="mb-3">
-            {safeContent ? (
+            {safeContent && (
               <p className="text-gray-700 mb-3">
                 {showFullContent ? safeContent : safeContent.substring(0, 200)}
                 {safeContent.length > 200 && (
@@ -386,10 +386,6 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                     {showFullContent ? 'Show less' : '...Show more'}
                   </button>
                 )}
-              </p>
-            ) : (
-              <p className="text-gray-500 italic">
-                No description provided yet. Jump into the questions or comments to start the discussion.
               </p>
             )}
 

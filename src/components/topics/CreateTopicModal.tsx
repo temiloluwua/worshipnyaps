@@ -108,7 +108,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
       content: formData.content,
       tags: formData.tags,
       topic_type: topicType,
-      bible_verse: topicType === 'preselected' ? formData.bibleReference : undefined,
+      bible_verse: formData.bibleReference ? formData.bibleReference : undefined,
       community_category: isCommunityPost ? formData.communityCategory : undefined,
       visibility: isCommunityPost ? formData.visibility : 'public',
     };
@@ -283,27 +283,33 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
               />
             </div>
 
+            <div>
+              <label
+                htmlFor="bible-reference"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                <Book className="w-4 h-4 inline mr-1" />
+                Bible Verse {isCommunityPost && <span className="text-gray-400 font-normal">(optional)</span>}
+              </label>
+              <input
+                id="bible-reference"
+                type="text"
+                name="bibleReference"
+                value={formData.bibleReference}
+                onChange={handleInputChange}
+                placeholder="e.g., Galatians 6:4; 2 Corinthians 10:12"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required={!isCommunityPost}
+              />
+              {isCommunityPost && formData.bibleReference && (
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Readers will be able to tap the verse to open it in ESV.
+                </p>
+              )}
+            </div>
+
             {!isCommunityPost && (
               <>
-                <div>
-                  <label
-                    htmlFor="bible-reference"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    <Book className="w-4 h-4 inline mr-1" />
-                    Bible Verse
-                  </label>
-                  <input
-                    id="bible-reference"
-                    type="text"
-                    name="bibleReference"
-                    value={formData.bibleReference}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Galatians 6:4; 2 Corinthians 10:12"
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    required
-                  />
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
