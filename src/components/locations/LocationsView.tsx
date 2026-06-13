@@ -432,16 +432,20 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                   <div className="mb-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-xs font-semibold ${isFull ? 'text-red-600 dark:text-red-400' : isLow ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                        {isFull ? 'Event Full' : isLow ? `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left!` : `${spotsLeft} spots available`}
+                        {isFull ? 'Event Full' : isLow ? `Almost full` : `Spots available`}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
+                      {(isRsvped || isHosting) && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
+                      )}
                     </div>
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                      <div
-                        className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}
-                        style={{ width: `${capacityPercentage}%` }}
-                      />
-                    </div>
+                    {(isRsvped || isHosting) && (
+                      <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                        <div
+                          className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}
+                          style={{ width: `${capacityPercentage}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {isRsvped && (

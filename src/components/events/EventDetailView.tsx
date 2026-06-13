@@ -1390,23 +1390,31 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             <div className="flex items-start">
               <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {t('events.attending', { count: attendeeCount, capacity: safeCapacity })}
+                {(isRsvped || isHost || isOrganizer)
+                  ? t('events.attending', { count: attendeeCount, capacity: safeCapacity })
+                  : (isEventFull
+                      ? 'Event is full'
+                      : (safeCapacity - attendeeCount <= 2 && attendeeCount > 0)
+                        ? 'Almost full'
+                        : 'Spots available — RSVP to see who\'s coming')}
               </div>
             </div>
           </div>
 
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-              <span>{t('events.eventCapacity')}</span>
-              <span>{t('events.percentFull', { percent: capacityPercentage })}</span>
+          {(isRsvped || isHost || isOrganizer) && (
+            <div className="mb-6">
+              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <span>{t('events.eventCapacity')}</span>
+                <span>{t('events.percentFull', { percent: capacityPercentage })}</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                <div
+                  className="bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all"
+                  style={{ width: `${capacityPercentage}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-              <div
-                className="bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all"
-                style={{ width: `${capacityPercentage}%` }}
-              ></div>
-            </div>
-          </div>
+          )}
 
           {isRsvped && (
             <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
