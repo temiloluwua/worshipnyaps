@@ -372,10 +372,12 @@ function App() {
           </Suspense>
         )}
         {activeTab === 'messages' && (
-          <MessagesView
-            onBack={() => setActiveTab('topics')}
-            initialUserId={viewState.initialChatUserId}
-          />
+          <div className="fixed inset-0 top-16 bottom-16 z-10">
+            <MessagesView
+              onBack={() => setActiveTab('topics')}
+              initialUserId={viewState.initialChatUserId}
+            />
+          </div>
         )}
         {activeTab === 'notifications' && (
           <NotificationsPage

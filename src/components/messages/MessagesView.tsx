@@ -39,6 +39,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showEmojis, setShowEmojis] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -203,7 +204,21 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          {showEmojis && (
+            <div className="mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 grid grid-cols-10 gap-1 text-2xl">
+              {['😀','😂','🥰','😍','😎','🙏','🤔','😢','😡','👍','👎','❤️','🔥','✨','🙌','💯','🎉','📖','✝️','⛪'].map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => { setMessageInput(prev => prev + e); }}
+                  className="aspect-square rounded hover:bg-white dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-center space-x-2">
             <div className="flex-1 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-4">
               <input
@@ -219,7 +234,12 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 placeholder="Type a message..."
                 className="flex-1 bg-transparent py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none"
               />
-              <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <button
+                type="button"
+                onClick={() => setShowEmojis((v) => !v)}
+                className={`p-2 transition-colors ${showEmojis ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                aria-label="Insert emoji"
+              >
                 <Smile className="w-5 h-5" />
               </button>
             </div>
