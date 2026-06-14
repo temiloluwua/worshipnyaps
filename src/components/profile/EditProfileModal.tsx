@@ -38,6 +38,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [bio, setBio] = useState(profile.bio || '');
   const [city, setCity] = useState(profile.city || '');
+  const [relationshipStatus, setRelationshipStatus] = useState(((profile as { relationship_status?: string }).relationship_status) || '');
+  const [age, setAge] = useState<string>(((profile as { age?: number }).age ?? '').toString());
   const [interests, setInterests] = useState<string[]>(profile.interests || []);
   const [newInterest, setNewInterest] = useState('');
   const [spiritualGifts, setSpiritualGifts] = useState<string[]>(profile.spiritual_gifts || []);
@@ -138,6 +140,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
         name: name.trim(),
         bio: bio.trim(),
         city: city.trim(),
+        relationship_status: relationshipStatus || null,
+        age: age && !isNaN(parseInt(age, 10)) ? parseInt(age, 10) : null,
         interests,
         spiritual_gifts: spiritualGifts,
         avatar_url: avatarUrl,
@@ -328,6 +332,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Used to show you posts and events from people near you.
               </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Age <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={13}
+                  max={120}
+                  value={age}
+                  onChange={(e) => setAge(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="e.g. 28"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Relationship <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <select
+                  value={relationshipStatus}
+                  onChange={(e) => setRelationshipStatus(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">—</option>
+                  <option value="single">Single</option>
+                  <option value="in_a_relationship">In a relationship</option>
+                  <option value="engaged">Engaged</option>
+                  <option value="married">Married</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+              </div>
             </div>
           </div>
         );

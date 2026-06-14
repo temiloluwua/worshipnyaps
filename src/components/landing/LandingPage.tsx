@@ -91,7 +91,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
               onClick={onEnter}
               className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
             >
-              <span>Enter Community</span>
+              <span>Join Community</span>
               <ArrowRight className="w-5 h-5" />
             </button>
 

@@ -598,6 +598,14 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
       return;
     }
 
+    // Safety: a home address must never go fully public.
+    // Force visibility to friends_only and address_visibility to attendees_only.
+    if (formData.location_type === 'home' && formData.visibility === 'public') {
+      formData.visibility = 'friends_only';
+      formData.addressVisibility = 'attendees_only';
+      toast('Home events are kept friends-only to protect your address.', { icon: '🔒' });
+    }
+
     // Geocode the address so the event lands on the map. If it fails (no
     // result, network error), save with 0/0 — the event still works, the
     // map just won't show a pin until someone refines the address.

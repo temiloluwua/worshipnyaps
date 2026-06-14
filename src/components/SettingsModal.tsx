@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
 import { AdminConsole } from './admin/AdminConsole';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -24,12 +24,22 @@ const DELETE_CONFIRM_PHRASE = 'DELETE';
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onShowLanding }) => {
   const { i18n } = useTranslation();
   const { theme, setTheme, resetToSystem, isSystemPreference } = useTheme();
-  const { user, profile, deleteAccount } = useAuth();
+  const { user, profile, deleteAccount, signOut } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAdminConsole, setShowAdminConsole] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to sign out');
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (confirmText !== DELETE_CONFIRM_PHRASE) return;
@@ -201,15 +211,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
           {user && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Trash2 size={18} className="text-red-600 dark:text-red-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Account</h3>
-              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Account</h3>
 
-              {!showDeleteConfirm ? (
+              <button
+                onClick={handleSignOut}
+                className="w-full text-left px-4 py-2.5 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mb-2"
+              >
+                <LogOut size={16} className="text-gray-500" />
+                <span className="flex-1">Sign out</span>
+              </button>
+
+              <button
+                onClick={() => setShowMore(v => !v)}
+                className="w-full text-left px-4 py-2.5 rounded-lg text-xs flex items-center gap-3 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <span className="flex-1">More options</span>
+                {showMore ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+
+              {showMore && (!showDeleteConfirm ? (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  className="mt-2 w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
                 >
                   <Trash2 size={16} />
                   <span className="flex-1">Delete account</span>
@@ -255,7 +278,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     </button>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>

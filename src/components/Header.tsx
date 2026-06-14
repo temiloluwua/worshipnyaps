@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Settings, LogOut, User } from 'lucide-react';
+import { Bell, Settings, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { SettingsModal } from './SettingsModal';
@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   onShowLanding,
   unreadNotifications = 0
 }) => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -85,14 +85,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{profile?.name || 'User'}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{profile?.role || 'member'}</p>
                   </div>
-                </button>
-                <button
-                  onClick={signOut}
-                  className="p-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                  title={t('nav.signOut')}
-                >
-                  <LogOut size={20} />
-                  <span className="sr-only">Sign Out</span>
                 </button>
               </div>
             ) : (

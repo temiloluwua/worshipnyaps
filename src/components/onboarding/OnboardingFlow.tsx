@@ -119,12 +119,22 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               />
             ))}
           </div>
-          <button
-            onClick={dismissPermanently}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-          >
-            Skip setup
-          </button>
+          <div className="flex items-center gap-3">
+            {step > 1 && (
+              <button
+                onClick={() => setStep((step - 1) as Step)}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                ← Back
+              </button>
+            )}
+            <button
+              onClick={dismissPermanently}
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            >
+              Skip setup
+            </button>
+          </div>
         </div>
 
         {step === 1 && (
