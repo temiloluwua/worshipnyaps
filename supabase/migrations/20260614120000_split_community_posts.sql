@@ -158,80 +158,110 @@ END; $$;
 -- ----------------------------------------------------------------------------
 -- 6. Backfill: copy community-typed topics → community_posts, remap refs
 -- ----------------------------------------------------------------------------
--- Map old_topic_id → new_community_post_id so we can remap the dependent rows
-CREATE TEMP TABLE _community_migration_map (
-  old_topic_id uuid PRIMARY KEY,
-  new_community_post_id uuid NOT NULL
-);
+-- Wrapped in a DO block so we can (a) skip cleanly if topic_type was never
+-- added to the topics table, and (b) reference optional columns
+-- (image_url, bible_verse, etc.) via to_jsonb() so missing columns become
+-- NULL instead of a parse error. Different installs of this app have run
+-- different subsets of earlier migrations.
+DO $$
+DECLARE
+  v_topic_type_exists boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'topics' AND column_name = 'topic_type'
+  ) INTO v_topic_type_exists;
 
-WITH inserted AS (
-  INSERT INTO public.community_posts (
-    id, author_id, title, content, tags, image_url, bible_verse,
-    community_category, visibility, is_pinned, view_count, created_at, updated_at
+  IF NOT v_topic_type_exists THEN
+    RAISE NOTICE 'topics.topic_type does not exist — no community rows to migrate, skipping backfill';
+    RETURN;
+  END IF;
+
+  CREATE TEMP TABLE IF NOT EXISTS _community_migration_map (
+    old_topic_id uuid PRIMARY KEY,
+    new_community_post_id uuid NOT NULL
+  ) ON COMMIT DROP;
+
+  WITH src AS (
+    SELECT
+      t.id          AS old_id,
+      t.author_id   AS author_id,
+      COALESCE(t.title, 'Untitled') AS title,
+      t.content     AS content,
+      COALESCE(t.tags, ARRAY[]::text[]) AS tags,
+      COALESCE(t.is_pinned, false)      AS is_pinned,
+      COALESCE(t.view_count, 0)         AS view_count,
+      t.created_at  AS created_at,
+      COALESCE(t.updated_at, t.created_at) AS updated_at,
+      to_jsonb(t)   AS j
+    FROM public.topics t
+    WHERE to_jsonb(t)->>'topic_type' = 'community'
+  ),
+  inserted AS (
+    INSERT INTO public.community_posts (
+      id, author_id, title, content, tags, image_url, bible_verse,
+      community_category, visibility, is_pinned, view_count, created_at, updated_at
+    )
+    SELECT
+      gen_random_uuid(),
+      s.author_id,
+      s.title,
+      s.content,
+      s.tags,
+      s.j->>'image_url',
+      s.j->>'bible_verse',
+      s.j->>'community_category',
+      CASE WHEN s.j->>'visibility' = 'friends_only' THEN 'friends_only' ELSE 'public' END,
+      s.is_pinned,
+      s.view_count,
+      s.created_at,
+      s.updated_at
+    FROM src s
+    RETURNING id, author_id, title, created_at
   )
+  INSERT INTO _community_migration_map (old_topic_id, new_community_post_id)
   SELECT
-    gen_random_uuid(),
-    t.author_id,
-    COALESCE(t.title, 'Untitled'),
-    t.content,
-    COALESCE(t.tags, ARRAY[]::text[]),
-    t.image_url,
-    t.bible_verse,
-    t.community_category,
-    CASE WHEN t.visibility = 'friends_only' THEN 'friends_only' ELSE 'public' END,
-    COALESCE(t.is_pinned, false),
-    COALESCE(t.view_count, 0),
-    t.created_at,
-    t.updated_at
-  FROM public.topics t
-  WHERE t.topic_type = 'community'
-  RETURNING id, author_id, title, created_at
-)
-INSERT INTO _community_migration_map (old_topic_id, new_community_post_id)
-SELECT
-  (SELECT t.id FROM public.topics t
-    WHERE t.topic_type = 'community'
-      AND t.author_id = i.author_id
-      AND t.title = i.title
-      AND t.created_at = i.created_at
-    LIMIT 1),
-  i.id
-FROM inserted i
-WHERE EXISTS (
-  SELECT 1 FROM public.topics t
-   WHERE t.topic_type = 'community'
-     AND t.author_id = i.author_id
-     AND t.title = i.title
-     AND t.created_at = i.created_at
-);
+    (SELECT s.old_id FROM src s
+      WHERE s.author_id = i.author_id
+        AND s.title = i.title
+        AND s.created_at = i.created_at
+      LIMIT 1),
+    i.id
+  FROM inserted i;
 
--- Remap dependent rows
-UPDATE public.comments c
-SET community_post_id = m.new_community_post_id, topic_id = NULL
-FROM _community_migration_map m
-WHERE c.topic_id = m.old_topic_id;
+  UPDATE public.comments c
+  SET community_post_id = m.new_community_post_id, topic_id = NULL
+  FROM _community_migration_map m
+  WHERE c.topic_id = m.old_topic_id;
 
-UPDATE public.bookmarks b
-SET community_post_id = m.new_community_post_id, topic_id = NULL
-FROM _community_migration_map m
-WHERE b.topic_id = m.old_topic_id;
+  UPDATE public.bookmarks b
+  SET community_post_id = m.new_community_post_id, topic_id = NULL
+  FROM _community_migration_map m
+  WHERE b.topic_id = m.old_topic_id;
 
-UPDATE public.likes l
-SET likeable_type = 'community_post', likeable_id = m.new_community_post_id
-FROM _community_migration_map m
-WHERE l.likeable_type = 'topic' AND l.likeable_id = m.old_topic_id;
+  UPDATE public.likes l
+  SET likeable_type = 'community_post', likeable_id = m.new_community_post_id
+  FROM _community_migration_map m
+  WHERE l.likeable_type = 'topic' AND l.likeable_id = m.old_topic_id;
 
-UPDATE public.reports r
-SET reported_community_post_id = m.new_community_post_id,
-    reported_topic_id = NULL,
-    report_type = 'community_post'
-FROM _community_migration_map m
-WHERE r.reported_topic_id = m.old_topic_id;
+  -- reports.reported_topic_id may not exist on every install; guard it.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'reports' AND column_name = 'reported_topic_id'
+  ) THEN
+    EXECUTE $upd$
+      UPDATE public.reports r
+      SET reported_community_post_id = m.new_community_post_id,
+          reported_topic_id = NULL,
+          report_type = 'community_post'
+      FROM _community_migration_map m
+      WHERE r.reported_topic_id = m.old_topic_id
+    $upd$;
+  END IF;
 
--- 7. Delete the migrated topics rows
-DELETE FROM public.topics
-WHERE id IN (SELECT old_topic_id FROM _community_migration_map);
-
-DROP TABLE _community_migration_map;
+  -- Delete the migrated topics rows
+  DELETE FROM public.topics
+  WHERE id IN (SELECT old_topic_id FROM _community_migration_map);
+END $$;
 
 NOTIFY pgrst, 'reload schema';
