@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 interface Like {
   id: string;
   user_id: string;
-  likeable_type: 'topic' | 'comment';
+  likeable_type: 'topic' | 'comment' | 'community_post';
   likeable_id: string;
   created_at: string;
 }
@@ -20,7 +20,7 @@ export const useLikes = () => {
   const [likeCounts, setLikeCounts] = useState<LikeCount>({});
   const [loading, setLoading] = useState(false);
 
-  const getLikeKey = (type: 'topic' | 'comment', id: string) => `${type}:${id}`;
+  const getLikeKey = (type: 'topic' | 'comment' | 'community_post', id: string) => `${type}:${id}`;
 
   const fetchUserLikes = useCallback(async () => {
     if (!user) {
@@ -37,7 +37,7 @@ export const useLikes = () => {
       if (error) throw error;
 
       const likeSet = new Set(
-        (data || []).map(like => getLikeKey(like.likeable_type as 'topic' | 'comment', like.likeable_id))
+        (data || []).map(like => getLikeKey(like.likeable_type as 'topic' | 'comment' | 'community_post', like.likeable_id))
       );
       setUserLikes(likeSet);
     } catch (error) {
@@ -45,7 +45,7 @@ export const useLikes = () => {
     }
   }, [user]);
 
-  const fetchLikeCounts = useCallback(async (type: 'topic' | 'comment', ids: string[]) => {
+  const fetchLikeCounts = useCallback(async (type: 'topic' | 'comment' | 'community_post', ids: string[]) => {
     if (ids.length === 0) return;
 
     try {
@@ -73,7 +73,7 @@ export const useLikes = () => {
     }
   }, []);
 
-  const toggleLike = useCallback(async (type: 'topic' | 'comment', id: string) => {
+  const toggleLike = useCallback(async (type: 'topic' | 'comment' | 'community_post', id: string) => {
     if (!user) return false;
 
     const key = getLikeKey(type, id);
@@ -143,11 +143,11 @@ export const useLikes = () => {
     }
   }, [user, userLikes]);
 
-  const isLiked = useCallback((type: 'topic' | 'comment', id: string) => {
+  const isLiked = useCallback((type: 'topic' | 'comment' | 'community_post', id: string) => {
     return userLikes.has(getLikeKey(type, id));
   }, [userLikes]);
 
-  const getLikeCount = useCallback((type: 'topic' | 'comment', id: string) => {
+  const getLikeCount = useCallback((type: 'topic' | 'comment' | 'community_post', id: string) => {
     return likeCounts[getLikeKey(type, id)] || 0;
   }, [likeCounts]);
 

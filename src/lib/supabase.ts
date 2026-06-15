@@ -143,6 +143,29 @@ export interface Topic {
   };
 }
 
+export interface CommunityPost {
+  id: string;
+  author_id: string;
+  title: string;
+  content?: string;
+  tags: string[];
+  image_url?: string;
+  bible_verse?: string;
+  community_category?: CommunityCategory;
+  visibility: 'public' | 'friends_only';
+  is_pinned: boolean;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+  users?: {
+    id: string;
+    name: string;
+    email?: string;
+    avatar_url?: string;
+    city?: string;
+  };
+}
+
 export interface EventHelpRequest {
   id: string;
   event_id: string;

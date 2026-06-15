@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, MoreHorizontal, Send } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
+import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { ReportButton } from '../moderation/ReportButton';
 import toast from 'react-hot-toast';
 
@@ -22,7 +23,8 @@ interface Comment {
 }
 
 interface CommentThreadProps {
-  topicId: string;
+  topicId?: string;
+  communityPostId?: string;
   onCommentAdded: () => void;
 }
 
@@ -83,9 +85,15 @@ const buildCommentTree = (rows: any[]): Comment[] => {
   return roots;
 };
 
-export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, onCommentAdded }) => {
+export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, communityPostId, onCommentAdded }) => {
   const { user, profile } = useAuth();
-  const { getTopicComments, addComment } = useTopics();
+  const topicsApi = useTopics();
+  const communityApi = useCommunityPosts();
+
+  const isCommunity = !!communityPostId;
+  const resourceId = (communityPostId || topicId)!;
+  const loadFn = isCommunity ? communityApi.getPostComments : topicsApi.getTopicComments;
+  const addFn = isCommunity ? communityApi.addComment : topicsApi.addComment;
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -106,7 +114,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, onComment
     }
 
     try {
-      const rows = await getTopicComments(topicId);
+      const rows = await loadFn(resourceId);
       setComments(buildCommentTree(rows));
       setError(null);
     } catch (err) {
@@ -119,7 +127,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, onComment
         setRefreshing(false);
       }
     }
-  }, [topicId, getTopicComments]);
+  }, [resourceId, loadFn]);
 
   useEffect(() => {
     loadComments();
@@ -133,7 +141,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, onComment
     }
 
     setSubmittingComment(true);
-    const saved = await addComment(topicId, newComment);
+    const saved = await addFn(resourceId, newComment);
     if (saved) {
       setNewComment('');
       await loadComments(false);
@@ -150,7 +158,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, onComment
     }
 
     setSubmittingReply(true);
-    const saved = await addComment(topicId, replyText, parentId);
+    const saved = await addFn(resourceId, replyText, parentId);
     if (saved) {
       setReplyText('');
       setReplyingTo(null);

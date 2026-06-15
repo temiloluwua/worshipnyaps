@@ -3,15 +3,12 @@ import { supabase, Topic } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 
-interface Bookmark {
-  id: string;
-  user_id: string;
-  topic_id: string;
-  created_at: string;
-}
+type BookmarkTarget = 'topic' | 'community_post';
 
 export const useBookmarks = () => {
   const { user } = useAuth();
+  // Stores ids for both topics and community posts. Ids are UUIDs so collisions
+  // across the two tables are not a practical concern.
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [bookmarkedTopics, setBookmarkedTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,12 +24,17 @@ export const useBookmarks = () => {
     try {
       const { data, error } = await supabase
         .from('bookmarks')
-        .select('topic_id')
+        .select('topic_id, community_post_id')
         .eq('user_id', user.id);
 
       if (error) throw error;
 
-      setBookmarkedIds(new Set((data || []).map(b => b.topic_id)));
+      const ids = new Set<string>();
+      (data || []).forEach((b: any) => {
+        if (b.topic_id) ids.add(b.topic_id);
+        if (b.community_post_id) ids.add(b.community_post_id);
+      });
+      setBookmarkedIds(ids);
     } catch (error) {
       console.error('Error fetching bookmarks:', error);
     } finally {
@@ -50,7 +52,7 @@ export const useBookmarks = () => {
     try {
       const { data: bookmarks, error: bookmarksError } = await supabase
         .from('bookmarks')
-        .select('topic_id')
+        .select('topic_id, community_post_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -61,7 +63,18 @@ export const useBookmarks = () => {
         return;
       }
 
-      const topicIds = bookmarks.map(b => b.topic_id);
+      const topicIds = bookmarks.map((b: any) => b.topic_id).filter(Boolean);
+      const allIds = new Set<string>();
+      bookmarks.forEach((b: any) => {
+        if (b.topic_id) allIds.add(b.topic_id);
+        if (b.community_post_id) allIds.add(b.community_post_id);
+      });
+
+      if (topicIds.length === 0) {
+        setBookmarkedTopics([]);
+        setBookmarkedIds(allIds);
+        return;
+      }
 
       const { data: topics, error: topicsError } = await supabase
         .from('topics')
@@ -78,11 +91,11 @@ export const useBookmarks = () => {
       if (topicsError) throw topicsError;
 
       const orderedTopics = topicIds
-        .map(id => topics?.find(t => t.id === id))
-        .filter((t): t is Topic => t !== undefined);
+        .map((id: string) => topics?.find((t: any) => t.id === id))
+        .filter((t: any): t is Topic => t !== undefined);
 
       setBookmarkedTopics(orderedTopics);
-      setBookmarkedIds(new Set(topicIds));
+      setBookmarkedIds(allIds);
     } catch (error) {
       console.error('Error fetching bookmarked topics:', error);
     } finally {
@@ -90,44 +103,49 @@ export const useBookmarks = () => {
     }
   }, [user]);
 
-  const toggleBookmark = useCallback(async (topicId: string) => {
+  const toggleBookmark = useCallback(async (
+    id: string,
+    type: BookmarkTarget = 'topic'
+  ) => {
     if (!user) {
-      toast.error('Please sign in to bookmark topics');
+      toast.error('Please sign in to bookmark');
       return false;
     }
 
-    const isCurrentlyBookmarked = bookmarkedIds.has(topicId);
+    const isCurrentlyBookmarked = bookmarkedIds.has(id);
 
     setBookmarkedIds(prev => {
       const newSet = new Set(prev);
       if (isCurrentlyBookmarked) {
-        newSet.delete(topicId);
+        newSet.delete(id);
       } else {
-        newSet.add(topicId);
+        newSet.add(id);
       }
       return newSet;
     });
 
     try {
       if (isCurrentlyBookmarked) {
+        const column = type === 'topic' ? 'topic_id' : 'community_post_id';
         const { error } = await supabase
           .from('bookmarks')
           .delete()
           .eq('user_id', user.id)
-          .eq('topic_id', topicId);
+          .eq(column, id);
 
         if (error) throw error;
         toast.success('Bookmark removed');
       } else {
+        const row: any = { user_id: user.id };
+        if (type === 'topic') row.topic_id = id;
+        else row.community_post_id = id;
+
         const { error } = await supabase
           .from('bookmarks')
-          .insert({
-            user_id: user.id,
-            topic_id: topicId
-          });
+          .insert(row);
 
         if (error) throw error;
-        toast.success('Topic bookmarked');
+        toast.success('Saved');
       }
 
       return true;
@@ -136,9 +154,9 @@ export const useBookmarks = () => {
       setBookmarkedIds(prev => {
         const newSet = new Set(prev);
         if (isCurrentlyBookmarked) {
-          newSet.add(topicId);
+          newSet.add(id);
         } else {
-          newSet.delete(topicId);
+          newSet.delete(id);
         }
         return newSet;
       });
@@ -147,8 +165,8 @@ export const useBookmarks = () => {
     }
   }, [user, bookmarkedIds]);
 
-  const isBookmarked = useCallback((topicId: string) => {
-    return bookmarkedIds.has(topicId);
+  const isBookmarked = useCallback((id: string) => {
+    return bookmarkedIds.has(id);
   }, [bookmarkedIds]);
 
   useEffect(() => {

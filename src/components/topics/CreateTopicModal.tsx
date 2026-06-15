@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Minus, Book } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
+import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { CommunityCategory } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -18,6 +19,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
 }) => {
   const { user, profile } = useAuth();
   const { createTopic } = useTopics();
+  const { createPost } = useCommunityPosts();
   const [formData, setFormData] = useState({
     title: '',
     category: 'life-questions',
@@ -89,6 +91,8 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     }));
   };
 
+  const isCommunityPost = topicType === 'community';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -102,21 +106,32 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
       return;
     }
 
-    const topicData = {
-      title: formData.title,
-      category: formData.category,
-      content: formData.content,
-      tags: formData.tags,
-      topic_type: topicType,
-      bible_verse: formData.bibleReference ? formData.bibleReference : undefined,
-      community_category: isCommunityPost ? formData.communityCategory : undefined,
-      visibility: isCommunityPost ? formData.visibility : 'public',
-    };
+    let result: unknown = null;
 
-    const result = await createTopic(topicData);
+    if (isCommunityPost) {
+      result = await createPost({
+        title: formData.title,
+        content: formData.content,
+        tags: formData.tags,
+        bible_verse: formData.bibleReference || undefined,
+        community_category: formData.communityCategory,
+        visibility: formData.visibility,
+      });
+    } else {
+      result = await createTopic({
+        title: formData.title,
+        category: formData.category,
+        content: formData.content,
+        tags: formData.tags,
+        topic_type: topicType,
+        bible_verse: formData.bibleReference || undefined,
+        visibility: 'public',
+      });
+    }
+
     if (result) {
       toast.success(
-        topicType === 'community' ? 'Post created successfully!' : 'Topic created successfully!'
+        isCommunityPost ? 'Post created successfully!' : 'Topic created successfully!'
       );
       onClose();
       setFormData({
@@ -131,8 +146,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
       });
     }
   };
-
-  const isCommunityPost = topicType === 'community';
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

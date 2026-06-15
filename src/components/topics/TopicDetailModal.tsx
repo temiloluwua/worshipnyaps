@@ -206,7 +206,11 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <MessageCircle className="w-4 h-4" />
                 Comments ({commentCount})
               </h3>
-              <CommentThread topicId={topic.id} onCommentAdded={() => setCommentCount(c => c + 1)} />
+              {topic.topic_type === 'community' ? (
+                <CommentThread communityPostId={topic.id} onCommentAdded={() => setCommentCount(c => c + 1)} />
+              ) : (
+                <CommentThread topicId={topic.id} onCommentAdded={() => setCommentCount(c => c + 1)} />
+              )}
             </div>
           </div>
         </div>

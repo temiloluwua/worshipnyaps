@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, ShoppingBag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
+import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { useAuth } from '../../hooks/useAuth';
 import { useLikes } from '../../hooks/useLikes';
 import { useBookmarks } from '../../hooks/useBookmarks';
@@ -110,6 +111,7 @@ export function TopicsView({
   const { user, profile } = useAuth();
   const { t } = useTranslation();
   const { topics, loading, incrementViewCount } = useTopics();
+  const { posts: communityPosts } = useCommunityPosts();
   const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,15 +147,24 @@ export function TopicsView({
     .map(sanitizeTopic)
     .filter(isValidTopic);
 
-  const displayTopicsSource =
-    sanitizedSupabaseTopics.length > 0 ? sanitizedSupabaseTopics : sanitizedSeedTopics;
+  // Pre-existing rows in `topics` may still carry topic_type='community' if
+  // the backfill hasn't been run yet; filter them out so they don't bleed
+  // into the Topics tab. After the migration runs they won't exist anyway.
+  const displayTopicsSource = (
+    sanitizedSupabaseTopics.length > 0 ? sanitizedSupabaseTopics : sanitizedSeedTopics
+  ).filter((topic: any) => topic.topic_type !== 'community');
 
-  const topicsFiltered = displayTopicsSource.filter(
-    (topic: any) => (topic.topic_type === 'preselected' || !topic.topic_type)
-  );
-  const communityTopics = displayTopicsSource.filter(
-    (topic: any) => topic.topic_type === 'community'
-  );
+  const topicsFiltered = displayTopicsSource;
+
+  // Adapt community_posts rows to the shape TopicCard / list-row code expects.
+  const communityTopics = communityPosts
+    .map((p) => sanitizeTopic({
+      ...p,
+      category: p.community_category || 'general',
+      topic_type: 'community',
+      bibleReference: p.bible_verse,
+    }))
+    .filter(isValidTopic);
 
   const topicOfDaySource =
     topics.length > 0
@@ -335,6 +346,12 @@ export function TopicsView({
   }, [topics, fetchLikeCounts]);
 
   useEffect(() => {
+    if (communityPosts.length > 0) {
+      fetchLikeCounts('community_post', communityPosts.map(p => p.id));
+    }
+  }, [communityPosts, fetchLikeCounts]);
+
+  useEffect(() => {
     if (!focusTopicId || typeof window === 'undefined' || typeof document === 'undefined') return;
 
     setActiveTab('topics');
@@ -366,9 +383,12 @@ export function TopicsView({
     };
   }, [focusTopicId, topicsFiltered, onFocusedTopicHandled]);
 
+  const currentLikeType: 'topic' | 'community_post' =
+    activeTab === 'community' ? 'community_post' : 'topic';
+
   const handleLike = (id: string) => {
     if (user) {
-      toggleLike('topic', id);
+      toggleLike(currentLikeType, id);
     } else {
       setShowAuthModal(true);
     }
@@ -376,7 +396,7 @@ export function TopicsView({
 
   const handleBookmark = (id: string) => {
     if (user) {
-      toggleBookmark(id);
+      toggleBookmark(id, currentLikeType);
     } else {
       setShowAuthModal(true);
     }
@@ -693,10 +713,10 @@ export function TopicsView({
                     <div className="flex gap-6 text-xs text-gray-500 dark:text-gray-400">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleLike(topic.id); }}
-                        className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isLiked('topic', topic.id) ? 'text-red-600 dark:text-red-400' : ''}`}
+                        className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isLiked('community_post', topic.id) ? 'text-red-600 dark:text-red-400' : ''}`}
                       >
-                        <Heart className={`w-4 h-4 inline mr-1 ${isLiked('topic', topic.id) ? 'fill-current' : ''}`} />
-                        {getLikeCount('topic', topic.id)}
+                        <Heart className={`w-4 h-4 inline mr-1 ${isLiked('community_post', topic.id) ? 'fill-current' : ''}`} />
+                        {getLikeCount('community_post', topic.id)}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleBookmark(topic.id); }}
@@ -799,19 +819,29 @@ export function TopicsView({
         />
       )}
 
-      {viewingTopic && (
-        <TopicDetailModal
-          topic={{ ...viewingTopic, likes: getLikeCount('topic', viewingTopic.id) }}
-          isOpen={showDetailModal}
-          onClose={() => { setShowDetailModal(false); setViewingTopic(null); }}
-          isLiked={isLiked('topic', viewingTopic.id)}
-          isBookmarked={isBookmarked(viewingTopic.id)}
-          onLike={() => handleLike(viewingTopic.id)}
-          onBookmark={() => handleBookmark(viewingTopic.id)}
-          onShare={() => handleShare(viewingTopic)}
-          onEdit={() => handleEdit(viewingTopic)}
-        />
-      )}
+      {viewingTopic && (() => {
+        const viewLikeType: 'topic' | 'community_post' =
+          viewingTopic.topic_type === 'community' ? 'community_post' : 'topic';
+        return (
+          <TopicDetailModal
+            topic={{ ...viewingTopic, likes: getLikeCount(viewLikeType, viewingTopic.id) }}
+            isOpen={showDetailModal}
+            onClose={() => { setShowDetailModal(false); setViewingTopic(null); }}
+            isLiked={isLiked(viewLikeType, viewingTopic.id)}
+            isBookmarked={isBookmarked(viewingTopic.id)}
+            onLike={() => {
+              if (user) toggleLike(viewLikeType, viewingTopic.id);
+              else setShowAuthModal(true);
+            }}
+            onBookmark={() => {
+              if (user) toggleBookmark(viewingTopic.id, viewLikeType);
+              else setShowAuthModal(true);
+            }}
+            onShare={() => handleShare(viewingTopic)}
+            onEdit={() => handleEdit(viewingTopic)}
+          />
+        );
+      })()}
 
       <RequestTopicModal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} />
       <AdminTopicReviewPanel isOpen={showAdminReview} onClose={() => setShowAdminReview(false)} />
