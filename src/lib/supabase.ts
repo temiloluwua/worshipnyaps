@@ -83,6 +83,8 @@ export interface Event {
   is_private: boolean;
   visibility: 'public' | 'private' | 'friends_only';
   address_visibility?: 'general_area' | 'attendees_only' | 'public';
+  area_lat?: number | null;
+  area_lng?: number | null;
   event_type?: 'bible_study' | 'yap';
   study_topic?: string;
   session_purpose?: string;

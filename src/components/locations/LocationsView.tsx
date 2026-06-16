@@ -107,16 +107,15 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   // Backward-compat alias used by code below.
   const myRsvpEvents = myCombinedEvents;
 
-  // Only show events on the map when:
-  //  - event visibility is public (no friends-only or private events leak)
-  //  - host chose to make the address public (no precise pin for general_area
-  //    or attendees_only)
-  //  - lat/lng are non-zero (skip events where geocoding failed)
+  // Map only ever shows city-level fuzzed coordinates from events.area_lat/lng.
+  // The exact address still flows through the existing locations RLS rules —
+  // so general_area / attendees_only events can appear here without leaking
+  // a precise pin.
   const mapEvents = filteredEvents
     .filter(e =>
       e.visibility === 'public' &&
-      (e.address_visibility ?? 'public') === 'public' &&
-      e.locations?.latitude && e.locations?.longitude
+      typeof e.area_lat === 'number' &&
+      typeof e.area_lng === 'number'
     )
     .map(e => ({
       id: e.id,
@@ -124,7 +123,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       time: `${e.date} ${e.time}`,
       attendees: e.attendees || 0,
       capacity: e.capacity,
-      coordinates: { lat: e.locations!.latitude, lng: e.locations!.longitude },
+      coordinates: { lat: e.area_lat as number, lng: e.area_lng as number },
       isPrivate: e.is_private,
       category: e.type,
     }));
