@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress } from '../../lib/geocode';
+import { AddressAutocomplete } from './AddressAutocomplete';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
 interface LocationsViewProps {
@@ -569,6 +570,9 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
     bring_note: '',
   });
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // Cached coordinates from the address autocomplete pick, so we can skip
+  // a redundant Nominatim round-trip at submit time.
+  const [pickedCoords, setPickedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -610,7 +614,7 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
     // map just won't show a pin until someone refines the address.
     let locationId: string | null = null;
     try {
-      const geo = await geocodeAddress(formData.eventAddress);
+      const geo = pickedCoords ?? (await geocodeAddress(formData.eventAddress));
       const { data: locData, error: locError } = await supabase
         .from('locations')
         .insert({
@@ -901,17 +905,23 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
-            <input
-              type="text"
+            <AddressAutocomplete
               name="eventAddress"
               value={formData.eventAddress}
-              onChange={handleInputChange}
-              placeholder="e.g. 1320 5 Ave NW, Calgary, AB"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              onChange={(val) => {
+                setFormData(p => ({ ...p, eventAddress: val }));
+                // Free-text edit after a pick invalidates the cached coords.
+                if (pickedCoords) setPickedCoords(null);
+              }}
+              onPick={(s) => {
+                setFormData(p => ({ ...p, eventAddress: s.displayName }));
+                setPickedCoords({ latitude: s.latitude, longitude: s.longitude });
+              }}
+              placeholder="Start typing — pick from the suggestions"
               required
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Visibility set by the "Address privacy" option below.
+              Pick a suggestion to confirm the location on the map. Visibility is set by the "Address privacy" option below.
             </p>
           </div>
 
