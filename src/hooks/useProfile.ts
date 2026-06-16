@@ -94,6 +94,8 @@ export const useProfile = () => {
       if (updates.spiritual_gifts !== undefined) payload.spiritual_gifts = updates.spiritual_gifts;
       if (updates.location_text !== undefined) payload.location_text = updates.location_text;
       if (updates.city !== undefined) payload.city = updates.city;
+      if (updates.age !== undefined) payload.age = updates.age;
+      if (updates.relationship_status !== undefined) payload.relationship_status = updates.relationship_status;
 
       const { error } = await supabase
         .from('users')
