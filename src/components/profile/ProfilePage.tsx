@@ -3,7 +3,7 @@ import {
   Camera, Calendar, MessageCircle,
   UserPlus, UserMinus, ArrowLeft, Heart, Bookmark,
   Sparkles, Settings, LayoutGrid, LayoutList, Link as LinkIcon, Edit2,
-  PenSquare
+  PenSquare, HeartHandshake, Cake
 } from 'lucide-react';
 import { CreateTopicModal } from '../topics/CreateTopicModal';
 import { useAuth } from '../../hooks/useAuth';
@@ -260,6 +260,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <Calendar className="w-3.5 h-3.5 shrink-0" />
               Joined {format(new Date(viewingProfile.created_at), 'MMMM yyyy')}
             </span>
+            {typeof (viewingProfile as any).age === 'number' && (
+              <span className="flex items-center gap-1">
+                <Cake className="w-3.5 h-3.5 shrink-0" />
+                {(viewingProfile as any).age}
+              </span>
+            )}
+            {(() => {
+              const status = (viewingProfile as any).relationship_status as string | undefined;
+              if (!status || status === 'prefer_not_to_say') return null;
+              const label: Record<string, string> = {
+                single: 'Single',
+                in_a_relationship: 'In a relationship',
+                engaged: 'Engaged',
+                married: 'Married',
+              };
+              return (
+                <span className="flex items-center gap-1">
+                  <HeartHandshake className="w-3.5 h-3.5 shrink-0" />
+                  {label[status] || status}
+                </span>
+              );
+            })()}
           </div>
 
           <div className="flex gap-5 mb-4">

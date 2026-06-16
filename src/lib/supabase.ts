@@ -56,6 +56,10 @@ export interface UserProfile {
   avatar_url?: string;
   bio?: string;
   city?: string;
+  age?: number;
+  relationship_status?: 'single' | 'married' | 'in_a_relationship' | 'engaged' | 'prefer_not_to_say';
+  interests?: string[];
+  spiritual_gifts?: string[];
   created_at: string;
   updated_at: string;
 }
