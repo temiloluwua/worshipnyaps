@@ -47,6 +47,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
       return;
     }
 
+    // Safety: a home address must never go fully public. Mirrors the
+    // HostEventModal create-time check and the events_home_not_public_check
+    // CHECK constraint on the DB so the user sees a friendly toast instead
+    // of a raw constraint error.
+    let effectiveVisibility = formData.visibility;
+    let effectiveAddressVisibility = formData.addressVisibility;
+    if (event.location_type === 'home' && effectiveVisibility === 'public') {
+      effectiveVisibility = 'friends_only';
+      effectiveAddressVisibility = 'attendees_only';
+      toast('Home events are kept friends-only to protect your address.', { icon: '🔒' });
+    }
+
     setSubmitting(true);
     try {
       const updates: Record<string, any> = {
@@ -55,9 +67,9 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         date: formData.date,
         time: formData.time,
         capacity: formData.capacity,
-        visibility: formData.visibility,
-        is_private: formData.visibility === 'private',
-        address_visibility: formData.addressVisibility,
+        visibility: effectiveVisibility,
+        is_private: effectiveVisibility === 'private',
+        address_visibility: effectiveAddressVisibility,
         image_url: imageUrl,
         updated_at: new Date().toISOString(),
       };
