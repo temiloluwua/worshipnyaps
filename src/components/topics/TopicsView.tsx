@@ -110,8 +110,8 @@ export function TopicsView({
 }: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
-  const { topics, loading, incrementViewCount } = useTopics();
-  const { posts: communityPosts } = useCommunityPosts();
+  const { topics, loading, incrementViewCount, fetchTopics } = useTopics();
+  const { posts: communityPosts, fetchPosts: fetchCommunityPosts } = useCommunityPosts();
   const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const [searchQuery, setSearchQuery] = useState('');
@@ -839,6 +839,10 @@ export function TopicsView({
             }}
             onShare={() => handleShare(viewingTopic)}
             onEdit={() => handleEdit(viewingTopic)}
+            onDeleted={() => {
+              if (viewingTopic.topic_type === 'community') fetchCommunityPosts();
+              else fetchTopics();
+            }}
           />
         );
       })()}

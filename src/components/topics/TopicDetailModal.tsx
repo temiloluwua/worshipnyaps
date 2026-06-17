@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, ChevronDown, ChevronUp, Edit, Crown } from 'lucide-react';
+import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, ChevronDown, ChevronUp, Edit, Crown, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useTopics } from '../../hooks/useTopics';
 import { CommentThread } from './CommentThread';
 import { ReportButton } from '../moderation/ReportButton';
 
@@ -15,6 +18,7 @@ interface TopicDetailModalProps {
   onBookmark: () => void;
   onShare: () => void;
   onEdit: () => void;
+  onDeleted?: () => void;
 }
 
 export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
@@ -27,10 +31,13 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   onBookmark,
   onShare,
   onEdit,
+  onDeleted,
 }) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
+  const { deleteTopic } = useTopics();
   const [showAllQuestions, setShowAllQuestions] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [commentCount, setCommentCount] = useState<number>(
     typeof topic?.commentCount === 'number' ? topic.commentCount :
     typeof topic?.comments === 'number' ? topic.comments :
@@ -43,7 +50,36 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   const safeCategory = typeof topic.category === 'string' && topic.category.trim().length > 0 ? topic.category : 'general';
   const safeContent = typeof topic.content === 'string' ? topic.content.trim() : '';
   const hasQuestions = Array.isArray(topic.questions) && topic.questions.length > 0;
+  const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
   const canEdit = user && (topic.author_id === user.id || topic.authorId === user.id || profile?.role === 'admin');
+  const canDelete = user && (topic.author_id === user.id || topic.authorId === user.id || isStaff);
+  const isCommunity = topic.topic_type === 'community';
+
+  const handleDelete = async () => {
+    if (!canDelete || deleting) return;
+    const label = isCommunity ? 'post' : 'topic';
+    if (!window.confirm(`Delete this ${label}? This can't be undone.`)) return;
+    setDeleting(true);
+    try {
+      if (isCommunity) {
+        const { error } = await supabase.from('community_posts').delete().eq('id', topic.id);
+        if (error) throw error;
+        toast.success('Post deleted');
+        onDeleted?.();
+        onClose();
+      } else {
+        const ok = await deleteTopic(topic.id);
+        if (ok) {
+          onDeleted?.();
+          onClose();
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || `Failed to delete ${label}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const openBibleReference = (reference: string) => {
     window.open(`https://www.openbible.info/labs/cross-references/search?q=${encodeURIComponent(reference)}`, '_blank');
@@ -68,8 +104,18 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             {canEdit && (
-              <button onClick={onEdit} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <button onClick={onEdit} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
                 <Edit className="w-4 h-4" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                title={isStaff && topic.author_id !== user?.id ? 'Delete (admin)' : 'Delete'}
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             )}
             <ReportButton

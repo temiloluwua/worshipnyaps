@@ -179,6 +179,34 @@ export const useTopics = () => {
     }
   }, [user, topics, fetchTopics]);
 
+  // Delete a topic (author or staff, enforced by RLS).
+  const deleteTopic = useCallback(async (topicId: string) => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase.from('topics').delete().eq('id', topicId);
+      if (error) throw error;
+      toast.success('Topic deleted');
+      await fetchTopics();
+      return true;
+    } catch (error: any) {
+      toast.error(error.message);
+      return false;
+    }
+  }, [user, fetchTopics]);
+
+  // Delete a comment (author or staff, enforced by RLS).
+  const deleteComment = useCallback(async (commentId: string) => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase.from('comments').delete().eq('id', commentId);
+      if (error) throw error;
+      return true;
+    } catch (error: any) {
+      toast.error(error.message);
+      return false;
+    }
+  }, [user]);
+
   // Update topic (author or admin)
   const updateTopic = useCallback(async (
     topicId: string,
@@ -223,6 +251,8 @@ export const useTopics = () => {
     addComment,
     toggleTopicLike,
     toggleTopicPin,
-    updateTopic
+    updateTopic,
+    deleteTopic,
+    deleteComment
   };
 };

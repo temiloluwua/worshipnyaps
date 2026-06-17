@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, MoreHorizontal, Send } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
@@ -89,6 +89,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, community
   const { user, profile } = useAuth();
   const topicsApi = useTopics();
   const communityApi = useCommunityPosts();
+  const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
 
   const isCommunity = !!communityPostId;
   const resourceId = (communityPostId || topicId)!;
@@ -203,6 +204,18 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, community
     setComments(prev => updateLikes(prev));
   };
 
+  const handleDeleteComment = async (comment: Comment) => {
+    if (!user) return;
+    const isOwn = comment.author?.id === user.id;
+    if (!isOwn && !isStaff) return;
+    if (!window.confirm('Delete this comment? This can\'t be undone.')) return;
+    const ok = await topicsApi.deleteComment(comment.id);
+    if (ok) {
+      toast.success('Comment deleted');
+      await loadComments(false);
+    }
+  };
+
   const toggleThread = (commentId: string) => {
     setExpandedThreads(prev => {
       const newSet = new Set(prev);
@@ -296,6 +309,18 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, community
                 }}
                 variant="icon"
               />
+
+              {user && (comment.author?.id === user.id || isStaff) && (
+                <button
+                  onClick={() => handleDeleteComment(comment)}
+                  className="flex items-center space-x-1 text-gray-500 hover:text-red-600 transition-colors group"
+                  title={isStaff && comment.author?.id !== user.id ? 'Delete (admin)' : 'Delete'}
+                >
+                  <div className="p-1 rounded-full group-hover:bg-red-50">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                </button>
+              )}
             </div>
 
             {/* Reply Input */}
