@@ -16,6 +16,22 @@ export interface ExtendedProfile extends UserProfile {
   };
 }
 
+// Profile columns the user is allowed to update on themselves. Anything
+// not in this list will be silently dropped by updateProfile().
+const EDITABLE_PROFILE_FIELDS = [
+  'name',
+  'username',
+  'bio',
+  'city',
+  'age',
+  'relationship_status',
+  'interests',
+  'spiritual_gifts',
+  'avatar_url',
+  'cover_photo_url',
+  'location_text',
+] as const;
+
 export const useProfile = () => {
   const { user, profile: currentUserProfile } = useAuth();
   const [viewingProfile, setViewingProfile] = useState<ExtendedProfile | null>(null);
@@ -86,17 +102,14 @@ export const useProfile = () => {
       const payload: Record<string, any> = {
         updated_at: new Date().toISOString()
       };
-      if (updates.name !== undefined) payload.name = updates.name;
-      if (updates.bio !== undefined) payload.bio = updates.bio;
-      if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url;
-      if (updates.cover_photo_url !== undefined) payload.cover_photo_url = updates.cover_photo_url;
-      if (updates.interests !== undefined) payload.interests = updates.interests;
-      if (updates.spiritual_gifts !== undefined) payload.spiritual_gifts = updates.spiritual_gifts;
-      if (updates.location_text !== undefined) payload.location_text = updates.location_text;
-      if (updates.city !== undefined) payload.city = updates.city;
-      if (updates.age !== undefined) payload.age = updates.age;
-      if (updates.relationship_status !== undefined) payload.relationship_status = updates.relationship_status;
-      if (updates.username !== undefined) payload.username = updates.username;
+      // Single source of truth for which profile fields the client is
+      // allowed to update. Add a field here when you add a new column —
+      // forgetting it causes silent data loss (the modal toasts success
+      // while the value never reaches Postgres).
+      for (const field of EDITABLE_PROFILE_FIELDS) {
+        const value = (updates as Record<string, any>)[field];
+        if (value !== undefined) payload[field] = value;
+      }
 
       const { error } = await supabase
         .from('users')
