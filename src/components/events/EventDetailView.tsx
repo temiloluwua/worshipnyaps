@@ -400,7 +400,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           ),
           users!events_host_id_fkey (
             name,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .eq('id', eventId)
@@ -1548,6 +1549,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               hostName={event?.users?.name}
               hostId={event?.host_id}
               hostAvatarUrl={(event?.users as { avatar_url?: string } | undefined)?.avatar_url}
+              hostIsVerified={(event?.users as { is_verified?: boolean } | undefined)?.is_verified}
               onViewProfile={onViewProfile}
             />
 

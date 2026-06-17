@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, X, Shield, Search, Copy, Music, BookOpen, Heart, Coffee, Wrench, MoreHorizontal } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 import toast from 'react-hot-toast';
 
 type RoleKey = 'worship' | 'discussion' | 'prayer' | 'hospitality' | 'tech' | 'other';
@@ -40,6 +41,7 @@ interface CoHostManagerProps {
   eventDate?: string;
   eventTime?: string;
   hostName?: string;
+  hostIsVerified?: boolean;
   hostId?: string;
   hostAvatarUrl?: string;
   onViewProfile?: (userId: string) => void;
@@ -77,7 +79,7 @@ function buildInviteMessage(opts: {
   return `${greeting} I'm hosting ${eventLabel}${whenStr} — would you lead our *${opts.roleLabel}* portion? You'd ${opts.roleDescription}.\n\nDetails + RSVP: ${link}${sig}`;
 }
 
-export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, eventTitle, eventDate, eventTime, hostName, hostId, hostAvatarUrl, onViewProfile }) => {
+export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, eventTitle, eventDate, eventTime, hostName, hostIsVerified, hostId, hostAvatarUrl, onViewProfile }) => {
   const { user } = useAuth();
   const [coHosts, setCoHosts] = useState<CoHost[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -284,6 +286,7 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{hostName}</span>
+                  <VerifiedBadge verified={hostIsVerified} size={14} />
                   <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                     Host
                   </span>

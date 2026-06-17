@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircle, Calendar, Star } from 'lucide-react';
+import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircle, Calendar, Star, UserPlus } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
 import { supabase } from '../../lib/supabase';
@@ -10,6 +10,7 @@ interface LandingPageProps {
   onPreOrder: () => void;
   onViewEvents?: () => void;
   onViewTopicOfDay?: (topicId: string) => void;
+  onCreateAccount?: () => void;
 }
 
 interface Topic {
@@ -21,7 +22,7 @@ interface Topic {
   content?: string;
 }
 
-export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDay }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDay, onCreateAccount }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [topicOfTheDay, setTopicOfTheDay] = useState<Topic | null>(null);
@@ -86,18 +87,28 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
             through engaging discussions and community events.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-3">
+            <button
+              onClick={onCreateAccount ?? onEnter}
+              className="px-10 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-500 dark:to-teal-500 text-white rounded-xl font-semibold text-lg hover:from-emerald-700 hover:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>Create Account</span>
+            </button>
+
             <button
               onClick={onEnter}
               className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
             >
-              <span>Join Community</span>
+              <span>Sign In</span>
               <ArrowRight className="w-5 h-5" />
             </button>
+          </div>
 
+          <div className="flex justify-center mb-6">
             <button
               onClick={onPreOrder}
-              className="px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold text-lg hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
+              className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
             >
               <ShoppingBag className="w-5 h-5" />
               <span>Pre-Order Card Game</span>

@@ -11,7 +11,8 @@ import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
 import { useConnections } from '../../hooks/useConnections';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useLikes } from '../../hooks/useLikes';
-import { Topic } from '../../lib/supabase';
+import { Topic, supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 import { TopicCard } from '../topics/TopicCard';
 import { EditProfileModal } from './EditProfileModal';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
@@ -33,7 +34,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onStartChat,
   onViewTopic
 }) => {
-  const { user } = useAuth();
+  const { user, profile: currentUserProfile } = useAuth();
+  const isStaff = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'moderator';
   const { viewingProfile, loading, fetchProfile, fetchUserPosts, fetchUserLikedPosts } = useProfile();
   const { isConnected, hasPendingRequest, sendConnectionRequest, removeConnection } = useConnections();
   const { bookmarkedTopics, fetchBookmarkedTopics, isBookmarked, toggleBookmark } = useBookmarks();
@@ -238,6 +240,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-1.5">
               <span>{viewingProfile.name}</span>
               <VerifiedBadge verified={(viewingProfile as any).is_verified} size={20} />
+              {isStaff && !isOwnProfile && (
+                <button
+                  onClick={async () => {
+                    const currentlyVerified = !!(viewingProfile as any).is_verified;
+                    const next = !currentlyVerified;
+                    const verb = next ? 'verify' : 'remove verification from';
+                    if (!window.confirm(`Are you sure you want to ${verb} ${viewingProfile.name}?`)) return;
+                    const { error } = await supabase
+                      .from('users')
+                      .update({ is_verified: next })
+                      .eq('id', viewingProfile.id);
+                    if (error) {
+                      toast.error(error.message);
+                      return;
+                    }
+                    toast.success(next ? 'Marked as verified host' : 'Verification removed');
+                    fetchProfile(viewingProfile.id);
+                  }}
+                  className="ml-1 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                  title="Admin: toggle verified host"
+                >
+                  {(viewingProfile as any).is_verified ? 'Remove ✓' : 'Verify host'}
+                </button>
+              )}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">@{(viewingProfile as { username?: string }).username || viewingProfile.email?.split('@')[0]}</p>
           </div>

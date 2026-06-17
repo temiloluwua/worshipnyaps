@@ -38,6 +38,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabType>('topics');
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
   const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
@@ -261,6 +262,11 @@ function App() {
         onPreOrder={handlePreOrder}
         onViewEvents={handleViewEvents}
         onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
+        onCreateAccount={() => {
+          setAuthMode('signup');
+          setShowLanding(false);
+          setShowAuthModal(true);
+        }}
       />
     );
   }
@@ -407,8 +413,8 @@ function App() {
 
       <AuthModal
         isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode="login"
+        onClose={() => { setShowAuthModal(false); setAuthMode('login'); }}
+        initialMode={authMode}
       />
 
       {showOnboarding && (
