@@ -96,6 +96,7 @@ export const useProfile = () => {
       if (updates.city !== undefined) payload.city = updates.city;
       if (updates.age !== undefined) payload.age = updates.age;
       if (updates.relationship_status !== undefined) payload.relationship_status = updates.relationship_status;
+      if (updates.username !== undefined) payload.username = updates.username;
 
       const { error } = await supabase
         .from('users')
