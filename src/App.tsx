@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Header } from './components/Header';
 import { BottomNavigation, TabType } from './components/BottomNavigation';
 import { TopicsView } from './components/topics/TopicsView';
@@ -11,11 +11,15 @@ import { SearchPage } from './components/search/SearchPage';
 import { MessagesView } from './components/messages/MessagesView';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import { HashtagPage } from './components/hashtags/HashtagPage';
+import { lazyWithRetry } from './lib/lazyWithRetry';
 
-const LocationsView = lazy(() => import('./components/locations/LocationsView').then(m => ({ default: m.LocationsView })));
-const ShopPage = lazy(() => import('./components/shop/ShopPage').then(m => ({ default: m.ShopPage })));
-const SuccessPage = lazy(() => import('./components/shop/SuccessPage').then(m => ({ default: m.SuccessPage })));
-const EventDetailView = lazy(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })));
+// Wrapped with lazyWithRetry (not React.lazy directly) so that a stale
+// chunk reference after a new deploy self-heals with one reload instead
+// of crashing the app. See src/lib/lazyWithRetry.tsx.
+const LocationsView = lazyWithRetry(() => import('./components/locations/LocationsView').then(m => ({ default: m.LocationsView })), 'LocationsView');
+const ShopPage = lazyWithRetry(() => import('./components/shop/ShopPage').then(m => ({ default: m.ShopPage })), 'ShopPage');
+const SuccessPage = lazyWithRetry(() => import('./components/shop/SuccessPage').then(m => ({ default: m.SuccessPage })), 'SuccessPage');
+const EventDetailView = lazyWithRetry(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })), 'EventDetailView');
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { useAuth } from './hooks/useAuth';
