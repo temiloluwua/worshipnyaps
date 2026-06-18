@@ -801,7 +801,18 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setFormData(p => ({ ...p, location_type: opt.value as any }))}
+                  onClick={() => setFormData(p => ({
+                    ...p,
+                    location_type: opt.value as any,
+                    // Picking "home" forces a private-friendly visibility +
+                    // address-visibility so the host's address can't leak.
+                    ...(opt.value === 'home'
+                      ? {
+                          visibility: (p.visibility === 'public' ? 'friends_only' : p.visibility) as typeof p.visibility,
+                          addressVisibility: (p.addressVisibility === 'public' ? 'attendees_only' : p.addressVisibility) as typeof p.addressVisibility,
+                        }
+                      : {}),
+                  }))}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                     formData.location_type === opt.value
                       ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
@@ -921,23 +932,41 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('events.whoCanSee')}</label>
+            {formData.location_type === 'home' && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2 mb-2">
+                🔒 Home events can't be public — your address would be exposed. Pick Friends Only or Private.
+              </p>
+            )}
             <div className="space-y-2">
-              {visibilityOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex items-start p-3 border rounded-lg cursor-pointer transition-all ${
-                    formData.visibility === option.value
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                  }`}
-                >
-                  <input type="radio" name="visibility" value={option.value} checked={formData.visibility === option.value} onChange={handleInputChange} className="mt-1 mr-3" />
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">{option.label}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{option.description}</div>
-                  </div>
-                </label>
-              ))}
+              {visibilityOptions.map((option) => {
+                const lockedPublicForHome = formData.location_type === 'home' && option.value === 'public';
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex items-start p-3 border rounded-lg transition-all ${
+                      lockedPublicForHome
+                        ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 opacity-50 cursor-not-allowed'
+                        : formData.visibility === option.value
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 cursor-pointer'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value={option.value}
+                      checked={formData.visibility === option.value}
+                      onChange={handleInputChange}
+                      disabled={lockedPublicForHome}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">{option.label}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{option.description}</div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -953,29 +982,35 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
                 { value: 'general_area', label: 'General area only', description: "Show neighborhood/city. Exact address is never revealed." },
                 { value: 'attendees_only', label: 'Visible to RSVPs only', description: 'Public sees the area. Full address unlocks after RSVP.' },
                 { value: 'public', label: 'Public address', description: 'Anyone can see the full address.' },
-              ].map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex items-start p-3 border rounded-lg cursor-pointer transition-all ${
-                    formData.addressVisibility === option.value
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="addressVisibility"
-                    value={option.value}
-                    checked={formData.addressVisibility === option.value}
-                    onChange={handleInputChange}
-                    className="mt-1 mr-3"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">{option.label}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{option.description}</div>
-                  </div>
-                </label>
-              ))}
+              ].map((option) => {
+                const lockedPublicForHome = formData.location_type === 'home' && option.value === 'public';
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex items-start p-3 border rounded-lg transition-all ${
+                      lockedPublicForHome
+                        ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 opacity-50 cursor-not-allowed'
+                        : formData.addressVisibility === option.value
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 cursor-pointer'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="addressVisibility"
+                      value={option.value}
+                      checked={formData.addressVisibility === option.value}
+                      onChange={handleInputChange}
+                      disabled={lockedPublicForHome}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">{option.label}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{option.description}</div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
