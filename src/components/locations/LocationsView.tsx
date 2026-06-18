@@ -563,9 +563,6 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
     study_topic: '',
     session_purpose: '',
     location_type: '' as '' | 'home' | 'church' | 'park' | 'cafe' | 'online',
-    opening_ritual: '',
-    closing_ritual: '',
-    guest_covenant: '',
     yap_vibe: '',
     bring_note: '',
   });
@@ -654,9 +651,6 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
       location_type: formData.location_type || null,
       study_topic: formData.event_type === 'bible_study' ? (formData.study_topic.trim() || null) : null,
       session_purpose: formData.event_type === 'bible_study' ? (formData.session_purpose.trim() || null) : null,
-      opening_ritual: formData.event_type === 'bible_study' ? (formData.opening_ritual || null) : null,
-      closing_ritual: formData.event_type === 'bible_study' ? (formData.closing_ritual || null) : null,
-      guest_covenant: formData.event_type === 'bible_study' ? (formData.guest_covenant.trim() || null) : null,
       yap_vibe: formData.event_type === 'yap' ? (formData.yap_vibe || null) : null,
       bring_note: formData.event_type === 'yap' ? (formData.bring_note.trim() || null) : null,
     };
@@ -831,46 +825,6 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
                   onChange={(e) => setFormData(p => ({ ...p, study_topic: e.target.value }))}
                   placeholder="e.g. Romans 8 — Life in the Spirit"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Opening ritual</label>
-                  <select
-                    value={formData.opening_ritual}
-                    onChange={(e) => setFormData(p => ({ ...p, opening_ritual: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="">Host's choice</option>
-                    <option value="Opening prayer">Opening prayer</option>
-                    <option value="A reading aloud">A reading aloud</option>
-                    <option value="A check-in question">A check-in question</option>
-                    <option value="Moment of silence">Moment of silence</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Closing ritual</label>
-                  <select
-                    value={formData.closing_ritual}
-                    onChange={(e) => setFormData(p => ({ ...p, closing_ritual: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="">Host's choice</option>
-                    <option value="Group prayer">Group prayer</option>
-                    <option value="One-word takeaway round">One-word takeaway round</option>
-                    <option value="A blessing spoken by host">A blessing spoken by host</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group agreement (optional)</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">e.g. What's shared here stays here. Phones away.</p>
-                <textarea
-                  value={formData.guest_covenant}
-                  onChange={(e) => setFormData(p => ({ ...p, guest_covenant: e.target.value.slice(0, 500) }))}
-                  maxLength={500}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none text-sm"
                 />
               </div>
             </>

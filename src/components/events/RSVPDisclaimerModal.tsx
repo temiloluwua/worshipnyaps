@@ -23,14 +23,12 @@ export const RSVPDisclaimerModal: React.FC<RSVPDisclaimerModalProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const [agreed, setAgreed] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   if (!isOpen) return null;
 
   const isBibleStudy = (event.event_type || 'bible_study') === 'bible_study';
-  const hasCovenant = Boolean(event.guest_covenant?.trim());
-  const canConfirm = (!hasCovenant || agreed) && !confirming;
+  const canConfirm = !confirming;
 
   const handleConfirm = async () => {
     if (!canConfirm) return;
@@ -78,25 +76,6 @@ export const RSVPDisclaimerModal: React.FC<RSVPDisclaimerModalProps> = ({
           </div>
         )}
 
-        {hasCovenant && (
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">Group agreement</p>
-            <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-1 text-sm text-gray-700 dark:text-gray-300 italic whitespace-pre-wrap">
-              {event.guest_covenant}
-            </blockquote>
-            <label className="mt-3 flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={e => setAgreed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                I've read and agree to the group guidelines.
-              </span>
-            </label>
-          </div>
-        )}
 
         <div className="flex gap-2 mt-5">
           <button

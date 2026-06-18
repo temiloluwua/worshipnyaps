@@ -93,9 +93,6 @@ export interface Event {
   study_topic?: string;
   session_purpose?: string;
   location_type?: 'home' | 'church' | 'park' | 'cafe' | 'online';
-  opening_ritual?: string;
-  closing_ritual?: string;
-  guest_covenant?: string;
   yap_vibe?: string;
   bring_note?: string;
   invite_code?: string;

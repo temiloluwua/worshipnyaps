@@ -1306,7 +1306,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           })()}
 
           {/* Event-type badge + structured info */}
-          {(event.event_type || event.location_type || event.study_topic || event.session_purpose || event.opening_ritual || event.closing_ritual || event.yap_vibe || event.bring_note) && (
+          {(event.event_type || event.location_type || event.study_topic || event.session_purpose || event.yap_vibe || event.bring_note) && (
             <div className="mb-6 space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
@@ -1339,23 +1339,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <div>
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Tonight's intention</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300">{event.session_purpose}</p>
-                </div>
-              )}
-
-              {(event.opening_ritual || event.closing_ritual) && (
-                <div className="grid grid-cols-2 gap-3">
-                  {event.opening_ritual && (
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Opening</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-200">{event.opening_ritual}</p>
-                    </div>
-                  )}
-                  {event.closing_ritual && (
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Closing</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-200">{event.closing_ritual}</p>
-                    </div>
-                  )}
                 </div>
               )}
 
