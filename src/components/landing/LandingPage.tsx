@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircle, Calendar, Star, UserPlus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
 import { supabase } from '../../lib/supabase';
@@ -23,6 +24,7 @@ interface Topic {
 }
 
 export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDay, onCreateAccount }: LandingPageProps) {
+  const { t } = useTranslation();
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [topicOfTheDay, setTopicOfTheDay] = useState<Topic | null>(null);
@@ -83,8 +85,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
           </p>
 
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Connect with fellow believers, dive deep into Scripture, and build lasting friendships
-            through engaging discussions and community events.
+            {t('landing.subtitle')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-3">
@@ -93,14 +94,14 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
               className="px-10 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-500 dark:to-teal-500 text-white rounded-xl font-semibold text-lg hover:from-emerald-700 hover:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
             >
               <UserPlus className="w-5 h-5" />
-              <span>Create Account</span>
+              <span>{t('landing.createAccount')}</span>
             </button>
 
             <button
               onClick={onEnter}
               className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
             >
-              <span>Sign In</span>
+              <span>{t('landing.signIn')}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
@@ -111,7 +112,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
               className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
             >
               <ShoppingBag className="w-5 h-5" />
-              <span>Pre-Order Card Game</span>
+              <span>{t('landing.preOrder')}</span>
             </button>
           </div>
 

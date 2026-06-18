@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
 
@@ -10,6 +11,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,14 +50,14 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
           <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <LogIn className="w-7 h-7 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome Back</h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Sign in to your account</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('authModal.welcomeBack')}</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">{t('authModal.loginSubtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Email Address
+              {t('authModal.emailLabel')}
             </label>
             <input
               id="email"
@@ -64,13 +66,13 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              placeholder="Enter your email"
+              placeholder={t('authModal.emailPlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Password
+              {t('authModal.passwordLabel')}
             </label>
             <div className="relative">
               <input
@@ -80,7 +82,7 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 pr-11 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Enter your password"
+                placeholder={t('authModal.passwordPlaceholder')}
               />
               <button
                 type="button"
@@ -104,7 +106,7 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
             ) : (
-              'Sign In'
+              t('authModal.signInCta')
             )}
           </button>
         </form>
@@ -115,12 +117,11 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
 
         <div className="mt-5 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?{' '}
             <button
               onClick={onSwitchToSignup}
               className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Sign up
+              {t('authModal.switchToSignup')}
             </button>
           </p>
         </div>

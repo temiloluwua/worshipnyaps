@@ -22,7 +22,7 @@ const languages = [
 const DELETE_CONFIRM_PHRASE = 'DELETE';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onShowLanding }) => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { theme, setTheme, resetToSystem, isSystemPreference } = useTheme();
   const { user, profile, deleteAccount, signOut } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -57,13 +57,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   return (
     <>
     {showAdminConsole && <AdminConsole onClose={() => setShowAdminConsole(false)} />}
-    <Modal isOpen={isOpen} onClose={onClose} title="Settings">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('settings.title')}>
       <ModalBody>
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Globe size={18} className="text-gray-600 dark:text-gray-400" />
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Language</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('settings.language')}</h3>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {languages.map((lang) => (
@@ -89,7 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
           <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
             <div className="flex items-center gap-2 mb-3">
               <Sun size={18} className="text-gray-600 dark:text-gray-400" />
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Theme</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('settings.theme')}</h3>
             </div>
             <div className="grid grid-cols-1 gap-2">
               <button
@@ -101,7 +101,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 }`}
               >
                 <Sun size={16} />
-                <span className="flex-1">Light</span>
+                <span className="flex-1">{t('settings.light')}</span>
                 {theme === 'light' && !isSystemPreference && (
                   <div className="w-2 h-2 bg-blue-600 rounded-full" />
                 )}
@@ -115,7 +115,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 }`}
               >
                 <Moon size={16} />
-                <span className="flex-1">Dark</span>
+                <span className="flex-1">{t('settings.dark')}</span>
                 {theme === 'dark' && !isSystemPreference && (
                   <div className="w-2 h-2 bg-blue-600 rounded-full" />
                 )}
@@ -129,7 +129,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 }`}
               >
                 <Monitor size={16} />
-                <span className="flex-1">System</span>
+                <span className="flex-1">{t('settings.system')}</span>
                 {isSystemPreference && (
                   <div className="w-2 h-2 bg-blue-600 rounded-full" />
                 )}
@@ -211,21 +211,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
           {user && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Account</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('settings.account')}</h3>
 
               <button
                 onClick={handleSignOut}
                 className="w-full text-left px-4 py-2.5 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mb-2"
               >
                 <LogOut size={16} className="text-gray-500" />
-                <span className="flex-1">Sign out</span>
+                <span className="flex-1">{t('settings.signOut')}</span>
               </button>
 
               <button
                 onClick={() => setShowMore(v => !v)}
                 className="w-full text-left px-4 py-2.5 rounded-lg text-xs flex items-center gap-3 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                <span className="flex-1">More options</span>
+                <span className="flex-1">{t('settings.moreOptions')}</span>
                 {showMore ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
 
@@ -235,19 +235,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   className="mt-2 w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
                 >
                   <Trash2 size={16} />
-                  <span className="flex-1">Delete account</span>
+                  <span className="flex-1">{t('settings.deleteAccount')}</span>
                 </button>
               ) : (
                 <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/10 p-4 space-y-3">
                   <div className="flex gap-2">
                     <AlertTriangle size={18} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     <div className="text-sm text-red-700 dark:text-red-300">
-                      <p className="font-semibold mb-1">This permanently deletes your account.</p>
-                      <p>Your profile, posts, comments, events, messages, and connections will be removed. This cannot be undone.</p>
+                      <p className="font-semibold mb-1">{t('settings.deleteAccountWarningTitle')}</p>
+                      <p>{t('settings.deleteAccountWarningBody')}</p>
                     </div>
                   </div>
                   <label className="block text-xs text-gray-700 dark:text-gray-300">
-                    Type <span className="font-mono font-semibold">{DELETE_CONFIRM_PHRASE}</span> to confirm:
+                    {t('settings.typeToConfirm')}
                   </label>
                   <input
                     type="text"
@@ -267,14 +267,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                       disabled={isDeleting}
                       className="flex-1 px-4 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleDeleteAccount}
                       disabled={confirmText !== DELETE_CONFIRM_PHRASE || isDeleting}
                       className="flex-1 px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isDeleting ? 'Deleting...' : 'Delete forever'}
+                      {isDeleting ? t('common.loading') : t('settings.deleteForever')}
                     </button>
                   </div>
                 </div>

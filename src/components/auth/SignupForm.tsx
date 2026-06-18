@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff, UserPlus, Mail, CheckCircle2, AtSign, Check, X as XIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
 
@@ -12,6 +13,7 @@ interface SignupFormProps {
 }
 
 export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -130,7 +132,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <UserPlus className="w-7 h-7 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create Account</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('authModal.createAccountCta')}</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Join our community</p>
         </div>
 
@@ -199,7 +201,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              placeholder="Enter your email"
+              placeholder={t('authModal.emailPlaceholder')}
             />
           </div>
 
@@ -240,7 +242,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
             ) : (
-              'Create Account'
+              t('authModal.createAccountCta')
             )}
           </button>
 
@@ -259,12 +261,11 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
 
         <div className="mt-5 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Already have an account?{' '}
             <button
               onClick={onSwitchToLogin}
               className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Sign in
+              {t('authModal.switchToSignin')}
             </button>
           </p>
         </div>
