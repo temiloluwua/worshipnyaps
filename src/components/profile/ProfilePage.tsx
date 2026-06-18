@@ -6,6 +6,7 @@ import {
   PenSquare, HeartHandshake, Cake
 } from 'lucide-react';
 import { CreateTopicModal } from '../topics/CreateTopicModal';
+import { SettingsModal } from '../SettingsModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
 import { useConnections } from '../../hooks/useConnections';
@@ -45,6 +46,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [posts, setPosts] = useState<Topic[]>([]);
   const [likedPosts, setLikedPosts] = useState<Topic[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
 
@@ -129,12 +131,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <p className="text-xs text-gray-500 dark:text-gray-400">{viewingProfile.stats?.posts_count || 0} posts</p>
           </div>
           {isOwnProfile && (
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Edit profile"
+                aria-label="Edit profile"
+              >
+                <Edit2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Settings"
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -434,6 +448,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           onSave={() => { setShowEditModal(false); fetchProfile(userId); }}
         />
       )}
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
 
       {isOwnProfile && (
         <button
