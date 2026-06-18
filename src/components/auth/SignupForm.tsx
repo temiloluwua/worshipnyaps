@@ -4,6 +4,7 @@ import { Eye, EyeOff, UserPlus, Mail, CheckCircle2, AtSign, Check, X as XIcon } 
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
+import { getTurnstileToken } from '../../lib/turnstile';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 
@@ -64,10 +65,14 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
     setIsLoading(true);
 
     try {
+      const captchaToken = await getTurnstileToken('signup');
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name, username: trimmedUsername } },
+        options: {
+          data: { name, username: trimmedUsername },
+          ...(captchaToken ? { captchaToken } : {}),
+        },
       });
 
       if (authError) {

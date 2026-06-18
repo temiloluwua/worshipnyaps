@@ -4,6 +4,7 @@ import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
+import { getTurnstileToken } from '../../lib/turnstile';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -22,7 +23,12 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const captchaToken = await getTurnstileToken('login');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
+      });
 
       if (error) {
         if (error.message.toLowerCase().includes('email not confirmed')) {
