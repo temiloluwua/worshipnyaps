@@ -219,7 +219,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
       <div className="p-4 bg-gradient-to-r from-green-500 to-blue-500">
         <button
-          onClick={() => user ? setShowHostModal(true) : setShowAuthModal(true)}
+          onClick={() => setShowHostModal(true)}
           className="w-full bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-md flex items-center justify-center space-x-2"
         >
           <Plus className="w-5 h-5" />
@@ -326,7 +326,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
               </button>
             ) : (
               <button
-                onClick={() => user ? setShowHostModal(true) : setShowAuthModal(true)}
+                onClick={() => setShowHostModal(true)}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
               >
                 Host an event
@@ -524,6 +524,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
         <HostEventModal
           onClose={() => setShowHostModal(false)}
           onEventCreated={(eventId) => onOpenEvent?.(eventId)}
+          onRequireAuth={() => setShowAuthModal(true)}
         />
       )}
     </div>
@@ -533,9 +534,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 interface HostEventModalProps {
   onClose: () => void;
   onEventCreated?: (eventId: string) => void;
+  onRequireAuth?: () => void;
 }
 
-function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
+function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventModalProps) {
   const { t } = useTranslation();
   const { createEvent } = useEvents();
   const { user } = useAuth();
@@ -578,6 +580,15 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Logged-out users can fill out the form to see what hosting looks like,
+    // but actually creating the event requires an account.
+    if (!user) {
+      toast('Create an account to host your event', { icon: '🔒' });
+      onRequireAuth?.();
+      return;
+    }
+
     setSubmitting(true);
 
     if (!formData.eventTitle.trim()) {
@@ -723,6 +734,13 @@ function HostEventModal({ onClose, onEventCreated }: HostEventModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {!user && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
+              <span>🔒</span>
+              <span>You're previewing — you'll need an account to actually post this event. Fill it out, hit Create, and we'll prompt you to sign up.</span>
+            </div>
+          )}
+
           <EventImageUploader value={imageUrl} onChange={setImageUrl} />
 
           {/* What kind of gathering? — unified chip selector with Bible Study + Yap vibes */}
