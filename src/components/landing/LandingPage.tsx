@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, ArrowRight, Sun, Moon, ShoppingBag, Bell, Sparkles, MessageCircle, Calendar, Star, UserPlus } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Heart, ArrowRight, Sun, Moon, Bell,
+  Globe, Smartphone, ChevronRight, ChevronLeft, Star,
+  BookOpen, MapPin, Users, MessageSquare, ShieldCheck,
+  User as UserIcon, Search, Spade, ClipboardList,
+} from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
 import { supabase } from '../../lib/supabase';
-import { Logo } from '../ui/Logo';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -21,215 +24,523 @@ interface Topic {
   bible_verse?: string;
   tags: string[];
   content?: string;
+  users?: { name?: string; city?: string };
 }
 
+// ---------- Static content ----------
+
+const YAPS_CARDS = [
+  { question: 'What does your faith look like on a Tuesday afternoon?', verse: 'Colossians 3:17' },
+  { question: "What's something God has been teaching you through an ordinary moment?", verse: 'Psalm 46:10' },
+  { question: 'When did community last surprise you with kindness?', verse: 'Hebrews 10:24–25' },
+  { question: "What's a question about the Bible you've been afraid to ask out loud?", verse: 'James 1:5' },
+];
+
+const FEATURES = [
+  {
+    key: 'topics',
+    emoji: '📖',
+    label: 'Topics',
+    title: 'A global conversation about faith and life',
+    description:
+      "Join real discussions about scripture, doubt, and everyday faith. Share what God is teaching you. Comment, like, and discover what others are studying — across every timezone.",
+    pills: ['Scripture Q&A', 'Share reflections', 'Comment & like', 'Discover believers'],
+    gradient: 'from-amber-100 to-orange-200',
+  },
+  {
+    key: 'events',
+    emoji: '⛪',
+    label: 'Events',
+    title: 'Find or host any kind of gathering',
+    description:
+      'Bible studies, worship nights, church hangouts, sports yaps, food yaps, and casual meetups — all in one place.',
+    pills: ['Bible study', 'Worship night', 'Sports yap', 'Food yap', 'Prayer group'],
+    gradient: 'from-rose-100 to-pink-200',
+  },
+  {
+    key: 'cohost',
+    emoji: '🤝',
+    label: 'Co-host',
+    title: 'Hosting alone is hard. We fixed that.',
+    description:
+      'Invite co-hosts and assign roles — worship, discussion, prayer, hospitality, tech. The app writes the invite message for you.',
+    pills: ['Assign roles', 'Pre-written invites', 'Worship lead', 'Prayer lead'],
+    gradient: 'from-violet-100 to-purple-200',
+  },
+  {
+    key: 'messages',
+    emoji: '💬',
+    label: 'Messages',
+    title: 'Everyone in one chat, automatically',
+    description:
+      "RSVP to an event and you're instantly added to the event group chat. Direct messages and group threads keep conversation going.",
+    pills: ['Auto-added on RSVP', 'Event group chats', 'Direct messages', 'No extra apps'],
+    gradient: 'from-sky-100 to-blue-200',
+  },
+  {
+    key: 'privacy',
+    emoji: '🛡️',
+    label: 'Privacy',
+    title: 'Show up without oversharing',
+    description:
+      'Friends-only events stay invisible to strangers. Share your general area without revealing your exact address. RSVP first to see who\'s attending.',
+    pills: ['Friends-only events', 'Fuzzy location', 'RSVP-gated attendees'],
+    gradient: 'from-emerald-100 to-teal-200',
+  },
+];
+
+const HOW_IT_WORKS = [
+  { num: '01', icon: UserIcon, title: 'Create your profile', body: 'Set your city, preferred gathering types, and optional spiritual gifts.' },
+  { num: '02', icon: Search, title: 'Find or host a gathering', body: 'Browse events in your city by type or create your own in under a minute.' },
+  { num: '03', icon: Spade, title: 'Show up & play Yaps', body: "RSVP and you're in the event chat. Arrive, grab a card, let conversation begin." },
+];
+
+const WHO_FOR = [
+  { icon: BookOpen, title: 'Bible study seekers', body: 'Looking for a study group, prayer circle, or worship night near you.' },
+  { icon: UserIcon, title: 'Hosts & leaders', body: 'Make leading less lonely. Delegate roles, coordinate RSVPs, keep everyone in one chat.' },
+  { icon: MessageSquare, title: 'Faith conversation starters', body: 'Tired of impersonal apps. Ready to ask real questions grounded in scripture.' },
+  { icon: ClipboardList, title: 'Pastors & small group leads', body: "A coordination tool that doesn't feel like a spreadsheet." },
+];
+
+// ---------- Component ----------
+
 export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDay, onCreateAccount }: LandingPageProps) {
-  const { t } = useTranslation();
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
-  const [topicOfTheDay, setTopicOfTheDay] = useState<Topic | null>(null);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activeCard, setActiveCard] = useState(0);
+  const [activeFeature, setActiveFeature] = useState(0);
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
         const { data, error } = await supabase
           .from('topics')
-          .select('id, title, category, bible_verse, tags, content')
-          .order('created_at', { ascending: false });
-
+          .select('id, title, category, bible_verse, tags, content, users!topics_author_id_fkey(name, city)')
+          .order('created_at', { ascending: false })
+          .limit(20);
         if (error) throw error;
-
-        const topicList = data || [];
-        setAllTopics(topicList);
-
-        if (topicList.length > 0) {
-          const today = new Date().toDateString();
-          const dateHash = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const selectedIndex = dateHash % topicList.length;
-          setTopicOfTheDay(topicList[selectedIndex]);
-        }
-      } catch (error) {
-        console.error('Error fetching topics:', error);
-      } finally {
-        setLoading(false);
+        setAllTopics((data || []) as Topic[]);
+      } catch (e) {
+        console.error('Error fetching topics:', e);
       }
     };
-
     fetchTopics();
   }, []);
 
+  const featuredTopics = useMemo(() => {
+    // Pick three with the most distinct cities/categories to surface variety.
+    const seenCity = new Set<string>();
+    const picks: Topic[] = [];
+    for (const t of allTopics) {
+      const city = t.users?.city || '';
+      if (!seenCity.has(city)) {
+        picks.push(t);
+        seenCity.add(city);
+        if (picks.length === 3) break;
+      }
+    }
+    if (picks.length < 3) {
+      for (const t of allTopics) {
+        if (!picks.includes(t)) picks.push(t);
+        if (picks.length === 3) break;
+      }
+    }
+    return picks;
+  }, [allTopics]);
+
+  const goToApp = onCreateAccount ?? onEnter;
+  const seeHowItWorks = () => {
+    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 transition-colors overflow-y-auto">
+    <div className="min-h-screen bg-[#FAF8F4] dark:bg-[#1A1611] text-[#1A1611] dark:text-[#FAF8F4] transition-colors font-sans">
+      {/* Theme toggle floats — keeps existing behavior */}
       <button
         onClick={toggleTheme}
         aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-        className="fixed top-6 right-6 p-3 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all z-10"
+        className="fixed bottom-6 right-6 p-3 rounded-full bg-white/90 dark:bg-[#2a221a]/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all z-30 border border-black/10"
       >
-        {isDark ? (
-          <Sun className="w-5 h-5 text-amber-500" />
-        ) : (
-          <Moon className="w-5 h-5 text-slate-600" />
-        )}
+        {isDark ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-[#6B6047]" />}
       </button>
 
-      <div className="max-w-6xl mx-auto px-6 py-16">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center mb-6">
-            <Logo size="lg" includeText />
+      {/* 1. Nav bar */}
+      <nav className="sticky top-0 z-20 bg-[#FAF8F4]/85 dark:bg-[#1A1611]/85 backdrop-blur-md border-b border-black/10 dark:border-white/10">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#C2410C] flex items-center justify-center shadow-sm">
+              <Heart className="w-5 h-5 text-white fill-white" />
+            </div>
+            <span className="font-serif font-bold text-lg tracking-tight">Worship &amp; Yapps</span>
+          </div>
+          <button
+            onClick={goToApp}
+            className="px-5 py-2.5 rounded-full bg-[#C2410C] text-white text-sm font-semibold shadow-sm hover:bg-[#a8370a] transition-colors"
+          >
+            Get the App
+          </button>
+        </div>
+      </nav>
+
+      {/* 2. Hero */}
+      <section className="max-w-5xl mx-auto px-6 pt-16 pb-20 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#D97706]/15 text-[#D97706] dark:bg-[#D97706]/25 dark:text-amber-300 text-xs font-semibold tracking-wide mb-8">
+          <Globe className="w-3.5 h-3.5" />
+          <span>Community beyond Sunday</span>
+        </div>
+
+        <h1 className="font-serif font-bold text-[clamp(2.5rem,7vw,5rem)] leading-[1.05] tracking-tight mb-8">
+          <span className="block">Because community</span>
+          <span className="block">
+            is more than <span className="text-[#C2410C]">Sunday.</span>
+          </span>
+        </h1>
+
+        <p className="text-lg md:text-xl text-[#6B6047] dark:text-[#cdbfa8] max-w-2xl mx-auto leading-relaxed mb-10">
+          Worship &amp; Yapps helps you organize Bible studies, worship nights, casual hangouts, and faith
+          conversations — and connects you with believers asking the same questions you are, anywhere in the world.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-5">
+          <button
+            onClick={goToApp}
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#C2410C] text-white font-semibold shadow-md hover:bg-[#a8370a] transition-all hover:translate-y-[-1px]"
+          >
+            <Smartphone className="w-5 h-5" />
+            <span>Download on App Store</span>
+          </button>
+          <button
+            onClick={seeHowItWorks}
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-black/15 dark:border-white/20 text-[#1A1611] dark:text-[#FAF8F4] font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+          >
+            <span>See how it works</span>
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-xs text-[#6B6047] dark:text-[#9b8c72]">
+          Free to download · No algorithm · Built for real people
+        </p>
+      </section>
+
+      {/* 3. Yaps Card Game — phone mockup with tap-to-advance */}
+      <section className="max-w-3xl mx-auto px-6 pb-24">
+        <div
+          className="mx-auto bg-[#1A1611] rounded-[2.5rem] p-3 shadow-2xl"
+          style={{ maxWidth: 320 }}
+        >
+          <div className="rounded-[2rem] overflow-hidden bg-[#FAF8F4] aspect-[9/16] flex flex-col">
+            <div className="px-5 pt-6 pb-3 text-xs text-[#6B6047] flex items-center justify-between">
+              <span>Yaps</span>
+              <span>{activeCard + 1} / {YAPS_CARDS.length}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveCard((i) => (i + 1) % YAPS_CARDS.length)}
+              className="flex-1 mx-5 mb-5 rounded-2xl bg-[#C2410C] text-white p-6 flex flex-col justify-between text-left active:scale-[0.99] transition-transform"
+            >
+              <Spade className="w-7 h-7 opacity-70" />
+              <div>
+                <p className="font-serif text-xl leading-snug mb-4">
+                  {YAPS_CARDS[activeCard].question}
+                </p>
+                <p className="text-xs uppercase tracking-wider opacity-80">
+                  {YAPS_CARDS[activeCard].verse}
+                </p>
+              </div>
+            </button>
+            <div className="flex items-center justify-center gap-1.5 pb-6">
+              {YAPS_CARDS.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${i === activeCard ? 'w-5 bg-[#C2410C]' : 'w-1.5 bg-black/15'}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <p className="text-center text-sm text-[#6B6047] dark:text-[#9b8c72] mt-5">
+          The Yaps card game — real questions, biblical grounding. <span className="italic">(Tap card to shuffle.)</span>
+        </p>
+      </section>
+
+      {/* 4. Yaps explainer — dark */}
+      <section className="bg-[#1A1611] text-[#FAF8F4]">
+        <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#D97706] mb-4">The Signature Feature</p>
+            <h2 className="font-serif font-bold text-4xl md:text-5xl leading-tight mb-6">
+              Yaps — a card game for real conversations.
+            </h2>
+            <p className="text-[#cdbfa8] mb-8 leading-relaxed">
+              Not every gathering needs a lesson plan. Yaps are casual — a potluck, a game night, a sports
+              afternoon. Shuffle the cards, draw a question, and let the Bible guide the conversation.
+            </p>
+            <ul className="space-y-3">
+              {[
+                'Questions designed to spark honest, grounded conversation',
+                'Each card ties back to a scripture for deeper reflection',
+                'Works for any size group — 3 people or 30',
+                'No prep required. Just show up and play.',
+              ].map((bullet) => (
+                <li key={bullet} className="flex items-start gap-3">
+                  <Star className="w-4 h-4 mt-1 text-[#D97706] fill-[#D97706] flex-shrink-0" />
+                  <span className="text-sm text-[#FAF8F4]/90">{bullet}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <p className="text-xl md:text-2xl text-slate-700 dark:text-slate-200 mb-4 font-medium">
-            Calgary's Premier Bible Study Community
+          <div className="relative h-80 sm:h-96">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#C2410C] text-white p-5 shadow-xl flex flex-col justify-between"
+                style={{
+                  transform: `translate(-50%, -50%) rotate(${(i - 1) * 7}deg) translateY(${(i - 1) * 8}px)`,
+                  zIndex: 10 - i,
+                }}
+              >
+                <Spade className="w-6 h-6 opacity-70" />
+                <div>
+                  <p className="font-serif text-base leading-snug mb-3">{YAPS_CARDS[i].question}</p>
+                  <p className="text-[10px] uppercase tracking-wider opacity-80">{YAPS_CARDS[i].verse}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Features — tab switcher */}
+      <section className="max-w-6xl mx-auto px-6 py-20">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#C2410C] mb-3 text-center">Everything you need</p>
+        <h2 className="font-serif font-bold text-4xl md:text-5xl leading-tight text-center mb-12">
+          One app. The whole faith community.
+        </h2>
+
+        <div className="flex flex-wrap gap-2 justify-center mb-10">
+          {FEATURES.map((f, i) => (
+            <button
+              key={f.key}
+              onClick={() => setActiveFeature(i)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+                i === activeFeature
+                  ? 'bg-[#C2410C] text-white border-[#C2410C] shadow-sm'
+                  : 'bg-white dark:bg-[#2a221a] text-[#1A1611] dark:text-[#FAF8F4] border-black/10 dark:border-white/15 hover:border-[#C2410C]/40'
+              }`}
+            >
+              <span className="mr-1.5">{f.emoji}</span>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className={`rounded-3xl p-8 md:p-12 bg-gradient-to-br ${FEATURES[activeFeature].gradient} border border-black/5 shadow-sm`}>
+          <h3 className="font-serif font-bold text-2xl md:text-3xl text-[#1A1611] mb-4 leading-tight">
+            {FEATURES[activeFeature].title}
+          </h3>
+          <p className="text-[#1A1611]/80 leading-relaxed mb-6 max-w-2xl">
+            {FEATURES[activeFeature].description}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {FEATURES[activeFeature].pills.map((p) => (
+              <span
+                key={p}
+                className="px-3 py-1.5 rounded-full bg-white/80 text-[#1A1611] text-xs font-medium border border-black/5"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Topics — real DB data */}
+      <section className="bg-[#F5F0E8] dark:bg-[#221b14]">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#C2410C] mb-3">Global Groupchat</p>
+          <h2 className="font-serif font-bold text-4xl md:text-5xl leading-tight mb-6 max-w-3xl">
+            Ask your questions. Hear from the world.
+          </h2>
+          <p className="text-[#6B6047] dark:text-[#cdbfa8] max-w-2xl mb-12 leading-relaxed">
+            No algorithm. No engagement bait. Just a feed of real questions and reflections from believers
+            who are wrestling with the same things you are — anywhere on the map.
           </p>
 
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            {t('landing.subtitle')}
-          </p>
+          <div className="grid md:grid-cols-3 gap-5">
+            {(featuredTopics.length > 0 ? featuredTopics : Array.from({ length: 3 })).map((topic, i) => {
+              const t = topic as Topic | undefined;
+              const verse = t?.bible_verse?.split(';')[0]?.trim();
+              const name = t?.users?.name || 'Worship & Yapps member';
+              const city = t?.users?.city || 'Calgary';
+              const body = (t?.content || t?.title || 'Loading…').slice(0, 200);
+              return (
+                <button
+                  key={t?.id ?? i}
+                  onClick={() => (t?.id ? onViewTopicOfDay?.(t.id) : onEnter())}
+                  className="text-left bg-white dark:bg-[#2a221a] rounded-2xl p-6 border border-black/10 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:translate-y-[-2px]"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#1A1611] dark:text-[#FAF8F4] truncate">
+                      <div className="w-8 h-8 rounded-full bg-[#C2410C]/15 text-[#C2410C] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate">{name}</p>
+                        <p className="text-[11px] text-[#6B6047] dark:text-[#9b8c72] truncate flex items-center gap-1"><MapPin className="w-3 h-3" />{city}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {verse && (
+                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#D97706]/15 text-[#D97706] text-[11px] font-semibold mb-3">
+                      {verse}
+                    </span>
+                  )}
+                  <p className="text-sm text-[#1A1611]/85 dark:text-[#FAF8F4]/85 leading-relaxed line-clamp-4">
+                    {body}
+                  </p>
+                  <p className="text-[11px] text-[#6B6047] dark:text-[#9b8c72] mt-4 flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" />
+                    Join the conversation
+                  </p>
+                </button>
+              );
+            })}
+          </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
+          <div className="text-center mt-10">
             <button
               onClick={onEnter}
-              className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#1A1611] dark:bg-[#FAF8F4] text-[#FAF8F4] dark:text-[#1A1611] text-sm font-semibold hover:opacity-90 transition-opacity"
             >
-              <span>{t('landing.joinCommunity')}</span>
-              <ArrowRight className="w-5 h-5" />
+              See the full feed
+              <ArrowRight className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      </section>
 
+      {/* 7. How it works */}
+      <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-20">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#C2410C] mb-3 text-center">How It Works</p>
+        <h2 className="font-serif font-bold text-4xl md:text-5xl leading-tight text-center mb-14">
+          Up and running in minutes
+        </h2>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {HOW_IT_WORKS.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div
+                key={step.num}
+                className="rounded-2xl bg-white dark:bg-[#2a221a] border border-black/10 dark:border-white/10 p-7 shadow-sm"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <span className="text-3xl font-serif font-bold text-[#C2410C]">{step.num}</span>
+                  <div className="w-10 h-10 rounded-full bg-[#C2410C]/10 text-[#C2410C] flex items-center justify-center">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                </div>
+                <h3 className="font-serif font-bold text-xl mb-2">{step.title}</h3>
+                <p className="text-sm text-[#6B6047] dark:text-[#cdbfa8] leading-relaxed">{step.body}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 8. Who it's for — dark */}
+      <section className="bg-[#1A1611] text-[#FAF8F4]">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#D97706] mb-3">Who It's For</p>
+          <h2 className="font-serif font-bold text-4xl md:text-5xl leading-tight mb-12 max-w-3xl">
+            Built for people who show up
+          </h2>
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            {WHO_FOR.map(({ icon: Icon, title, body }) => (
+              <div key={title} className="rounded-2xl bg-white/5 border border-white/10 p-7">
+                <div className="w-11 h-11 rounded-xl bg-[#D97706]/20 text-[#D97706] flex items-center justify-center mb-4">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-serif font-bold text-xl mb-2">{title}</h3>
+                <p className="text-sm text-[#cdbfa8] leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 9. Final CTA */}
+      <section className="max-w-6xl mx-auto px-6 py-20">
+        <div className="rounded-3xl bg-[#C2410C] text-white p-10 md:p-16 text-center shadow-xl">
+          <div className="text-5xl mb-5">🃏</div>
+          <h2 className="font-serif font-bold text-4xl md:text-5xl leading-tight mb-5">
+            Ready to play?
+          </h2>
+          <p className="max-w-2xl mx-auto text-white/90 leading-relaxed mb-9">
+            Download Worship &amp; Yapps. Find a gathering, start one, or just ask the question you have been
+            holding onto.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={goToApp}
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#C2410C] font-semibold shadow-md hover:bg-white/90 transition-colors"
+            >
+              <Smartphone className="w-5 h-5" />
+              <span>Download on App Store</span>
+            </button>
+            <button
+              onClick={() => setShowWaitlist(true)}
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full border border-white/40 text-white font-semibold hover:bg-white/10 transition-colors"
+            >
+              <Bell className="w-4 h-4" />
+              <span>Join the waitlist</span>
+            </button>
+          </div>
+          {onPreOrder && (
             <button
               onClick={onPreOrder}
-              className="px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold text-lg hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
+              className="mt-6 text-white/85 underline underline-offset-4 text-sm hover:text-white"
             >
-              <ShoppingBag className="w-5 h-5" />
-              <span>{t('landing.preOrder')}</span>
+              Or pre-order the card game →
             </button>
-
-            <button
-              onClick={onCreateAccount ?? onEnter}
-              className="px-10 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-500 dark:to-teal-500 text-white rounded-xl font-semibold text-lg hover:from-emerald-700 hover:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg inline-flex items-center space-x-2"
-            >
-              <UserPlus className="w-5 h-5" />
-              <span>{t('landing.createAccount')}</span>
-            </button>
-          </div>
-
-          <button
-            onClick={() => setShowWaitlist(true)}
-            className="px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-slate-700 dark:text-slate-200 rounded-lg font-medium hover:bg-white dark:hover:bg-gray-800 transition-all shadow-md inline-flex items-center space-x-2"
-          >
-            <Bell className="w-4 h-4" />
-            <span>Join Waitlist</span>
-          </button>
-        </div>
-
-        <div className="mb-12">
-          <div className="flex items-center justify-center space-x-2 mb-8">
-            <Star className="w-6 h-6 text-amber-500" />
-            <h2 className="font-logo text-3xl text-blue-600 dark:text-blue-400">
-              Topic of the Day
-            </h2>
-            <Star className="w-6 h-6 text-amber-500" />
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-              <p className="text-slate-600 dark:text-slate-400">Loading topic...</p>
-            </div>
-          ) : topicOfTheDay ? (
-            <div className="max-w-2xl mx-auto">
-              <div
-                className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-8 shadow-2xl border-2 border-amber-400 dark:border-amber-500 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-105"
-                onClick={onEnter}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
-                    <span className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm font-semibold">
-                      {topicOfTheDay.category}
-                    </span>
-                  </div>
-                  <MessageCircle className="w-6 h-6 text-slate-400" />
-                </div>
-                <h3 className="font-logo text-3xl text-blue-600 dark:text-blue-400 mb-4">
-                  {topicOfTheDay.title}
-                </h3>
-                {topicOfTheDay.bible_verse && (
-                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 italic border-l-4 border-amber-500 pl-4">
-                    {topicOfTheDay.bible_verse.split(';')[0]}
-                  </p>
-                )}
-                {topicOfTheDay.content && (
-                  <p className="text-slate-700 dark:text-slate-200 mb-6 leading-relaxed">
-                    {topicOfTheDay.content.substring(0, 200)}...
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {topicOfTheDay.tags && topicOfTheDay.tags.slice(0, 4).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (topicOfTheDay) {
-                      onViewTopicOfDay?.(topicOfTheDay.id);
-                    } else {
-                      onEnter();
-                    }
-                  }}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all inline-flex items-center justify-center space-x-2"
-                >
-                  <span>Join Discussion</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="text-center text-slate-600 dark:text-slate-400 mt-6 text-sm">
-                This topic changes daily at midnight UTC
-              </p>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-slate-600 dark:text-slate-400">No topics available yet</p>
-            </div>
           )}
         </div>
+      </section>
 
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-2xl p-8 text-center shadow-xl">
-          <Calendar className="w-12 h-12 text-white mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-white mb-3">
-            Join Our Live Events
-          </h3>
-          <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-            Connect in person at our weekly Bible study gatherings, worship nights, and community events throughout Calgary.
+      {/* 10. Footer */}
+      <footer className="border-t border-black/10 dark:border-white/10">
+        <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-[#C2410C] flex items-center justify-center">
+              <Heart className="w-4 h-4 text-white fill-white" />
+            </div>
+            <span className="font-serif font-bold">Worship &amp; Yapps</span>
+          </div>
+          <p className="text-[#6B6047] dark:text-[#9b8c72] text-center text-xs">
+            Because community is more than Sunday. · Calgary, Canada · Everywhere else too.
           </p>
-          <button
-            onClick={() => {
-              (onViewEvents ?? onEnter)();
-            }}
-            className="px-8 py-3 bg-white text-blue-700 rounded-lg font-semibold hover:bg-blue-50 transition-all inline-flex items-center space-x-2"
-          >
-            <span>View Events</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-5 text-[#6B6047] dark:text-[#cdbfa8]">
+            <a href="/privacy.html" className="hover:text-[#C2410C]">Privacy</a>
+            <a href="/terms.html" className="hover:text-[#C2410C]">Terms</a>
+            <a href="/support.html" className="hover:text-[#C2410C]">Contact</a>
+          </div>
         </div>
-
-        <p className="mt-12 text-center text-slate-500 dark:text-slate-500 text-sm">
-          Based in Calgary, AB
-        </p>
-      </div>
+      </footer>
 
       <WaitlistModal
         isOpen={showWaitlist}
         onClose={() => setShowWaitlist(false)}
         productType="card_game"
       />
+
+      {(onViewEvents) && (
+        // Hidden helper — keeps the prop interface stable for callers that pass it.
+        <span hidden onClick={onViewEvents} />
+      )}
     </div>
   );
 }
