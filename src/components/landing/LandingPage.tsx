@@ -368,7 +368,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3">Global Groupchat</p>
           <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-6 max-w-3xl">
-            Ask your questions. Hear from the world.
+            No one of us sees the whole picture.
           </h2>
           <p className="text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mb-4 leading-relaxed">
             We're all searching for the same truth. None of us see the whole picture from where we're standing.
