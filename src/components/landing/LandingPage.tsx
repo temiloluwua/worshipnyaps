@@ -370,9 +370,14 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
           <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-6 max-w-3xl">
             Ask your questions. Hear from the world.
           </h2>
+          <p className="text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mb-4 leading-relaxed">
+            We're all searching for the same truth. None of us see the whole picture from where we're standing.
+            A believer in Lagos sees what someone in Calgary can't. A new Christian asks the question the
+            ten-year-veteran forgot to ask. The fuller view comes from <em>each other</em>.
+          </p>
           <p className="text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mb-12 leading-relaxed">
-            No algorithm. No engagement bait. Just a feed of real questions and reflections from believers
-            who are wrestling with the same things you are — anywhere on the map.
+            No algorithm. No engagement bait. Just real questions and reflections from believers wrestling
+            with the same things you are — anywhere on the map.
           </p>
 
           <div className="grid md:grid-cols-3 gap-5">
