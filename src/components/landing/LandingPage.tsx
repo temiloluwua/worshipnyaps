@@ -108,7 +108,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
-  const [activeCard, setActiveCard] = useState(0);
   const [activeFeature, setActiveFeature] = useState(0);
 
   useEffect(() => {
@@ -269,66 +268,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
         </p>
       </section>
 
-      {/* 3. Yaps Card Game — phone mockup with tap-to-advance */}
-      <section className="max-w-3xl mx-auto px-6 pb-24">
-        <div
-          className="mx-auto bg-[#0F172A] rounded-[2.5rem] p-3 shadow-2xl"
-          style={{ maxWidth: 320 }}
-        >
-          <div className="rounded-[2rem] overflow-hidden bg-[#F8FAFC] aspect-[9/16] flex flex-col">
-            <div className="px-5 pt-6 pb-3 text-xs text-[#64748B] flex items-center justify-between">
-              <span className="inline-flex items-center gap-1">
-                <Spade className="w-3 h-3" /> Today's Yap
-              </span>
-              <span>{activeCard + 1} / {yapsCards.length}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveCard((i) => (i + 1) % yapsCards.length)}
-              onDoubleClick={() => {
-                const c = yapsCards[activeCard] as { topicId?: string };
-                if (c.topicId) onViewTopicOfDay?.(c.topicId);
-              }}
-              className="flex-1 mx-5 mb-3 rounded-2xl bg-[#2563eb] text-white p-6 flex flex-col justify-between text-left active:scale-[0.99] transition-transform"
-            >
-              <Spade className="w-7 h-7 opacity-70" />
-              <div>
-                <p className="font-logo text-xl leading-snug mb-4">
-                  {yapsCards[activeCard].question}
-                </p>
-                <p className="text-xs uppercase tracking-wider opacity-80">
-                  {yapsCards[activeCard].verse}
-                </p>
-              </div>
-            </button>
-            <div className="flex items-center justify-center gap-1.5 pb-3">
-              {yapsCards.map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${i === activeCard ? 'w-5 bg-[#2563eb]' : 'w-1.5 bg-black/15'}`}
-                />
-              ))}
-            </div>
-            {(yapsCards[activeCard] as { topicId?: string }).topicId && (
-              <button
-                type="button"
-                onClick={() => {
-                  const c = yapsCards[activeCard] as { topicId?: string };
-                  if (c.topicId) onViewTopicOfDay?.(c.topicId);
-                }}
-                className="mx-5 mb-5 inline-flex items-center justify-center gap-1.5 text-xs text-[#2563eb] font-semibold py-2 rounded-lg hover:bg-[#2563eb]/5"
-              >
-                Open this discussion <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-        <p className="text-center text-sm text-[#64748B] dark:text-[#94A3B8] mt-5">
-          Real questions from real Yappers — refreshed daily. <span className="italic">(Tap to shuffle.)</span>
-        </p>
-      </section>
-
-      {/* 4. Yaps explainer — dark */}
+      {/* Yaps explainer — dark */}
       <section className="bg-[#0F172A] text-[#F8FAFC]">
         <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
           <div>
