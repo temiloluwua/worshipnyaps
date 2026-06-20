@@ -128,6 +128,29 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
     fetchTopics();
   }, []);
 
+  // Cards for the Yaps mockup + the rotated stack in the dark explainer.
+  // Pulled from real topics. Topic-of-the-Day (deterministic daily rotation
+  // by date hash) goes first so a returning visitor always sees today's
+  // featured prompt. Falls back to the curated YAPS_CARDS if the table is
+  // empty or hasn't loaded yet.
+  const yapsCards = useMemo(() => {
+    const usable = allTopics.filter(
+      (t) => !!t.bible_verse && !!(t.title || t.content)
+    );
+    if (usable.length === 0) return YAPS_CARDS;
+
+    const today = new Date().toDateString();
+    const dateHash = today.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const todIndex = dateHash % usable.length;
+    const ordered = [usable[todIndex], ...usable.slice(0, todIndex), ...usable.slice(todIndex + 1)];
+
+    return ordered.slice(0, 8).map((t) => ({
+      question: (t.title || t.content || '').trim().replace(/\s+/g, ' ').slice(0, 140),
+      verse: (t.bible_verse || '').split(';')[0].trim(),
+      topicId: t.id,
+    }));
+  }, [allTopics]);
+
   const featuredTopics = useMemo(() => {
     // Pick three with the most distinct cities/categories to surface variety.
     const seenCity = new Set<string>();
@@ -232,36 +255,54 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
         >
           <div className="rounded-[2rem] overflow-hidden bg-[#FAF8F4] aspect-[9/16] flex flex-col">
             <div className="px-5 pt-6 pb-3 text-xs text-[#6B6047] flex items-center justify-between">
-              <span>Yaps</span>
-              <span>{activeCard + 1} / {YAPS_CARDS.length}</span>
+              <span className="inline-flex items-center gap-1">
+                <Spade className="w-3 h-3" /> Today's Yap
+              </span>
+              <span>{activeCard + 1} / {yapsCards.length}</span>
             </div>
             <button
               type="button"
-              onClick={() => setActiveCard((i) => (i + 1) % YAPS_CARDS.length)}
-              className="flex-1 mx-5 mb-5 rounded-2xl bg-[#C2410C] text-white p-6 flex flex-col justify-between text-left active:scale-[0.99] transition-transform"
+              onClick={() => setActiveCard((i) => (i + 1) % yapsCards.length)}
+              onDoubleClick={() => {
+                const c = yapsCards[activeCard] as { topicId?: string };
+                if (c.topicId) onViewTopicOfDay?.(c.topicId);
+              }}
+              className="flex-1 mx-5 mb-3 rounded-2xl bg-[#C2410C] text-white p-6 flex flex-col justify-between text-left active:scale-[0.99] transition-transform"
             >
               <Spade className="w-7 h-7 opacity-70" />
               <div>
                 <p className="font-serif text-xl leading-snug mb-4">
-                  {YAPS_CARDS[activeCard].question}
+                  {yapsCards[activeCard].question}
                 </p>
                 <p className="text-xs uppercase tracking-wider opacity-80">
-                  {YAPS_CARDS[activeCard].verse}
+                  {yapsCards[activeCard].verse}
                 </p>
               </div>
             </button>
-            <div className="flex items-center justify-center gap-1.5 pb-6">
-              {YAPS_CARDS.map((_, i) => (
+            <div className="flex items-center justify-center gap-1.5 pb-3">
+              {yapsCards.map((_, i) => (
                 <span
                   key={i}
                   className={`h-1.5 rounded-full transition-all ${i === activeCard ? 'w-5 bg-[#C2410C]' : 'w-1.5 bg-black/15'}`}
                 />
               ))}
             </div>
+            {(yapsCards[activeCard] as { topicId?: string }).topicId && (
+              <button
+                type="button"
+                onClick={() => {
+                  const c = yapsCards[activeCard] as { topicId?: string };
+                  if (c.topicId) onViewTopicOfDay?.(c.topicId);
+                }}
+                className="mx-5 mb-5 inline-flex items-center justify-center gap-1.5 text-xs text-[#C2410C] font-semibold py-2 rounded-lg hover:bg-[#C2410C]/5"
+              >
+                Open this discussion <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
         <p className="text-center text-sm text-[#6B6047] dark:text-[#9b8c72] mt-5">
-          The Yaps card game — real questions, biblical grounding. <span className="italic">(Tap card to shuffle.)</span>
+          Real questions from real Yappers — refreshed daily. <span className="italic">(Tap to shuffle.)</span>
         </p>
       </section>
 
@@ -293,22 +334,25 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
           </div>
 
           <div className="relative h-80 sm:h-96">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#C2410C] text-white p-5 shadow-xl flex flex-col justify-between"
-                style={{
-                  transform: `translate(-50%, -50%) rotate(${(i - 1) * 7}deg) translateY(${(i - 1) * 8}px)`,
-                  zIndex: 10 - i,
-                }}
-              >
-                <Spade className="w-6 h-6 opacity-70" />
-                <div>
-                  <p className="font-serif text-base leading-snug mb-3">{YAPS_CARDS[i].question}</p>
-                  <p className="text-[10px] uppercase tracking-wider opacity-80">{YAPS_CARDS[i].verse}</p>
+            {[0, 1, 2].map((i) => {
+              const card = yapsCards[i % yapsCards.length];
+              return (
+                <div
+                  key={i}
+                  className="absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#C2410C] text-white p-5 shadow-xl flex flex-col justify-between"
+                  style={{
+                    transform: `translate(-50%, -50%) rotate(${(i - 1) * 7}deg) translateY(${(i - 1) * 8}px)`,
+                    zIndex: 10 - i,
+                  }}
+                >
+                  <Spade className="w-6 h-6 opacity-70" />
+                  <div>
+                    <p className="font-serif text-base leading-snug mb-3">{card.question}</p>
+                    <p className="text-[10px] uppercase tracking-wider opacity-80">{card.verse}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
