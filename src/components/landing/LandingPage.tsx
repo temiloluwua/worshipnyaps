@@ -323,7 +323,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
       <section className="max-w-6xl mx-auto px-6 py-20">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">Everything you need</p>
         <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-12">
-          One app. The whole faith community.
+          For your community
         </h2>
 
         <div className="flex flex-wrap gap-2 justify-center mb-10">
