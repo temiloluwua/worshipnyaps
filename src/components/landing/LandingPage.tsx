@@ -192,9 +192,12 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       {/* 1. Nav bar */}
       <nav className="sticky top-0 z-20 bg-[#F8FAFC]/85 dark:bg-[#0F172A]/85 backdrop-blur-md border-b border-black/10 dark:border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <button onClick={onEnter} className="flex items-center gap-3 group">
+          <button onClick={onEnter} className="flex items-center gap-3 group text-left">
             <Logo size="sm" />
-            <span className="font-logo font-bold text-lg tracking-tight group-hover:text-[#2563eb] transition-colors">Worship &amp; Yapps</span>
+            <div className="leading-tight">
+              <span className="block font-logo font-bold text-lg tracking-tight group-hover:text-[#2563eb] transition-colors">Worship N Yaps</span>
+              <span className="block text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium">Bible Study Community</span>
+            </div>
           </button>
 
           <div className="hidden md:flex items-center gap-1">
@@ -242,7 +245,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </h1>
 
         <p className="text-lg md:text-xl text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto leading-relaxed mb-10">
-          Worship &amp; Yapps helps you organize Bible studies, worship nights, casual hangouts, and faith
+          Worship N Yaps helps you organize Bible studies, worship nights, casual hangouts, and faith
           conversations — and connects you with believers asking the same questions you are, anywhere in the world.
         </p>
 
@@ -384,7 +387,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             {(featuredTopics.length > 0 ? featuredTopics : Array.from({ length: 3 })).map((topic, i) => {
               const t = topic as Topic | undefined;
               const verse = t?.bible_verse?.split(';')[0]?.trim();
-              const name = t?.users?.name || 'Worship & Yapps member';
+              const name = t?.users?.name || 'Worship N Yaps member';
               const city = t?.users?.city || 'Calgary';
               const body = (t?.content || t?.title || 'Loading…').slice(0, 200);
               return (
@@ -492,7 +495,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             Ready to play?
           </h2>
           <p className="max-w-2xl mx-auto text-white/90 leading-relaxed mb-9">
-            Download Worship &amp; Yapps. Find a gathering, start one, or just ask the question you have been
+            Download Worship N Yaps. Find a gathering, start one, or just ask the question you have been
             holding onto.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -527,7 +530,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
           <div className="flex items-center gap-3">
             <Logo size="sm" />
-            <span className="font-logo font-bold">Worship &amp; Yapps</span>
+            <span className="font-logo font-bold">Worship N Yaps</span>
           </div>
           <p className="text-[#64748B] dark:text-[#94A3B8] text-center text-xs">
             Because community is more than Sunday. · Calgary, Canada · Everywhere else too.
