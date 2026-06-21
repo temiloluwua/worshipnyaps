@@ -699,8 +699,8 @@ export function TopicsView({
                       <span className="font-semibold text-gray-900 dark:text-white">{topic.authorName}</span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">@{topic.authorName?.toLowerCase().replace(/\s/g, '')}</span>
                     </div>
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">{topic.title}</h3>
-                    <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-3">{topic.content || topic.description}</p>
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-2" style={{ fontFamily: 'Georgia, serif' }}>{topic.title}</h3>
+                    <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-3" style={{ fontFamily: 'Georgia, serif' }}>{topic.content || topic.description}</p>
                     {topic.tags && topic.tags.length > 0 && (
                       <div className="flex gap-1 mb-3 flex-wrap">
                         {topic.tags.slice(0, 3).map((tag: string) => (

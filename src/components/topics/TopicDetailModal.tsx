@@ -147,7 +147,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">{safeTitle}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight" style={{ fontFamily: 'Georgia, serif' }}>{safeTitle}</h1>
 
             {(topic.bibleReference || topic.bible_verse) && (
               <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
@@ -182,7 +182,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
 
             {safeContent && (
               <div className="mb-6">
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{safeContent}</p>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: 'Georgia, serif' }}>{safeContent}</p>
               </div>
             )}
 
