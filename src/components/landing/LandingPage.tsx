@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Heart, ArrowRight, Sun, Moon, Bell,
+  ArrowRight, Sun, Moon, Bell,
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
   BookOpen, MapPin, Users, MessageSquare, ShieldCheck,
   User as UserIcon, Search, Spade, ClipboardList,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
+import { Logo } from '../ui/Logo';
 import { supabase } from '../../lib/supabase';
 
 interface LandingPageProps {
   onEnter: () => void;
   onPreOrder: () => void;
   onViewEvents?: () => void;
+  onViewTopics?: () => void;
   onViewTopicOfDay?: (topicId: string) => void;
   onCreateAccount?: () => void;
 }
@@ -104,7 +106,7 @@ const WHO_FOR = [
 
 // ---------- Component ----------
 
-export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDay, onCreateAccount }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewTopicOfDay, onCreateAccount }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
@@ -191,15 +193,13 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
       <nav className="sticky top-0 z-20 bg-[#F8FAFC]/85 dark:bg-[#0F172A]/85 backdrop-blur-md border-b border-black/10 dark:border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <button onClick={onEnter} className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-[#2563eb] flex items-center justify-center shadow-sm">
-              <Heart className="w-5 h-5 text-white fill-white" />
-            </div>
+            <Logo size="sm" />
             <span className="font-logo font-bold text-lg tracking-tight group-hover:text-[#2563eb] transition-colors">Worship &amp; Yapps</span>
           </button>
 
           <div className="hidden md:flex items-center gap-1">
             <button
-              onClick={onEnter}
+              onClick={() => (onViewTopics ?? onEnter)()}
               className="px-3 py-2 rounded-lg text-sm font-medium text-[#64748B] hover:text-[#2563eb] hover:bg-[#EFF6FF] dark:hover:bg-white/5 transition-colors"
             >
               Topics
@@ -301,17 +301,17 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
               return (
                 <div
                   key={i}
-                  className="absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#2563eb] text-white p-5 shadow-xl flex flex-col justify-between"
+                  className="absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#2563eb] text-white p-5 shadow-xl flex flex-col"
                   style={{
                     transform: `translate(-50%, -50%) rotate(${(i - 1) * 7}deg) translateY(${(i - 1) * 8}px)`,
                     zIndex: 10 - i,
                   }}
                 >
-                  <Spade className="w-6 h-6 opacity-70" />
-                  <div>
-                    <p className="font-logo text-base leading-snug mb-3">{card.question}</p>
-                    <p className="text-[10px] uppercase tracking-wider opacity-80">{card.verse}</p>
+                  <p className="font-logo text-base leading-snug">{card.question}</p>
+                  <div className="flex-1 flex items-center justify-center">
+                    <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-white/30" strokeWidth={1.25} aria-hidden="true" />
                   </div>
+                  <p className="text-[10px] uppercase tracking-wider opacity-80 text-center">{card.verse}</p>
                 </div>
               );
             })}
@@ -526,9 +526,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopicOfDa
       <footer className="border-t border-black/10 dark:border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-[#2563eb] flex items-center justify-center">
-              <Heart className="w-4 h-4 text-white fill-white" />
-            </div>
+            <Logo size="sm" />
             <span className="font-logo font-bold">Worship &amp; Yapps</span>
           </div>
           <p className="text-[#64748B] dark:text-[#94A3B8] text-center text-xs">

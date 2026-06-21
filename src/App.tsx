@@ -261,6 +261,10 @@ function App() {
         onEnter={handleEnterApp}
         onPreOrder={handlePreOrder}
         onViewEvents={handleViewEvents}
+        onViewTopics={() => {
+          setActiveTab('topics');
+          setShowLanding(false);
+        }}
         onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
         onCreateAccount={() => {
           setAuthMode('signup');
