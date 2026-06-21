@@ -70,10 +70,10 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
       id: n.id,
       type: n.type,
       title: n.title,
-      message: n.message,
+      message: n.message || (n as any).body || '',
       is_read: n.is_read,
       created_at: n.created_at,
-      event_id: n.event_id,
+      event_id: n.event_id || (n as any).payload?.event_id,
       category: n.type.includes('event') ? 'events' : 'system' as NotificationCategory,
       source: 'notification' as const
     })),
