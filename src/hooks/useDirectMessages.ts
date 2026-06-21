@@ -80,6 +80,7 @@ export const useDirectMessages = () => {
         .from('conversations')
         .select('*')
         .in('id', conversationIds)
+        .is('event_id', null)
         .order('updated_at', { ascending: false });
 
       if (convError) throw convError;

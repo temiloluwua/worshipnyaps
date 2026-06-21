@@ -163,9 +163,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   </div>
                 )}
                 {!isOwn && !showAvatar && <div className="w-8 mr-2" />}
-                <div className="group/msg flex items-center gap-1">
+                <div className="group/msg flex items-center gap-1 max-w-[75%] sm:max-w-[65%]">
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                    className={`flex-1 min-w-0 rounded-2xl px-4 py-2 ${
                       isOwn
                         ? 'bg-blue-600 text-white rounded-br-md'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
