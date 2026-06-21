@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -89,6 +89,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [postponeTime, setPostponeTime] = useState('');
   const [postponing, setPostponing] = useState(false);
   const [showRsvpDisclaimer, setShowRsvpDisclaimer] = useState(false);
+  const [showAdminDeleteConfirm, setShowAdminDeleteConfirm] = useState(false);
+  const [adminDeleting, setAdminDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
@@ -98,6 +100,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const remoteTypingTimeoutsRef = useRef<Record<string, number>>({});
   const senderCacheRef = useRef<Record<string, ChatMessage['sender']>>({});
   const isHost = Boolean(user && event && user.id === event.host_id);
+  const isAdmin = profile?.role === 'admin';
   const canAccessChat = Boolean(chatChannel && (isRsvped || isHost));
   const canAccessOrganizerChat = Boolean(isHost || isOrganizer);
   const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
@@ -895,6 +898,22 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     }
   };
 
+  const deleteEventAsAdmin = async () => {
+    if (!event || !isAdmin) return;
+    setAdminDeleting(true);
+    try {
+      const { error } = await supabase.from('events').delete().eq('id', event.id);
+      if (error) throw error;
+      toast.success('Event deleted');
+      setShowAdminDeleteConfirm(false);
+      onBack();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete event');
+    } finally {
+      setAdminDeleting(false);
+    }
+  };
+
   const postponeEvent = async () => {
     if (!event || !(isHost || canEditEvent)) return;
     if (!postponeDate || !postponeTime) {
@@ -1147,6 +1166,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                   }}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-gray-300 hover:text-red-600 transition-colors"
                 />
+              )}
+              {isAdmin && !isHost && (
+                <button
+                  onClick={() => setShowAdminDeleteConfirm(true)}
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-gray-700 dark:text-gray-300 hover:text-red-600 transition-colors"
+                  title="Delete event (admin)"
+                >
+                  <Trash2 size={18} />
+                </button>
               )}
             </div>
           </div>
@@ -1738,6 +1766,40 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
               >
                 {cancellingEvent ? 'Cancelling...' : 'Cancel event'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAdminDeleteConfirm && event && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !adminDeleting && setShowAdminDeleteConfirm(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Delete this event?</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  Permanently remove "{event.title}" and all its RSVPs, announcements, and chat. This bypasses the host's normal cancel flow — use only for spam or policy violations.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAdminDeleteConfirm(false)}
+                disabled={adminDeleting}
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Never mind
+              </button>
+              <button
+                onClick={deleteEventAsAdmin}
+                disabled={adminDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {adminDeleting ? 'Deleting...' : 'Delete event'}
               </button>
             </div>
           </div>
