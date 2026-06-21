@@ -260,8 +260,9 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
       }
 
       if (userId !== user?.id) {
-        await supabase.from('notifications').insert({
+        const { error: notifyError } = await supabase.from('notifications').insert({
           user_id: userId,
+          event_id: eventId,
           type: 'role_request',
           title: `You've been asked to help with "${item.title}"`,
           body: item.source === 'food_item'
@@ -269,6 +270,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
             : `The host asked you to help with ${item.title}.`,
           payload: { event_id: eventId, item_id: item.id, source: item.source },
         });
+        if (notifyError) throw notifyError;
       }
 
       await fetchItems();

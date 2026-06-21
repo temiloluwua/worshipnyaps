@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
@@ -40,11 +40,19 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     setFormData(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const isDraft = !!event.is_draft;
+
+  const handleSubmit = async (e: React.FormEvent, publish = false) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       toast.error('Please enter an event title');
       return;
+    }
+    if (publish) {
+      if (!formData.date || !formData.time) {
+        toast.error('Pick a date and time before publishing');
+        return;
+      }
     }
 
     // Safety: a home address must never go fully public. Mirrors the
@@ -73,6 +81,10 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         image_url: imageUrl,
         updated_at: new Date().toISOString(),
       };
+
+      if (publish) {
+        updates.is_draft = false;
+      }
 
       if (useTemplate) {
         const hasContent =
@@ -106,7 +118,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
 
       if (error) throw error;
 
-      toast.success('Event updated!');
+      toast.success(publish ? 'Draft published!' : 'Event updated!');
       onSaved();
       onClose();
     } catch (err: any) {
@@ -129,7 +141,9 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     >
       <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Event</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            {isDraft ? 'Edit Draft' : 'Edit Event'}
+          </h2>
           <button
             onClick={onClose}
             type="button"
@@ -301,24 +315,46 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              {submitting ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
+          {isDraft ? (
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {submitting ? 'Saving…' : 'Save draft'}
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {submitting ? 'Publishing…' : 'Publish'}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {submitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

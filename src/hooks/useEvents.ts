@@ -40,6 +40,7 @@ export const useEvents = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
+  const [drafts, setDrafts] = useState<Event[]>([]);
   const [rsvpEventIds, setRsvpEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const capacityCacheRef = useRef<Record<string, number>>(readCapacityCache());
@@ -111,6 +112,7 @@ export const useEvents = () => {
         `)
         .or('visibility.eq.public,visibility.is.null')
         .eq('status', 'upcoming')
+        .or('is_draft.eq.false,is_draft.is.null')
         .order('date', { ascending: true });
 
       if (publicError) {
@@ -139,6 +141,7 @@ export const useEvents = () => {
           `)
           .eq('host_id', user.id)
           .eq('status', 'upcoming')
+          .or('is_draft.eq.false,is_draft.is.null')
           .order('date', { ascending: true });
 
         if (!hostedError && hostedEvents) {
@@ -173,6 +176,7 @@ export const useEvents = () => {
             .eq('visibility', 'friends_only')
             .in('host_id', friendIds)
             .eq('status', 'upcoming')
+            .or('is_draft.eq.false,is_draft.is.null')
             .order('date', { ascending: true });
 
           if (!friendError && friendEvents) {
@@ -214,6 +218,25 @@ export const useEvents = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDrafts = async () => {
+    if (!user) {
+      setDrafts([]);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`*, locations (name, address, latitude, longitude)`)
+        .eq('host_id', user.id)
+        .eq('is_draft', true)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      setDrafts((data || []) as Event[]);
+    } catch (err) {
+      console.error('Error fetching drafts:', err);
     }
   };
 
@@ -331,9 +354,10 @@ export const useEvents = () => {
         setCachedCapacity(data.id, data.capacity);
       }
 
-      toast.success('Event created successfully!');
+      toast.success(eventData.is_draft ? 'Draft saved!' : 'Event created successfully!');
       await fetchEvents();
       await fetchMyEvents();
+      await fetchDrafts();
       return data;
     } catch (error: any) {
       toast.error(error.message);
@@ -514,6 +538,7 @@ export const useEvents = () => {
       toast.success('Event updated successfully!');
       await fetchEvents();
       await fetchMyEvents();
+      await fetchDrafts();
       return true;
     } catch (error: any) {
       toast.error(error.message);
@@ -534,6 +559,7 @@ export const useEvents = () => {
       toast.success('Event deleted successfully!');
       await fetchEvents();
       await fetchMyEvents();
+      await fetchDrafts();
       return true;
     } catch (error: any) {
       toast.error(error.message);
@@ -545,9 +571,11 @@ export const useEvents = () => {
     fetchEvents();
     if (user) {
       fetchMyEvents();
+      fetchDrafts();
       fetchRsvpEventIds();
     } else {
       setRsvpEventIds(new Set());
+      setDrafts([]);
     }
   }, [user]);
 
@@ -556,10 +584,12 @@ export const useEvents = () => {
   return {
     events,
     myEvents,
+    drafts,
     rsvpEventIds,
     loading,
     fetchEvents,
     fetchMyEvents,
+    fetchDrafts,
     fetchRsvpEventIds,
     createEvent,
     isEventRsvped,

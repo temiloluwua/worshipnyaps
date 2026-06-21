@@ -97,6 +97,7 @@ export interface Event {
   bring_note?: string;
   invite_code?: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  is_draft?: boolean;
   created_at: string;
   updated_at: string;
   locations?: {

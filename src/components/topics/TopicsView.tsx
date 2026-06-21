@@ -328,6 +328,24 @@ export function TopicsView({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Landing page category chips drop the desired community sub-tab in
+  // sessionStorage before navigating into the app. Pick it up once on mount,
+  // jump straight to the Community tab with that filter applied, then clear it.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('wny_initial_community_sub');
+      if (!raw) return;
+      sessionStorage.removeItem('wny_initial_community_sub');
+      const valid: CommunitySub[] = ['all', 'prayer_point', 'testimony', 'bible_study', 'question', 'general'];
+      if ((valid as string[]).includes(raw)) {
+        setActiveTab('community');
+        setCommunitySub(raw as CommunitySub);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     if (openCreateRequest && openCreateRequest > 0) {
       if (!user) {

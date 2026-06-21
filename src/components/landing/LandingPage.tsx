@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowRight, Sun, Moon, Bell,
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
-  BookOpen, MapPin, Users, MessageSquare, ShieldCheck,
+  BookOpen, Users, MessageSquare, ShieldCheck,
   User as UserIcon, Search, Spade, ClipboardList,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
@@ -150,27 +150,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       verse: (t.bible_verse || '').split(';')[0].trim(),
       topicId: t.id,
     }));
-  }, [allTopics]);
-
-  const featuredTopics = useMemo(() => {
-    // Pick three with the most distinct cities/categories to surface variety.
-    const seenCity = new Set<string>();
-    const picks: Topic[] = [];
-    for (const t of allTopics) {
-      const city = t.users?.city || '';
-      if (!seenCity.has(city)) {
-        picks.push(t);
-        seenCity.add(city);
-        if (picks.length === 3) break;
-      }
-    }
-    if (picks.length < 3) {
-      for (const t of allTopics) {
-        if (!picks.includes(t)) picks.push(t);
-        if (picks.length === 3) break;
-      }
-    }
-    return picks;
   }, [allTopics]);
 
   const goToApp = onCreateAccount ?? onEnter;
@@ -383,45 +362,31 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             with the same things you are — anywhere on the map.
           </p>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {(featuredTopics.length > 0 ? featuredTopics : Array.from({ length: 3 })).map((topic, i) => {
-              const t = topic as Topic | undefined;
-              const verse = t?.bible_verse?.split(';')[0]?.trim();
-              const name = t?.users?.name || 'Worship N Yaps member';
-              const city = t?.users?.city || 'Calgary';
-              const body = (t?.content || t?.title || 'Loading…').slice(0, 200);
-              return (
-                <button
-                  key={t?.id ?? i}
-                  onClick={() => (t?.id ? onViewTopicOfDay?.(t.id) : onEnter())}
-                  className="text-left bg-white dark:bg-[#1E293B] rounded-2xl p-6 border border-black/10 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:translate-y-[-2px]"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC] truncate">
-                      <div className="w-8 h-8 rounded-full bg-[#2563eb]/15 text-[#2563eb] flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate">{name}</p>
-                        <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate flex items-center gap-1"><MapPin className="w-3 h-3" />{city}</p>
-                      </div>
-                    </div>
-                  </div>
-                  {verse && (
-                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#14b8a6]/15 text-[#14b8a6] text-[11px] font-semibold mb-3">
-                      {verse}
-                    </span>
-                  )}
-                  <p className="text-sm text-[#0F172A]/85 dark:text-[#F8FAFC]/85 leading-relaxed line-clamp-4">
-                    {body}
-                  </p>
-                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-4 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    Join the conversation
-                  </p>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { key: 'prayer_point', emoji: '🙏', label: 'Prayer Point',  blurb: 'Share what you need prayer for.' },
+              { key: 'testimony',    emoji: '✨', label: 'Testimony',     blurb: 'What God is doing in your life.' },
+              { key: 'bible_study',  emoji: '📖', label: 'Bible Study',   blurb: 'Scripture you’re wrestling with.' },
+              { key: 'question',     emoji: '❓', label: 'Question',      blurb: 'Ask the community anything.' },
+              { key: 'general',      emoji: '💬', label: 'General',       blurb: 'Anything on your mind.' },
+            ].map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => {
+                  try { sessionStorage.setItem('wny_initial_community_sub', cat.key); } catch { /* ignore */ }
+                  onEnter();
+                }}
+                className="text-left bg-white dark:bg-[#1E293B] rounded-2xl p-5 border border-black/10 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:translate-y-[-2px] flex flex-col gap-2"
+              >
+                <span className="text-3xl" aria-hidden="true">{cat.emoji}</span>
+                <span className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] text-sm">{cat.label}</span>
+                <span className="text-[12px] text-[#64748B] dark:text-[#94A3B8] leading-snug">{cat.blurb}</span>
+                <span className="text-[11px] text-[#2563eb] mt-1 flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  See {cat.label.toLowerCase()}s
+                </span>
+              </button>
+            ))}
           </div>
 
           <div className="text-center mt-10">

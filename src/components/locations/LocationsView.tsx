@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle } from 'lucide-react';
+import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,7 +26,7 @@ type EventTab = 'discover' | 'my-events';
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp } = useEvents();
+  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts } = useEvents();
   const [combinedFilter, setCombinedFilter] = useState<CombinedFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
@@ -248,9 +248,9 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
             }`}
           >
             My Events
-            {myCombinedEvents.length > 0 && (
+            {(myCombinedEvents.length + drafts.length) > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {myCombinedEvents.length}
+                {myCombinedEvents.length + drafts.length}
               </span>
             )}
           </button>
@@ -306,7 +306,54 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       )}
 
       <div className="p-4 space-y-4">
-        {displayEvents.length === 0 ? (
+        {activeTab === 'my-events' && drafts.length > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <FileEdit className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                Drafts ({drafts.length})
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {drafts.map((draft) => (
+                <div
+                  key={draft.id}
+                  className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                      {draft.title || 'Untitled draft'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {draft.locations?.name
+                        ? draft.locations.name
+                        : 'No location yet'}
+                      {draft.date ? ` · ${formatDateShort(draft.date)}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onOpenEvent?.(draft.id)}
+                    className="px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-xs font-medium whitespace-nowrap"
+                  >
+                    Continue
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(`Discard "${draft.title || 'this draft'}"?`)) return;
+                      const ok = await deleteEvent(draft.id);
+                      if (ok) await fetchDrafts();
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                    title="Discard draft"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {displayEvents.length === 0 && !(activeTab === 'my-events' && drafts.length > 0) ? (
           <div className="text-center py-16 px-6 max-w-md mx-auto text-gray-500 dark:text-gray-400">
             <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
             <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -537,38 +584,112 @@ interface HostEventModalProps {
   onRequireAuth?: () => void;
 }
 
+const DEFAULT_HOST_FORM = {
+  eventTitle: '',
+  eventType: 'bible-study',
+  event_type: 'bible_study' as 'bible_study' | 'yap' | 'church',
+  eventDate: '',
+  eventTime: '',
+  eventLocationName: '',
+  eventAddress: '',
+  capacity: 12,
+  description: '',
+  visibility: 'public' as 'public' | 'private' | 'friends_only',
+  addressVisibility: 'attendees_only' as 'general_area' | 'attendees_only' | 'public',
+  study_topic: '',
+  session_purpose: '',
+  location_type: '' as '' | 'home' | 'church' | 'park' | 'cafe' | 'online',
+  yap_vibe: '',
+  bring_note: '',
+};
+
+const DEFAULT_TEMPLATE: DescriptionTemplate = {
+  whatToExpect: '',
+  whatToBring: [],
+  parkingDirections: '',
+  contactInfo: '',
+  specialNotes: ''
+};
+
+interface HostEventDraft {
+  formData: typeof DEFAULT_HOST_FORM;
+  descriptionTemplate: DescriptionTemplate;
+  useTemplate: boolean;
+  imageUrl: string | null;
+}
+
+function hostDraftHasContent(d: HostEventDraft): boolean {
+  const f = d.formData;
+  if (f.eventTitle.trim() || f.eventLocationName.trim() || f.eventAddress.trim()) return true;
+  if (f.eventDate || f.eventTime || f.description.trim()) return true;
+  if (d.imageUrl) return true;
+  if (d.useTemplate) {
+    const t = d.descriptionTemplate;
+    if (t.whatToExpect?.trim() || t.parkingDirections?.trim() || t.contactInfo?.trim() || t.specialNotes?.trim()) return true;
+    if (Array.isArray(t.whatToBring) && t.whatToBring.length > 0) return true;
+  }
+  return false;
+}
+
 function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventModalProps) {
   const { t } = useTranslation();
   const { createEvent } = useEvents();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const [useTemplate, setUseTemplate] = useState(false);
-  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>({
-    whatToExpect: '',
-    whatToBring: [],
-    parkingDirections: '',
-    contactInfo: '',
-    specialNotes: ''
-  });
-  const [formData, setFormData] = useState({
-    eventTitle: '',
-    eventType: 'bible-study',
-    event_type: 'bible_study' as 'bible_study' | 'yap' | 'church',
-    eventDate: '',
-    eventTime: '',
-    eventLocationName: '',
-    eventAddress: '',
-    capacity: 12,
-    description: '',
-    visibility: 'public' as 'public' | 'private' | 'friends_only',
-    addressVisibility: 'attendees_only' as 'general_area' | 'attendees_only' | 'public',
-    study_topic: '',
-    session_purpose: '',
-    location_type: '' as '' | 'home' | 'church' | 'park' | 'cafe' | 'online',
-    yap_vibe: '',
-    bring_note: '',
-  });
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  const draftKey = useMemo(() => `wny_event_draft_${user?.id ?? 'guest'}`, [user?.id]);
+  const initialDraft = useMemo<HostEventDraft | null>(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<HostEventDraft>;
+      return {
+        formData: { ...DEFAULT_HOST_FORM, ...(parsed.formData ?? {}) },
+        descriptionTemplate: { ...DEFAULT_TEMPLATE, ...(parsed.descriptionTemplate ?? {}) },
+        useTemplate: !!parsed.useTemplate,
+        imageUrl: parsed.imageUrl ?? null,
+      };
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [useTemplate, setUseTemplate] = useState(initialDraft?.useTemplate ?? false);
+  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>(
+    initialDraft?.descriptionTemplate ?? { ...DEFAULT_TEMPLATE }
+  );
+  const [formData, setFormData] = useState(initialDraft?.formData ?? { ...DEFAULT_HOST_FORM });
+  const [imageUrl, setImageUrl] = useState<string | null>(initialDraft?.imageUrl ?? null);
+  const [draftRestored, setDraftRestored] = useState<boolean>(
+    !!initialDraft && hostDraftHasContent(initialDraft)
+  );
+
+  useEffect(() => {
+    try {
+      const draft: HostEventDraft = { formData, descriptionTemplate, useTemplate, imageUrl };
+      if (hostDraftHasContent(draft)) {
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch {
+      // ignore — quota or disabled storage
+    }
+  }, [draftKey, formData, descriptionTemplate, useTemplate, imageUrl]);
+
+  const clearDraft = () => {
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+  };
+
+  const discardDraft = () => {
+    setFormData({ ...DEFAULT_HOST_FORM });
+    setDescriptionTemplate({ ...DEFAULT_TEMPLATE });
+    setUseTemplate(false);
+    setImageUrl(null);
+    setDraftRestored(false);
+    clearDraft();
+  };
   // Cached coordinates from the address autocomplete pick, so we can skip
   // a redundant Nominatim round-trip at submit time.
   const [pickedCoords, setPickedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -578,7 +699,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     setFormData(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
 
     // Logged-out users can fill out the form to see what hosting looks like,
@@ -597,16 +718,20 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
       return;
     }
 
-    if (!formData.eventLocationName.trim() || !formData.eventAddress.trim()) {
-      toast.error('Please enter a location name and address');
-      setSubmitting(false);
-      return;
-    }
+    // Drafts skip the heavier required-field checks — title is enough to
+    // identify them in the Drafts list. The host can fill in the rest later.
+    if (!asDraft) {
+      if (!formData.eventLocationName.trim() || !formData.eventAddress.trim()) {
+        toast.error('Please enter a location name and address');
+        setSubmitting(false);
+        return;
+      }
 
-    if (!formData.eventDate || !formData.eventTime) {
-      toast.error('Please pick a date and time');
-      setSubmitting(false);
-      return;
+      if (!formData.eventDate || !formData.eventTime) {
+        toast.error('Please pick a date and time');
+        setSubmitting(false);
+        return;
+      }
     }
 
     // Safety: a home address must never go fully public.
@@ -620,39 +745,46 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     // Geocode the address so the event lands on the map. If it fails (no
     // result, network error), save with 0/0 — the event still works, the
     // map just won't show a pin until someone refines the address.
+    // Drafts can skip the locations row entirely if no address was entered yet.
     let locationId: string | null = null;
-    try {
-      const geo = pickedCoords ?? (await geocodeAddress(formData.eventAddress));
-      const { data: locData, error: locError } = await supabase
-        .from('locations')
-        .insert({
-          name: formData.eventLocationName.trim(),
-          address: formData.eventAddress.trim(),
-          latitude: geo?.latitude ?? 0,
-          longitude: geo?.longitude ?? 0,
-          capacity: formData.capacity,
-          host_id: user?.id,
-          is_approved: true,
-        })
-        .select()
-        .single();
-      if (locError) throw locError;
-      locationId = locData?.id || null;
-      if (!geo) {
-        toast("Couldn't find that address on the map, but the event is saved.");
+    const hasAddress = formData.eventLocationName.trim() && formData.eventAddress.trim();
+    if (hasAddress) {
+      try {
+        const geo = pickedCoords ?? (await geocodeAddress(formData.eventAddress));
+        const { data: locData, error: locError } = await supabase
+          .from('locations')
+          .insert({
+            name: formData.eventLocationName.trim(),
+            address: formData.eventAddress.trim(),
+            latitude: geo?.latitude ?? 0,
+            longitude: geo?.longitude ?? 0,
+            capacity: formData.capacity,
+            host_id: user?.id,
+            is_approved: true,
+          })
+          .select()
+          .single();
+        if (locError) throw locError;
+        locationId = locData?.id || null;
+        if (!geo && !asDraft) {
+          toast("Couldn't find that address on the map, but the event is saved.");
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to save location');
+        setSubmitting(false);
+        return;
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save location');
-      setSubmitting(false);
-      return;
     }
 
     const eventData: Record<string, any> = {
       title: formData.eventTitle,
       type: formData.eventType,
       event_type: formData.event_type,
-      date: formData.eventDate,
-      time: formData.eventTime,
+      // Date/time are NOT NULL on the events table. For drafts without a
+      // chosen date/time yet, fall back to today + midnight so the row can
+      // exist — the host edits these in before publishing.
+      date: formData.eventDate || new Date().toISOString().slice(0, 10),
+      time: formData.eventTime || '00:00',
       capacity: formData.capacity,
       image_url: imageUrl,
       visibility: formData.visibility,
@@ -664,6 +796,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
       session_purpose: formData.event_type === 'bible_study' ? (formData.session_purpose.trim() || null) : null,
       yap_vibe: formData.event_type === 'yap' ? (formData.yap_vibe || null) : null,
       bring_note: formData.event_type === 'yap' ? (formData.bring_note.trim() || null) : null,
+      is_draft: asDraft,
     };
 
     if (useTemplate) {
@@ -674,7 +807,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
         descriptionTemplate.contactInfo?.trim() ||
         descriptionTemplate.specialNotes?.trim();
 
-      if (!hasTemplateContent) {
+      if (!hasTemplateContent && !asDraft) {
         toast.error('Please fill in at least one template field');
         setSubmitting(false);
         return;
@@ -687,9 +820,9 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
         contactInfo: descriptionTemplate.contactInfo || '',
         specialNotes: descriptionTemplate.specialNotes || ''
       };
-      eventData.description = descriptionTemplate.whatToExpect || 'Event details available in the template';
+      eventData.description = descriptionTemplate.whatToExpect || (asDraft ? '' : 'Event details available in the template');
     } else {
-      if (!formData.description.trim()) {
+      if (!formData.description.trim() && !asDraft) {
         toast.error('Please enter an event description');
         setSubmitting(false);
         return;
@@ -701,16 +834,24 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     setSubmitting(false);
 
     if (result) {
-      // Signal to EventDetailView to open the Help tab so the host can
-      // immediately add help requests and food items.
-      try {
-        sessionStorage.setItem('wny_event_just_created', result.id);
-      } catch {
-        // ignore
+      clearDraft();
+      if (asDraft) {
+        // Don't open EventDetailView for drafts — the host wanted to step
+        // away. They'll find it in the Drafts section of My Events.
+        toast.success('Draft saved — you can finish it from My Events.');
+        onClose();
+      } else {
+        // Signal to EventDetailView to open the Help tab so the host can
+        // immediately add help requests and food items.
+        try {
+          sessionStorage.setItem('wny_event_just_created', result.id);
+        } catch {
+          // ignore
+        }
+        toast.success("Event created! Add help & food on the Help tab.");
+        onClose();
+        onEventCreated?.(result.id);
       }
-      toast.success("Event created! Add help & food on the Help tab.");
-      onClose();
-      onEventCreated?.(result.id);
     }
   };
 
@@ -734,6 +875,21 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {draftRestored && (
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-sm text-blue-800 dark:text-blue-200 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <span>📝</span>
+                <span>Picked up where you left off — your draft was restored.</span>
+              </span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                className="text-blue-700 dark:text-blue-300 hover:underline text-xs font-medium whitespace-nowrap"
+              >
+                Start fresh
+              </button>
+            </div>
+          )}
           {!user && (
             <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
               <span>🔒</span>
@@ -1033,8 +1189,13 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={onClose} disabled={submitting} className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
-              {t('common.cancel')}
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e as unknown as React.FormEvent, true)}
+              disabled={submitting}
+              className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              {submitting ? 'Saving…' : 'Save as draft'}
             </button>
             <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
               {submitting ? t('events.creatingEvent') : t('events.createEvent')}
