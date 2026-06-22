@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { setSentryUser } from '../lib/sentry';
@@ -22,7 +22,18 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Supabase fires both auth.getSession() (below) and the initial
+  // onAuthStateChange callback on mount, each of which calls
+  // fetchProfile() with the same user id. That duplicate `users?id=...`
+  // request on every pageload is what Sentry flagged as an N+1 API call
+  // (JAVASCRIPT-REACT-3). Track the last-fetched id so the second call
+  // is a no-op instead of firing a redundant request.
+  const fetchedProfileIdRef = useRef<string | null>(null);
+
   const fetchProfile = async (userId: string) => {
+    if (fetchedProfileIdRef.current === userId) return;
+    fetchedProfileIdRef.current = userId;
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -30,6 +41,9 @@ export function useAuth() {
       .maybeSingle();
     if (error) {
       console.error('Failed to fetch profile:', error);
+      // Allow a retry on the next call (e.g. a subsequent auth event)
+      // since this attempt didn't actually populate the profile.
+      fetchedProfileIdRef.current = null;
       return;
     }
     setProfile(data);
