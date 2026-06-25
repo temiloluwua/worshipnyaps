@@ -158,6 +158,9 @@ export interface CommunityPost {
   community_category?: CommunityCategory;
   visibility: 'public' | 'friends_only';
   is_pinned: boolean;
+  is_featured?: boolean;
+  featured_at?: string | null;
+  featured_by?: string | null;
   view_count: number;
   created_at: string;
   updated_at: string;

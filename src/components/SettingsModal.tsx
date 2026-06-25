@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp, BookOpen, Type, Palette } from 'lucide-react';
+import { usePreferences, FontFamily, AccentColor } from '../hooks/usePreferences';
+import { BIBLE_VERSIONS } from '../lib/bibleLink';
 import { AdminConsole } from './admin/AdminConsole';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -25,6 +27,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const { i18n, t } = useTranslation();
   const { theme, setTheme, resetToSystem, isSystemPreference } = useTheme();
   const { user, profile, deleteAccount, signOut } = useAuth();
+  const { prefs, update: updatePrefs } = usePreferences();
+
+  const fontOptions: { value: FontFamily; label: string; sample: string }[] = [
+    { value: 'default', label: 'Default', sample: 'Aa' },
+    { value: 'serif',   label: 'Serif',   sample: 'Aa' },
+    { value: 'modern',  label: 'Modern',  sample: 'Aa' },
+  ];
+  const accentOptions: { value: AccentColor; label: string; hex: string }[] = [
+    { value: 'blue',   label: 'Blue',   hex: '#2563eb' },
+    { value: 'teal',   label: 'Teal',   hex: '#14b8a6' },
+    { value: 'purple', label: 'Purple', hex: '#a855f7' },
+    { value: 'amber',  label: 'Amber',  hex: '#f59e0b' },
+    { value: 'pink',   label: 'Pink',   hex: '#ec4899' },
+  ];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -135,6 +151,88 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 )}
               </button>
             </div>
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen size={18} className="text-gray-600 dark:text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Bible version</h3>
+            </div>
+            <select
+              value={prefs.bibleVersion}
+              onChange={(e) => updatePrefs({ bibleVersion: e.target.value as typeof prefs.bibleVersion })}
+              className="w-full px-3 py-2.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              {BIBLE_VERSIONS.map((v) => (
+                <option key={v.code} value={v.code}>{v.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Tap a verse anywhere in the app to open it in your chosen translation.
+            </p>
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Type size={18} className="text-gray-600 dark:text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Font</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {fontOptions.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => updatePrefs({ fontFamily: f.value })}
+                  className={`flex flex-col items-center justify-center py-3 rounded-lg text-sm transition-all ${
+                    prefs.fontFamily === f.value
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500'
+                      : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className="text-2xl font-bold mb-1"
+                    style={{
+                      fontFamily:
+                        f.value === 'serif' ? 'Georgia, serif'
+                        : f.value === 'modern' ? 'Inter, sans-serif'
+                        : 'Quicksand, sans-serif',
+                    }}
+                  >
+                    {f.sample}
+                  </span>
+                  <span className="text-xs">{f.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Palette size={18} className="text-gray-600 dark:text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Accent color</h3>
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              {accentOptions.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => updatePrefs({ accent: c.value })}
+                  className={`w-10 h-10 rounded-full transition-all flex items-center justify-center ${
+                    prefs.accent === c.value
+                      ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-900'
+                      : 'hover:scale-110'
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                  title={c.label}
+                  aria-label={`Set accent to ${c.label}`}
+                >
+                  {prefs.accent === c.value && (
+                    <span className="text-white text-xs font-bold">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Recolors primary buttons, active tabs, focus rings, and pills. Brand gradients keep their blue-to-teal sweep.
+            </p>
           </div>
 
           {onShowLanding && (

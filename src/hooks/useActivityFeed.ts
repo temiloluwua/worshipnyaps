@@ -57,7 +57,7 @@ export const useActivityFeed = () => {
           .from('activity_feed')
           .select(`
             *,
-            users:user_id (
+            user:users!activity_feed_user_fkey (
               id,
               name,
               avatar_url
@@ -83,7 +83,7 @@ export const useActivityFeed = () => {
         .from('activity_feed')
         .select(`
           *,
-          users:user_id (
+          user:users!activity_feed_user_fkey (
             id,
             name,
             avatar_url
@@ -122,7 +122,7 @@ export const useActivityFeed = () => {
         .from('activity_feed')
         .select(`
           *,
-          users:user_id (
+          user:users!activity_feed_user_fkey (
             id,
             name,
             avatar_url
@@ -169,7 +169,6 @@ export const useActivityFeed = () => {
 
     return activities.map(activity => ({
       ...activity,
-      user: activity.users,
       topic: activity.target_id && topics[activity.target_id] ? topics[activity.target_id] : undefined
     }));
   };

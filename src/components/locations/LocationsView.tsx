@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -112,9 +112,13 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   // The exact address still flows through the existing locations RLS rules —
   // so general_area / attendees_only events can appear here without leaking
   // a precise pin.
+  // Include public + friends_only events on the map. RLS has already
+  // filtered the `events` set to ones the viewer is allowed to see; the
+  // pin's coordinates are the trigger-fuzzed area_lat/area_lng (~11 km),
+  // so a friends_only pin never leaks the host's exact address.
   const mapEvents = filteredEvents
     .filter(e =>
-      e.visibility === 'public' &&
+      (e.visibility === 'public' || e.visibility === 'friends_only') &&
       typeof e.area_lat === 'number' &&
       typeof e.area_lng === 'number'
     )
@@ -217,13 +221,26 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
         <p className="text-blue-100 text-sm">{t('events.discover')}</p>
       </div>
 
-      <div className="p-4 bg-gradient-to-r from-green-500 to-blue-500">
+      <div className="p-4 bg-gradient-to-r from-green-500 to-blue-500 flex gap-2">
         <button
           onClick={() => setShowHostModal(true)}
-          className="w-full bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-md flex items-center justify-center space-x-2"
+          className="flex-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-md flex items-center justify-center space-x-2"
         >
           <Plus className="w-5 h-5" />
           <span>{t('events.hostEvent')}</span>
+        </button>
+        <button
+          onClick={() => setShowMap((s) => !s)}
+          aria-pressed={showMap}
+          aria-label={showMap ? 'Hide map' : 'Show map'}
+          className={`px-4 py-3 rounded-lg font-semibold transition-all shadow-md flex items-center justify-center gap-1 ${
+            showMap
+              ? 'bg-blue-700 text-white'
+              : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+        >
+          <Map className="w-5 h-5" />
+          <span className="text-sm">{showMap ? 'Hide' : 'Map'}</span>
         </button>
       </div>
 
@@ -391,7 +408,11 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
               <div
                 key={event.id}
                 id={`event-${event.id}`}
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow ${
+                onClick={() => onOpenEvent?.(event.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenEvent?.(event.id); }}
+                className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer ${
                   isHosting
                     ? 'border-2 border-amber-400 dark:border-amber-500 ring-2 ring-amber-200/60 dark:ring-amber-700/30'
                     : 'border border-gray-200 dark:border-gray-700'
@@ -503,7 +524,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
                   <div className="flex gap-2 mb-3">
                     <button
-                      onClick={() => toggleLike(event.id)}
+                      onClick={(e) => { e.stopPropagation(); toggleLike(event.id); }}
                       className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         likedEvents.has(event.id)
                           ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
@@ -514,31 +535,24 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                       Interested
                     </button>
                     <button
-                      onClick={() => copyEventLink(event)}
+                      onClick={(e) => { e.stopPropagation(); copyEventLink(event); }}
                       className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs font-medium transition-colors"
                     >
                       <Share2 className="w-3.5 h-3.5" />
                       Share
                     </button>
-                    <button
-                      onClick={() => onOpenEvent?.(event.id)}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/30 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      View
-                    </button>
                   </div>
 
                   {isRsvped ? (
                     <button
-                      onClick={() => handleCancelRSVP(event.id)}
+                      onClick={(e) => { e.stopPropagation(); handleCancelRSVP(event.id); }}
                       className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                     >
                       Cancel RSVP
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleRSVP(event)}
+                      onClick={(e) => { e.stopPropagation(); handleRSVP(event); }}
                       disabled={isFull}
                       className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         isFull
@@ -637,62 +651,25 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
-  const draftKey = useMemo(() => `wny_event_draft_${user?.id ?? 'guest'}`, [user?.id]);
-  const initialDraft = useMemo<HostEventDraft | null>(() => {
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as Partial<HostEventDraft>;
-      return {
-        formData: { ...DEFAULT_HOST_FORM, ...(parsed.formData ?? {}) },
-        descriptionTemplate: { ...DEFAULT_TEMPLATE, ...(parsed.descriptionTemplate ?? {}) },
-        useTemplate: !!parsed.useTemplate,
-        imageUrl: parsed.imageUrl ?? null,
-      };
-    } catch {
-      return null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const [useTemplate, setUseTemplate] = useState(initialDraft?.useTemplate ?? false);
-  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>(
-    initialDraft?.descriptionTemplate ?? { ...DEFAULT_TEMPLATE }
-  );
-  const [formData, setFormData] = useState(initialDraft?.formData ?? { ...DEFAULT_HOST_FORM });
-  const [imageUrl, setImageUrl] = useState<string | null>(initialDraft?.imageUrl ?? null);
-  const [draftRestored, setDraftRestored] = useState<boolean>(
-    !!initialDraft && hostDraftHasContent(initialDraft)
-  );
-
-  useEffect(() => {
-    try {
-      const draft: HostEventDraft = { formData, descriptionTemplate, useTemplate, imageUrl };
-      if (hostDraftHasContent(draft)) {
-        localStorage.setItem(draftKey, JSON.stringify(draft));
-      } else {
-        localStorage.removeItem(draftKey);
-      }
-    } catch {
-      // ignore — quota or disabled storage
-    }
-  }, [draftKey, formData, descriptionTemplate, useTemplate, imageUrl]);
-
-  const clearDraft = () => {
-    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
-  };
-
-  const discardDraft = () => {
-    setFormData({ ...DEFAULT_HOST_FORM });
-    setDescriptionTemplate({ ...DEFAULT_TEMPLATE });
-    setUseTemplate(false);
-    setImageUrl(null);
-    setDraftRestored(false);
-    clearDraft();
-  };
+  const [useTemplate, setUseTemplate] = useState(false);
+  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>({ ...DEFAULT_TEMPLATE });
+  const [formData, setFormData] = useState({ ...DEFAULT_HOST_FORM });
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   // Cached coordinates from the address autocomplete pick, so we can skip
   // a redundant Nominatim round-trip at submit time.
   const [pickedCoords, setPickedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  const hasUnsavedContent = () =>
+    hostDraftHasContent({ formData, descriptionTemplate, useTemplate, imageUrl });
+
+  const requestClose = () => {
+    if (hasUnsavedContent()) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -834,7 +811,6 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     setSubmitting(false);
 
     if (result) {
-      clearDraft();
       if (asDraft) {
         // Don't open EventDetailView for drafts — the host wanted to step
         // away. They'll find it in the Drafts section of My Events.
@@ -864,32 +840,55 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
   return (
     <div
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
+        {showCloseConfirm && (
+          <div className="absolute inset-0 z-30 bg-black/30 flex items-center justify-center p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-5">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
+                Save as draft?
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                You've started filling this out. Save it as a draft so you can come back to it later.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCloseConfirm(false)}
+                  disabled={submitting}
+                  className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowCloseConfirm(false); onClose(); }}
+                  disabled={submitting}
+                  className="px-3 py-2 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { setShowCloseConfirm(false); handleSubmit(e as unknown as React.FormEvent, true); }}
+                  disabled={submitting}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {submitting ? 'Saving…' : 'Save draft'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('events.hostEvent')}</h2>
-          <button onClick={onClose} type="button" className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+          <button onClick={requestClose} type="button" className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {draftRestored && (
-            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-sm text-blue-800 dark:text-blue-200 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <span>📝</span>
-                <span>Picked up where you left off — your draft was restored.</span>
-              </span>
-              <button
-                type="button"
-                onClick={discardDraft}
-                className="text-blue-700 dark:text-blue-300 hover:underline text-xs font-medium whitespace-nowrap"
-              >
-                Start fresh
-              </button>
-            </div>
-          )}
           {!user && (
             <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
               <span>🔒</span>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, X, Users, Hash, FileText, TrendingUp, Flame } from 'lucide-react';
+import { Search, X, Users, Hash, FileText, TrendingUp, Flame, Sparkles } from 'lucide-react';
 import { useSearch, SearchTab } from '../../hooks/useSearch';
 import { useHashtags } from '../../hooks/useHashtags';
 import { useTopics } from '../../hooks/useTopics';
+import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { ProfileCard } from '../profile/ProfileCard';
 import { TopicCard } from '../topics/TopicCard';
 import { useLikes } from '../../hooks/useLikes';
 import { useBookmarks } from '../../hooks/useBookmarks';
-import { Topic } from '../../lib/supabase';
+import { Topic, CommunityPost } from '../../lib/supabase';
 
 interface SearchPageProps {
   onViewProfile?: (userId: string) => void;
@@ -33,17 +34,20 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   } = useSearch();
   const { trendingHashtags, fetchTrendingHashtags } = useHashtags();
   const { topics } = useTopics();
+  const { fetchFeaturedPosts } = useCommunityPosts();
   const { isLiked, toggleLike, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
 
   const [searchInput, setSearchInput] = useState('');
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [featuredPosts, setFeaturedPosts] = useState<CommunityPost[]>([]);
 
   useEffect(() => {
     fetchSuggestedUsers();
     fetchTrendingHashtags();
-  }, [fetchSuggestedUsers, fetchTrendingHashtags]);
+    fetchFeaturedPosts(5).then(setFeaturedPosts);
+  }, [fetchSuggestedUsers, fetchTrendingHashtags, fetchFeaturedPosts]);
 
   const handleSearch = useCallback((value: string) => {
     setSearchInput(value);
@@ -237,6 +241,50 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
         {showInitialState && (
           <div className="space-y-8">
+            {featuredPosts.length > 0 && (
+              <section>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2 text-amber-500" />
+                  Featured
+                </h2>
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-800/60 divide-y divide-gray-200 dark:divide-gray-700">
+                  {featuredPosts.map((post) => (
+                    <button
+                      key={post.id}
+                      onClick={() => onViewTopic?.({
+                        ...(post as unknown as Topic),
+                        topic_type: 'community',
+                        category: post.community_category || 'general',
+                      } as Topic)}
+                      className="w-full text-left p-4 hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        {post.users?.avatar_url ? (
+                          <img src={post.users.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-amber-200 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center font-semibold text-sm flex-shrink-0">
+                            {(post.users?.name || '?').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{post.users?.name || 'Worship N Yaps member'}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-wide text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                              <Sparkles className="w-3 h-3" /> Featured
+                            </span>
+                          </div>
+                          <h3 className="font-bold text-gray-900 dark:text-white text-sm line-clamp-2" style={{ fontFamily: 'Georgia, serif' }}>{post.title}</h3>
+                          {post.content && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2" style={{ fontFamily: 'Georgia, serif' }}>{post.content}</p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {popularPosts.length > 0 && (
               <section>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">

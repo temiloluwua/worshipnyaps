@@ -73,7 +73,7 @@ export const useTopics = () => {
 
   const incrementViewCount = useCallback(async (topicId: string) => {
     try {
-      const { error } = await supabase.rpc('increment_view_count', { topic_id: topicId });
+      const { error } = await supabase.rpc('increment_view_count', { p_table: 'topic', p_id: topicId });
       if (error) throw error;
     } catch (error) {
       console.error('Error updating view count:', error);

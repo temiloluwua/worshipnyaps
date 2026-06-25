@@ -91,7 +91,7 @@ export const useDirectMessages = () => {
             .from('conversation_participants')
             .select(`
               *,
-              users:user_id (
+              user:users!conversation_participants_user_fkey (
                 id,
                 name,
                 avatar_url
@@ -103,7 +103,7 @@ export const useDirectMessages = () => {
             .from('direct_messages')
             .select(`
               *,
-              sender:sender_id (
+              sender:users!direct_messages_sender_fkey (
                 id,
                 name,
                 avatar_url
@@ -124,14 +124,8 @@ export const useDirectMessages = () => {
 
           return {
             ...conv,
-            participants: (participants || []).map(p => ({
-              ...p,
-              user: p.users
-            })),
-            last_message: lastMessage ? {
-              ...lastMessage,
-              sender: lastMessage.sender
-            } : undefined,
+            participants: participants || [],
+            last_message: lastMessage || undefined,
             unread_count: count || 0
           };
         })
@@ -155,7 +149,7 @@ export const useDirectMessages = () => {
         .from('direct_messages')
         .select(`
           *,
-          sender:sender_id (
+          sender:users!direct_messages_sender_fkey (
             id,
             name,
             avatar_url
@@ -170,11 +164,7 @@ export const useDirectMessages = () => {
 
       if (error) throw error;
 
-      setMessages((data || []).map(m => ({
-        ...m,
-        sender: m.sender,
-        shared_topic: m.shared_topic
-      })));
+      setMessages(data || []);
 
       await supabase
         .from('conversation_participants')
@@ -207,7 +197,7 @@ export const useDirectMessages = () => {
         })
         .select(`
           *,
-          sender:sender_id (
+          sender:users!direct_messages_sender_fkey (
             id,
             name,
             avatar_url
@@ -245,7 +235,7 @@ export const useDirectMessages = () => {
 
       const { data: participants } = await supabase
         .from('conversation_participants')
-        .select(`*, users:user_id (id, name, avatar_url)`)
+        .select(`*, user:users!conversation_participants_user_fkey (id, name, avatar_url)`)
         .eq('conversation_id', convId);
 
       const { data: convData } = await supabase
@@ -260,7 +250,7 @@ export const useDirectMessages = () => {
         name: convData?.name ?? null,
         created_at: convData?.created_at ?? new Date().toISOString(),
         updated_at: convData?.updated_at ?? new Date().toISOString(),
-        participants: (participants || []).map(p => ({ ...p, user: p.users })),
+        participants: participants || [],
         unread_count: 0
       };
 
@@ -296,7 +286,7 @@ export const useDirectMessages = () => {
         supabase.from('conversations').select('*').eq('id', convId).maybeSingle(),
         supabase
           .from('conversation_participants')
-          .select(`*, users:user_id (id, name, avatar_url)`)
+          .select(`*, user:users!conversation_participants_user_fkey (id, name, avatar_url)`)
           .eq('conversation_id', convId),
       ]);
 
@@ -306,7 +296,7 @@ export const useDirectMessages = () => {
         name: convData?.name ?? name,
         created_at: convData?.created_at ?? new Date().toISOString(),
         updated_at: convData?.updated_at ?? new Date().toISOString(),
-        participants: (participants || []).map((p: any) => ({ ...p, user: p.users })),
+        participants: participants || [],
         unread_count: 0,
       };
 
@@ -341,7 +331,7 @@ export const useDirectMessages = () => {
             .from('direct_messages')
             .select(`
               *,
-              sender:sender_id (
+              sender:users!direct_messages_sender_fkey (
                 id,
                 name,
                 avatar_url

@@ -3,12 +3,13 @@ import {
   ArrowRight, Sun, Moon, Bell,
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
   BookOpen, Users, MessageSquare, ShieldCheck,
-  User as UserIcon, Search, Spade, ClipboardList,
+  User as UserIcon, Search, Spade, ClipboardList, Shuffle,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
 import { Logo } from '../ui/Logo';
 import { supabase } from '../../lib/supabase';
+import { Capacitor } from '@capacitor/core';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -111,6 +112,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [activeFeature, setActiveFeature] = useState(0);
+  const [yapsIndex, setYapsIndex] = useState(0);
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -153,6 +155,9 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   }, [allTopics]);
 
   const goToApp = onCreateAccount ?? onEnter;
+  const isNativeApp = Capacitor.isNativePlatform();
+  const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
+  const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Get the App';
   const seeHowItWorks = () => {
     document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -204,7 +209,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             onClick={goToApp}
             className="px-5 py-2.5 rounded-full bg-[#2563eb] text-white text-sm font-semibold shadow-sm hover:bg-[#1d4ed8] transition-colors"
           >
-            Get the App
+            {primaryCtaShortLabel}
           </button>
         </div>
       </nav>
@@ -233,8 +238,8 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             onClick={goToApp}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2563eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
           >
-            <Smartphone className="w-5 h-5" />
-            <span>Download on App Store</span>
+            {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+            <span>{primaryCtaLabel}</span>
           </button>
           <button
             onClick={seeHowItWorks}
@@ -267,7 +272,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
                 'Questions designed to spark honest, grounded conversation',
                 'Each card ties back to a scripture for deeper reflection',
                 'Works for any size group — 3 people or 30',
-                'No prep required. Just show up and play.',
+                'No prep required. Just show up and yap.',
               ].map((bullet) => (
                 <li key={bullet} className="flex items-start gap-3">
                   <Star className="w-4 h-4 mt-1 text-[#14b8a6] fill-[#14b8a6] flex-shrink-0" />
@@ -277,26 +282,48 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             </ul>
           </div>
 
-          <div className="relative h-80 sm:h-96">
-            {[0, 1, 2].map((i) => {
-              const card = yapsCards[i % yapsCards.length];
-              return (
-                <div
-                  key={i}
-                  className="absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#2563eb] text-white p-5 shadow-xl flex flex-col"
-                  style={{
-                    transform: `translate(-50%, -50%) rotate(${(i - 1) * 7}deg) translateY(${(i - 1) * 8}px)`,
-                    zIndex: 10 - i,
-                  }}
-                >
-                  <p className="font-logo text-base leading-snug">{card.question}</p>
-                  <div className="flex-1 flex items-center justify-center">
-                    <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-white/30" strokeWidth={1.25} aria-hidden="true" />
-                  </div>
-                  <p className="text-[10px] uppercase tracking-wider opacity-80 text-center">{card.verse}</p>
-                </div>
-              );
-            })}
+          <div className="relative h-80 sm:h-96 flex flex-col items-center">
+            <div className="relative flex-1 w-full">
+              {[2, 1, 0].map((slot) => {
+                // slot 0 = top (drawable), slot 1 = middle peek, slot 2 = back peek
+                const card = yapsCards[(yapsIndex + slot) % yapsCards.length];
+                const isTop = slot === 0;
+                // Spread the back cards left/right of center, top card centered.
+                const rotate = slot === 0 ? 0 : (slot === 1 ? -6 : 6);
+                const offsetY = slot * 6;
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={isTop ? () => setYapsIndex((i) => (i + 1) % yapsCards.length) : undefined}
+                    disabled={!isTop}
+                    aria-label={isTop ? 'Draw next yap card' : undefined}
+                    className={`absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#2563eb] text-white p-5 shadow-xl flex flex-col text-left transition-all duration-300 ease-out ${
+                      isTop ? 'cursor-pointer hover:scale-[1.03] focus:scale-[1.03] focus:outline-none focus:ring-4 focus:ring-white/30' : 'pointer-events-none'
+                    }`}
+                    style={{
+                      transform: `translate(-50%, -50%) rotate(${rotate}deg) translateY(${offsetY}px)`,
+                      zIndex: 10 - slot,
+                      opacity: slot === 2 ? 0.7 : 1,
+                    }}
+                  >
+                    <p className="font-logo text-base leading-snug">{card.question}</p>
+                    <div className="flex-1 flex items-center justify-center">
+                      <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-white/30" strokeWidth={1.25} aria-hidden="true" />
+                    </div>
+                    <p className="text-[10px] uppercase tracking-wider opacity-80 text-center">{card.verse}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setYapsIndex((i) => (i + 1) % yapsCards.length)}
+              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold tracking-wide transition-colors"
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+              Shuffle ({((yapsIndex % yapsCards.length) + 1)} / {yapsCards.length})
+            </button>
           </div>
         </div>
       </section>
@@ -460,16 +487,17 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             Ready to play?
           </h2>
           <p className="max-w-2xl mx-auto text-white/90 leading-relaxed mb-9">
-            Download Worship N Yaps. Find a gathering, start one, or just ask the question you have been
-            holding onto.
+            {isNativeApp
+              ? "You're in. Find a gathering, start one, or just ask the question you have been holding onto."
+              : 'Download Worship N Yaps. Find a gathering, start one, or just ask the question you have been holding onto.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={goToApp}
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#2563eb] font-semibold shadow-md hover:bg-white/90 transition-colors"
             >
-              <Smartphone className="w-5 h-5" />
-              <span>Download on App Store</span>
+              {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+              <span>{primaryCtaLabel}</span>
             </button>
             <button
               onClick={() => setShowWaitlist(true)}

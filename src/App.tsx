@@ -294,6 +294,7 @@ function App() {
         onBack={handleBackFromProfile}
         onStartChat={handleStartChat}
         onViewTopic={handleViewTopic}
+        onOpenEvent={handleOpenEvent}
       />
     );
   }
@@ -366,6 +367,7 @@ function App() {
             onFocusedTopicHandled={() => setFocusedTopicId(null)}
             onViewShop={() => setActiveTab('shop')}
             openCreateRequest={openCreatePostRequest}
+            onOpenEvent={handleOpenEvent}
           />
         )}
         {activeTab === 'search' && (

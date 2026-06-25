@@ -96,6 +96,50 @@ export const useCommunityPosts = () => {
     }
   }, [user, fetchPosts]);
 
+  // Staff-only: flip is_featured so the post shows in the Search "Featured"
+  // rail. RLS rejects the update for non-staff, so the toast will surface
+  // the auth failure if a non-staff user somehow triggers it.
+  const toggleFeatured = useCallback(async (postId: string, makeFeatured: boolean) => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase
+        .from('community_posts')
+        .update({
+          is_featured: makeFeatured,
+          featured_at: makeFeatured ? new Date().toISOString() : null,
+          featured_by: makeFeatured ? user.id : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', postId);
+      if (error) throw error;
+      toast.success(makeFeatured ? 'Post featured on Search' : 'Removed from Featured');
+      await fetchPosts();
+      return true;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update featured state');
+      return false;
+    }
+  }, [user, fetchPosts]);
+
+  const fetchFeaturedPosts = useCallback(async (limit = 5): Promise<CommunityPost[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select(`
+          *,
+          users!community_posts_author_id_fkey (id, name, avatar_url, city)
+        `)
+        .eq('is_featured', true)
+        .order('featured_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data || []) as CommunityPost[];
+    } catch (err) {
+      console.error('Error fetching featured posts:', err);
+      return [];
+    }
+  }, []);
+
   const deletePost = useCallback(async (postId: string) => {
     if (!user) return false;
     try {
@@ -174,6 +218,8 @@ export const useCommunityPosts = () => {
     createPost,
     updatePost,
     deletePost,
+    toggleFeatured,
+    fetchFeaturedPosts,
     getPostComments,
     addComment,
   };

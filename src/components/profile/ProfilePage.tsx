@@ -10,6 +10,7 @@ import { SettingsModal } from '../SettingsModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
 import { useConnections } from '../../hooks/useConnections';
+import { useFollows } from '../../hooks/useFollows';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useLikes } from '../../hooks/useLikes';
 import { Topic, supabase } from '../../lib/supabase';
@@ -25,26 +26,40 @@ interface ProfilePageProps {
   onBack: () => void;
   onStartChat?: (userId: string) => void;
   onViewTopic?: (topic: Topic) => void;
+  onOpenEvent?: (eventId: string) => void;
 }
 
-type ProfileTab = 'posts' | 'likes' | 'bookmarks';
+type ProfileTab = 'posts' | 'events' | 'likes' | 'bookmarks';
+
+interface HostedEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  visibility: string;
+  is_draft?: boolean;
+  locations?: { name?: string; address?: string } | null;
+}
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   userId,
   onBack,
   onStartChat,
-  onViewTopic
+  onViewTopic,
+  onOpenEvent,
 }) => {
   const { user, profile: currentUserProfile } = useAuth();
   const isStaff = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'moderator';
   const { viewingProfile, loading, fetchProfile, fetchUserPosts, fetchUserLikedPosts } = useProfile();
   const { isConnected, hasPendingRequest, sendConnectionRequest, removeConnection } = useConnections();
+  const { isFollowing, follow, unfollow } = useFollows();
   const { bookmarkedTopics, fetchBookmarkedTopics, isBookmarked, toggleBookmark } = useBookmarks();
   const { isLiked, toggleLike, getLikeCount, fetchLikeCounts } = useLikes();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [posts, setPosts] = useState<Topic[]>([]);
   const [likedPosts, setLikedPosts] = useState<Topic[]>([]);
+  const [hostedEvents, setHostedEvents] = useState<HostedEvent[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
@@ -53,6 +68,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const isOwnProfile = user?.id === userId;
   const connected = isConnected(userId);
   const pendingRequest = hasPendingRequest(userId);
+  const following = isFollowing(userId);
+
+  const handleFollow = async () => {
+    if (following) await unfollow(userId);
+    else await follow(userId);
+  };
 
   useEffect(() => { fetchProfile(userId); }, [userId, fetchProfile]);
 
@@ -65,6 +86,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         if (data.length > 0) fetchLikeCounts('topic', data.map(p => p.id));
       } else if (activeTab === 'likes') {
         setLikedPosts(await fetchUserLikedPosts(userId));
+      } else if (activeTab === 'events') {
+        // RLS already filters drafts and friends-only events the viewer
+        // shouldn't see, so a plain host_id query is safe.
+        const { data } = await supabase
+          .from('events')
+          .select('id, title, date, time, visibility, is_draft, locations (name, address)')
+          .eq('host_id', userId)
+          .order('date', { ascending: true });
+        setHostedEvents(((data || []) as unknown as HostedEvent[]).filter((e) => !e.is_draft));
       } else if (activeTab === 'bookmarks' && isOwnProfile) {
         await fetchBookmarkedTopics();
       }
@@ -87,6 +117,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   const emptyMessages: Record<ProfileTab, string> = {
     posts: 'No posts yet',
+    events: 'No upcoming events',
     likes: 'No liked posts yet',
     bookmarks: 'No bookmarks yet',
   };
@@ -109,8 +140,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   }
 
   const tabs: { id: ProfileTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'posts', label: 'Posts', icon: <LayoutGrid className="w-4 h-4" /> },
-    { id: 'likes', label: 'Likes', icon: <Heart className="w-4 h-4" /> },
+    { id: 'posts',  label: 'Posts',  icon: <LayoutGrid className="w-4 h-4" /> },
+    { id: 'events', label: 'Events', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'likes',  label: 'Likes',  icon: <Heart className="w-4 h-4" /> },
     ...(isOwnProfile ? [{ id: 'bookmarks' as ProfileTab, label: 'Saved', icon: <Bookmark className="w-4 h-4" /> }] : []),
   ];
 
@@ -154,7 +186,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </div>
 
       <div className="relative">
-        <div className="h-40 sm:h-52 bg-gradient-to-br from-blue-500 via-blue-600 to-teal-500 relative overflow-hidden">
+        <div
+          className={`h-40 sm:h-52 bg-gradient-to-br from-blue-500 via-blue-600 to-teal-500 relative overflow-hidden ${
+            isOwnProfile ? 'cursor-pointer group' : ''
+          }`}
+          onClick={isOwnProfile ? () => setShowEditModal(true) : undefined}
+          role={isOwnProfile ? 'button' : undefined}
+          aria-label={isOwnProfile ? 'Change cover photo' : undefined}
+        >
           {viewingProfile.cover_photo_url ? (
             <img src={viewingProfile.cover_photo_url} alt="Cover" className="w-full h-full object-cover" />
           ) : (
@@ -165,13 +204,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
           )}
           {isOwnProfile && (
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium transition-colors"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              Edit cover
-            </button>
+            <>
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }}
+                className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium transition-colors"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                Edit cover
+              </button>
+            </>
           )}
         </div>
 
@@ -216,6 +258,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       <MessageCircle className="w-4 h-4" />
                     </button>
                   )}
+                  <button
+                    onClick={handleFollow}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-colors ${
+                      following
+                        ? 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                    }`}
+                    title={following ? 'Unfollow — stop seeing their public posts' : 'Follow — see their public posts in your feed'}
+                  >
+                    {following ? 'Following' : 'Follow'}
+                  </button>
                   <button
                     onClick={handleConnect}
                     disabled={pendingRequest}
@@ -400,6 +453,46 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600" />
           </div>
+        ) : activeTab === 'events' ? (
+          hostedEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-6 gap-3 text-gray-400 dark:text-gray-600 text-center">
+              <Calendar className="w-10 h-10" />
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No upcoming events</p>
+              {isOwnProfile && (
+                <p className="text-xs text-gray-500 dark:text-gray-500 max-w-xs">
+                  Public and friends-only events you host will show here. Drafts and private events are hidden.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {hostedEvents.map((ev) => (
+                <button
+                  key={ev.id}
+                  onClick={() => onOpenEvent?.(ev.id)}
+                  className="w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-start gap-3"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">{ev.title}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {ev.date} · {ev.time}
+                    </div>
+                    {ev.locations?.name && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{ev.locations.name}</div>
+                    )}
+                    {ev.visibility === 'friends_only' && (
+                      <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                        Friends only
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )
         ) : topics.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6 gap-3 text-gray-400 dark:text-gray-600 text-center">
             {activeTab === 'posts' && <LayoutGrid className="w-10 h-10" />}

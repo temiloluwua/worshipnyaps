@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, ChevronDown, ChevronUp, Edit, Crown, Trash2 } from 'lucide-react';
+import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, ChevronDown, ChevronUp, Edit, Crown, Trash2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
+import { useCommunityPosts } from '../../hooks/useCommunityPosts';
+import { usePreferences } from '../../hooks/usePreferences';
+import { bibleLinkFor } from '../../lib/bibleLink';
 import { CommentThread } from './CommentThread';
 import { ReportButton } from '../moderation/ReportButton';
 
@@ -36,6 +39,10 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { deleteTopic } = useTopics();
+  const { toggleFeatured } = useCommunityPosts();
+  const { prefs } = usePreferences();
+  const [featuredLocal, setFeaturedLocal] = useState<boolean>(!!topic?.is_featured);
+  const [togglingFeatured, setTogglingFeatured] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [commentCount, setCommentCount] = useState<number>(
@@ -86,7 +93,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   };
 
   const openESV = (reference: string) => {
-    window.open(`https://www.esv.org/${encodeURIComponent(reference.replace(/\s+/g, '+'))}/`, '_blank');
+    window.open(bibleLinkFor(reference, prefs.bibleVersion), '_blank');
   };
 
   return (
@@ -103,6 +110,28 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {isStaff && isCommunity && (
+              <button
+                onClick={async () => {
+                  if (togglingFeatured) return;
+                  setTogglingFeatured(true);
+                  const next = !featuredLocal;
+                  const ok = await toggleFeatured(topic.id, next);
+                  if (ok) setFeaturedLocal(next);
+                  setTogglingFeatured(false);
+                }}
+                disabled={togglingFeatured}
+                className={`p-2 rounded-full transition-colors disabled:opacity-50 ${
+                  featuredLocal
+                    ? 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+                    : 'text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={featuredLocal ? 'Unfeature' : 'Feature on Search'}
+                aria-label={featuredLocal ? 'Unfeature this post' : 'Feature this post on Search'}
+              >
+                <Sparkles className={`w-4 h-4 ${featuredLocal ? 'fill-current' : ''}`} />
+              </button>
+            )}
             {canEdit && (
               <button onClick={onEdit} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
                 <Edit className="w-4 h-4" />
@@ -167,7 +196,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                     className="inline-flex items-center gap-1.5 bg-amber-600 text-white px-3 py-1.5 rounded-md hover:bg-amber-700 transition-colors text-xs font-medium"
                   >
                     <BookOpen className="w-3 h-3" />
-                    Read ESV
+                    Read {prefs.bibleVersion}
                   </button>
                   <button
                     onClick={() => openBibleReference(topic.bibleReference || topic.bible_verse)}

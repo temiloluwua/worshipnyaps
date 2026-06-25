@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLikes } from '../../hooks/useLikes';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useConnections } from '../../hooks/useConnections';
+import { useFollows } from '../../hooks/useFollows';
 import { discussionTopics } from '../../data/topics';
 import { TopicCard } from './TopicCard';
 import { CreateTopicModal } from './CreateTopicModal';
@@ -17,6 +18,7 @@ import { RequestTopicModal } from './RequestTopicModal';
 import { AdminTopicReviewPanel } from './AdminTopicReviewPanel';
 import { AuthModal } from '../auth/AuthModal';
 import { ShareModal } from '../social/ShareModal';
+import { NearbyEventsRail } from './NearbyEventsRail';
 import { Topic, CommunityCategory } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -98,6 +100,7 @@ interface TopicsViewProps {
   onFocusedTopicHandled?: () => void;
   onViewShop?: () => void;
   openCreateRequest?: number;
+  onOpenEvent?: (eventId: string) => void;
 }
 
 export function TopicsView({
@@ -107,11 +110,12 @@ export function TopicsView({
   onFocusedTopicHandled,
   onViewShop,
   openCreateRequest,
+  onOpenEvent,
 }: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
   const { topics, loading, incrementViewCount, fetchTopics } = useTopics();
-  const { posts: communityPosts, fetchPosts: fetchCommunityPosts } = useCommunityPosts();
+  const { posts: communityPosts, fetchPosts: fetchCommunityPosts, toggleFeatured } = useCommunityPosts();
   const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,7 +140,9 @@ export function TopicsView({
   const [showAdminReview, setShowAdminReview] = useState(false);
   const [audienceFilter, setAudienceFilter] = useState<'friends' | 'local'>('friends');
   const { connections } = useConnections();
+  const { followingIds } = useFollows();
   const isAdmin = profile?.role === 'admin';
+  const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
   const myCity = profile?.city?.trim().toLowerCase();
   const friendIds = new Set((connections || []).map((c: any) => c.connected_user_id));
 
@@ -220,12 +226,15 @@ export function TopicsView({
     ? communityTopics
     : communityTopics.filter((t: any) => t.community_category === communitySub);
 
-  // Community tab respects the Friends / Local audience chip.
+  // Community tab respects the Friends / Local audience chip. The "Friends"
+  // chip also includes anyone the user follows (one-way) — they only see
+  // those authors' public posts, since the friends_only RLS gate already
+  // blocks non-connections from seeing private content.
   const friendsOnlyFiltered = user ? communityFiltered.filter((t: any) => {
     const authorId = t.author_id || t.authorId;
     if (authorId === user.id) return true;
     if (audienceFilter === 'friends') {
-      return friendIds.has(authorId);
+      return friendIds.has(authorId) || followingIds.has(authorId);
     }
     // 'local' — if the user hasn't set a city, fall back to showing all posts
     // instead of filtering everything out (better than an empty feed)
@@ -704,6 +713,7 @@ export function TopicsView({
         </div>
       ) : (
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <NearbyEventsRail onOpenEvent={onOpenEvent} />
           {visibleTopics.length > 0 ? (
             visibleTopics.map((topic) => (
               <div
@@ -713,9 +723,14 @@ export function TopicsView({
               >
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-semibold text-gray-900 dark:text-white">{topic.authorName}</span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">@{topic.authorName?.toLowerCase().replace(/\s/g, '')}</span>
+                      {topic.is_featured && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-semibold rounded-full uppercase tracking-wide">
+                          <Sparkles className="w-3 h-3" /> Featured
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-2" style={{ fontFamily: 'Georgia, serif' }}>{topic.title}</h3>
                     <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-3" style={{ fontFamily: 'Georgia, serif' }}>{topic.content || topic.description}</p>
@@ -750,6 +765,16 @@ export function TopicsView({
                         <Share2 className="w-4 h-4 inline mr-1" />
                         Share
                       </button>
+                      {isStaff && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleFeatured(topic.id, !topic.is_featured); }}
+                          className={`hover:text-amber-600 dark:hover:text-amber-400 transition-colors ${topic.is_featured ? 'text-amber-600 dark:text-amber-400' : ''}`}
+                          title={topic.is_featured ? 'Remove from Search Featured' : 'Feature on Search'}
+                        >
+                          <Sparkles className={`w-4 h-4 inline mr-1 ${topic.is_featured ? 'fill-current' : ''}`} />
+                          {topic.is_featured ? 'Featured' : 'Feature'}
+                        </button>
+                      )}
                       {topic.comment_count && (
                         <span>
                           <MessageCircle className="w-4 h-4 inline mr-1" />

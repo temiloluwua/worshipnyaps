@@ -89,6 +89,131 @@
     letter-spacing: -0.5px;
   }
 
+  /* User-selectable fonts (Settings → Appearance). Set on <html>. */
+  html.wny-font-serif body,
+  html.wny-font-serif h1,
+  html.wny-font-serif h2,
+  html.wny-font-serif h3,
+  html.wny-font-serif h4,
+  html.wny-font-serif h5,
+  html.wny-font-serif h6 {
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+  html.wny-font-modern body,
+  html.wny-font-modern h1,
+  html.wny-font-modern h2,
+  html.wny-font-modern h3,
+  html.wny-font-modern h4,
+  html.wny-font-modern h5,
+  html.wny-font-modern h6 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* User-selectable accent color (Settings → Accent color). Tailwind ships
+     hard-coded blue utility classes throughout the app; we remap the most
+     common ones to a per-accent variable palette here so flipping the
+     accent recolors buttons, focus rings, active tabs, and pills. Gradient
+     stops (from-blue-*, to-blue-*) are intentionally NOT remapped so the
+     brand blue-to-teal gradient stays consistent. */
+  html {
+    --acc-50:  239 246 255;
+    --acc-100: 219 234 254;
+    --acc-200: 191 219 254;
+    --acc-300: 147 197 253;
+    --acc-400: 96  165 250;
+    --acc-500: 59  130 246;
+    --acc-600: 37  99  235;
+    --acc-700: 29  78  216;
+    --acc-800: 30  64  175;
+    --acc-900: 30  58  138;
+  }
+  html.wny-accent-teal {
+    --acc-50:  240 253 250;
+    --acc-100: 204 251 241;
+    --acc-200: 153 246 228;
+    --acc-300: 94  234 212;
+    --acc-400: 45  212 191;
+    --acc-500: 20  184 166;
+    --acc-600: 13  148 136;
+    --acc-700: 15  118 110;
+    --acc-800: 17  94  89;
+    --acc-900: 19  78  74;
+  }
+  html.wny-accent-purple {
+    --acc-50:  250 245 255;
+    --acc-100: 243 232 255;
+    --acc-200: 233 213 255;
+    --acc-300: 216 180 254;
+    --acc-400: 192 132 252;
+    --acc-500: 168 85  247;
+    --acc-600: 147 51  234;
+    --acc-700: 126 34  206;
+    --acc-800: 107 33  168;
+    --acc-900: 88  28  135;
+  }
+  html.wny-accent-amber {
+    --acc-50:  255 251 235;
+    --acc-100: 254 243 199;
+    --acc-200: 253 230 138;
+    --acc-300: 252 211 77;
+    --acc-400: 251 191 36;
+    --acc-500: 245 158 11;
+    --acc-600: 217 119 6;
+    --acc-700: 180 83  9;
+    --acc-800: 146 64  14;
+    --acc-900: 120 53  15;
+  }
+  html.wny-accent-pink {
+    --acc-50:  253 242 248;
+    --acc-100: 252 231 243;
+    --acc-200: 251 207 232;
+    --acc-300: 249 168 212;
+    --acc-400: 244 114 182;
+    --acc-500: 236 72  153;
+    --acc-600: 219 39  119;
+    --acc-700: 190 24  93;
+    --acc-800: 157 23  77;
+    --acc-900: 131 24  67;
+  }
+
+  /* Remap the Tailwind blue utility classes most used by the app. */
+  .bg-blue-50  { background-color: rgb(var(--acc-50))  !important; }
+  .bg-blue-100 { background-color: rgb(var(--acc-100)) !important; }
+  .bg-blue-200 { background-color: rgb(var(--acc-200)) !important; }
+  .bg-blue-500 { background-color: rgb(var(--acc-500)) !important; }
+  .bg-blue-600 { background-color: rgb(var(--acc-600)) !important; }
+  .bg-blue-700 { background-color: rgb(var(--acc-700)) !important; }
+  .text-blue-300 { color: rgb(var(--acc-300)) !important; }
+  .text-blue-400 { color: rgb(var(--acc-400)) !important; }
+  .text-blue-500 { color: rgb(var(--acc-500)) !important; }
+  .text-blue-600 { color: rgb(var(--acc-600)) !important; }
+  .text-blue-700 { color: rgb(var(--acc-700)) !important; }
+  .border-blue-300 { border-color: rgb(var(--acc-300)) !important; }
+  .border-blue-400 { border-color: rgb(var(--acc-400)) !important; }
+  .border-blue-500 { border-color: rgb(var(--acc-500)) !important; }
+  .border-blue-600 { border-color: rgb(var(--acc-600)) !important; }
+  .ring-blue-300 { --tw-ring-color: rgb(var(--acc-300)) !important; }
+  .ring-blue-400 { --tw-ring-color: rgb(var(--acc-400)) !important; }
+  .ring-blue-500 { --tw-ring-color: rgb(var(--acc-500)) !important; }
+  .hover\:bg-blue-50:hover  { background-color: rgb(var(--acc-50))  !important; }
+  .hover\:bg-blue-100:hover { background-color: rgb(var(--acc-100)) !important; }
+  .hover\:bg-blue-600:hover { background-color: rgb(var(--acc-600)) !important; }
+  .hover\:bg-blue-700:hover { background-color: rgb(var(--acc-700)) !important; }
+  .hover\:text-blue-400:hover { color: rgb(var(--acc-400)) !important; }
+  .hover\:text-blue-600:hover { color: rgb(var(--acc-600)) !important; }
+  .hover\:border-blue-500:hover { border-color: rgb(var(--acc-500)) !important; }
+  .focus\:ring-blue-500:focus { --tw-ring-color: rgb(var(--acc-500)) !important; }
+  .focus\:border-blue-500:focus { border-color: rgb(var(--acc-500)) !important; }
+  .dark .dark\:bg-blue-900\/10 { background-color: rgb(var(--acc-900) / 0.1) !important; }
+  .dark .dark\:bg-blue-900\/20 { background-color: rgb(var(--acc-900) / 0.2) !important; }
+  .dark .dark\:bg-blue-900\/30 { background-color: rgb(var(--acc-900) / 0.3) !important; }
+  .dark .dark\:text-blue-300 { color: rgb(var(--acc-300)) !important; }
+  .dark .dark\:text-blue-400 { color: rgb(var(--acc-400)) !important; }
+  .dark .dark\:border-blue-800 { border-color: rgb(var(--acc-800)) !important; }
+  .dark .dark\:border-blue-500 { border-color: rgb(var(--acc-500)) !important; }
+  .dark .dark\:hover\:bg-blue-900\/30:hover { background-color: rgb(var(--acc-900) / 0.3) !important; }
+
 
   *:focus-visible {
     outline: 2px solid rgb(var(--color-border-focus));
