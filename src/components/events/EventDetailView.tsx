@@ -7,6 +7,7 @@ import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send,
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
+import { EventRecapPhotos } from './EventRecapPhotos';
 import { EventDescriptionDisplay } from './EventDescriptionTemplate';
 import { CheckInButton } from './CheckInButton';
 import { AttendeeList } from './AttendeeList';
@@ -18,6 +19,7 @@ import { InviteFriendsModal } from './InviteFriendsModal';
 import { CoHostManager } from './CoHostManager';
 import { EventAnnouncements } from './EventAnnouncements';
 import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
+import { shareIcs } from '../../lib/icsExport';
 import { ReportButton } from '../moderation/ReportButton';
 
 interface EventDetailViewProps {
@@ -1152,9 +1154,27 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               <button
                 onClick={shareEvent}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                title="Share event"
               >
                 <Share2 size={20} className="text-gray-700 dark:text-gray-300" />
               </button>
+              {event && (
+                <button
+                  onClick={() => shareIcs({
+                    id: event.id,
+                    title: event.title,
+                    date: event.date,
+                    time: event.time,
+                    description: event.description || '',
+                    locationName: event.locations?.name,
+                    locationAddress: event.locations?.address,
+                  })}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                  title="Add to calendar"
+                >
+                  <CalendarPlus size={20} className="text-gray-700 dark:text-gray-300" />
+                </button>
+              )}
               {event && (
                 <ReportButton
                   target={{
@@ -1579,7 +1599,16 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           </div>
           </div>
         ) : activeTab === 'help' ? (
-          <EventHelpRequests eventId={eventId} isHost={isHost} />
+          <>
+            <EventHelpRequests eventId={eventId} isHost={isHost} />
+            {event && (
+              <EventRecapPhotos
+                eventId={eventId}
+                hostId={event.host_id}
+                canUpload={Boolean(isHost || isRsvped)}
+              />
+            )}
+          </>
         ) : activeTab === 'people' ? (
           <div className="p-6">
             <AttendeeList

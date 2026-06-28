@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
 
@@ -27,14 +27,27 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close authentication modal"
-          className="absolute top-3 right-3 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 shadow-md p-2 transition-colors z-10"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {/* Continue-as-guest CTA takes the pressure off — most people land
+            here before they're ready to sign up, and we'd rather they keep
+            exploring than bounce. */}
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-sm hover:bg-blue-700 hover:shadow-md transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Continue as guest
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close authentication modal"
+            className="rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 p-1.5 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         <div className="p-6">
           {mode === 'login' ? (

@@ -209,10 +209,12 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 </span>
               )}
             </button>
-            {onStartChat && (
+            {/* DMs are gated to connections only. */}
+            {onStartChat && connected && (
               <button
                 onClick={handleChat}
                 className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Send a message"
               >
                 <MessageCircle className="w-5 h-5" />
               </button>

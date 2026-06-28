@@ -26,7 +26,7 @@ type EventTab = 'discover' | 'my-events';
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts } = useEvents();
+  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts, pastEvents } = useEvents();
   const [combinedFilter, setCombinedFilter] = useState<CombinedFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
@@ -120,7 +120,11 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
     .filter(e =>
       (e.visibility === 'public' || e.visibility === 'friends_only') &&
       typeof e.area_lat === 'number' &&
-      typeof e.area_lng === 'number'
+      typeof e.area_lng === 'number' &&
+      // Drop null-island (0,0) pins — they're the legacy fallback for
+      // events whose address didn't geocode. Showing them puts a marker
+      // off the West African coast which confuses everyone.
+      !(Math.abs(e.area_lat as number) < 0.01 && Math.abs(e.area_lng as number) < 0.01)
     )
     .map(e => ({
       id: e.id,
@@ -567,6 +571,37 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
               </div>
             );
           })
+        )}
+
+        {activeTab === 'my-events' && pastEvents.length > 0 && (
+          <div className="mt-4 bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Past events ({pastEvents.length})
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {pastEvents.map((ev) => (
+                <button
+                  key={ev.id}
+                  onClick={() => onOpenEvent?.(ev.id)}
+                  className="w-full flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-blue-300 dark:hover:border-blue-700 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-gray-900 dark:text-white truncate">{ev.title}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatDateShort(ev.date)} · {formatTime12h(ev.time)}
+                      {ev.locations?.name ? ` · ${ev.locations.name}` : ''}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

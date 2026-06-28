@@ -254,13 +254,24 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-4 border-t border-b border-gray-200 dark:border-gray-700 py-3 mb-6">
-              <button
-                onClick={onLike}
-                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isLiked ? 'text-red-600' : 'text-gray-500 dark:text-gray-400 hover:text-red-600'}`}
-              >
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                {topic.likes || 0}
-              </button>
+              {topic.community_category === 'prayer_point' ? (
+                <button
+                  onClick={onLike}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isLiked ? 'text-amber-600' : 'text-gray-500 dark:text-gray-400 hover:text-amber-600'}`}
+                  title={isLiked ? 'You prayed for this' : 'Pray for this'}
+                >
+                  <span className="text-lg leading-none">🙏</span>
+                  {topic.likes || 0}
+                </button>
+              ) : (
+                <button
+                  onClick={onLike}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isLiked ? 'text-red-600' : 'text-gray-500 dark:text-gray-400 hover:text-red-600'}`}
+                >
+                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                  {topic.likes || 0}
+                </button>
+              )}
               <button
                 onClick={onShare}
                 className="flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-green-600 transition-colors"

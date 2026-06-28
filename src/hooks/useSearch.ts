@@ -45,6 +45,7 @@ export const useSearch = () => {
       }
 
       if (tab === 'all' || tab === 'topics') {
+        // Topics: keep ILIKE — small table, no FTS index needed yet.
         const { data: topics } = await supabase
           .from('topics')
           .select(`
@@ -59,7 +60,26 @@ export const useSearch = () => {
           .order('created_at', { ascending: false })
           .limit(tab === 'all' ? 5 : 20);
 
-        newResults.topics = topics || [];
+        // Community posts: real full-text search via the search_vector
+        // index and websearch_to_tsquery (handles "prayer for marriage",
+        // quoted phrases, OR, NOT — all natively).
+        const { data: posts } = await supabase
+          .rpc('search_community_posts', {
+            q: searchQuery,
+            lim: tab === 'all' ? 5 : 20,
+          });
+
+        // Adapt community posts into the Topic shape the UI already
+        // knows how to render (topic_type=community lights up the
+        // existing community card path).
+        const postsAsTopics: Topic[] = ((posts || []) as any[]).map((p: any) => ({
+          ...p,
+          topic_type: 'community',
+          category: p.community_category || 'general',
+          bibleReference: p.bible_verse,
+        }));
+
+        newResults.topics = [...(topics || []), ...postsAsTopics];
       }
 
       if (tab === 'all' || tab === 'hashtags') {

@@ -110,6 +110,7 @@
     letter-spacing: -0.01em;
   }
 
+
   /* User-selectable accent color (Settings → Accent color). Tailwind ships
      hard-coded blue utility classes throughout the app; we remap the most
      common ones to a per-accent variable palette here so flipping the

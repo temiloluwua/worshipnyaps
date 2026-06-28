@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Minus, Book } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
@@ -9,12 +9,14 @@ import toast from 'react-hot-toast';
 interface CreateTopicModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRequireAuth?: () => void;
   topicType?: 'preselected' | 'community';
 }
 
 export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   isOpen,
   onClose,
+  onRequireAuth,
   topicType = 'community',
 }) => {
   const { user, profile } = useAuth();
@@ -31,10 +33,77 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     visibility: 'public' as 'public' | 'friends_only',
   });
   const [newTag, setNewTag] = useState('');
+  // True the moment the user hits Submit while logged-out — we then wait
+  // for them to authenticate and auto-fire the post.
+  const pendingSubmitRef = useRef(false);
+
+  const isAdmin = profile?.role === 'admin';
+  const isCommunityPost = topicType === 'community';
+
+  // performSubmit is declared up here (above the conditional early return)
+  // because the post-auth useEffect below depends on it. Closures over
+  // formData/createPost/createTopic are stable enough that we don't need
+  // useCallback — the effect only fires on auth transitions, not renders.
+  const performSubmit = async () => {
+    if (topicType === 'preselected' && !isAdmin) {
+      toast.error('Only admins can create preselected topics');
+      return;
+    }
+
+    let result: unknown = null;
+
+    if (isCommunityPost) {
+      result = await createPost({
+        title: formData.title,
+        content: formData.content,
+        tags: formData.tags,
+        bible_verse: formData.bibleReference || undefined,
+        community_category: formData.communityCategory,
+        visibility: formData.visibility,
+      });
+    } else {
+      result = await createTopic({
+        title: formData.title,
+        category: formData.category,
+        content: formData.content,
+        tags: formData.tags,
+        topic_type: topicType,
+        bible_verse: formData.bibleReference || undefined,
+        visibility: 'public',
+      });
+    }
+
+    if (result) {
+      toast.success(isCommunityPost ? 'Post shared!' : 'Topic created!');
+      onClose();
+      setFormData({
+        title: '',
+        category: 'life-questions',
+        communityCategory: 'general',
+        content: '',
+        bibleReference: '',
+        tags: [],
+        questions: [''],
+        visibility: 'public',
+      });
+    }
+  };
+
+  // All hooks must be declared BEFORE the conditional early return so the
+  // hook order is stable when the modal toggles open/closed. After a
+  // logged-out user submits, useAuth.user transitions from null to a real
+  // value once they finish the auth flow. Pick that up and fire the queued
+  // post automatically so they don't have to retype anything.
+  useEffect(() => {
+    if (user && pendingSubmitRef.current && (formData.title.trim() || formData.content.trim())) {
+      pendingSubmitRef.current = false;
+      performSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   if (!isOpen) return null;
 
-  const isAdmin = profile?.role === 'admin';
   const canCreatePreselected = topicType === 'preselected' && isAdmin;
 
   const categories = [
@@ -91,60 +160,25 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     }));
   };
 
-  const isCommunityPost = topicType === 'community';
+  // Quick guard so we don't fire the submit until there's something to post.
+  const formHasContent = () =>
+    formData.title.trim().length > 0 || formData.content.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
-      toast.error('Please sign in to create topics');
+      if (!formHasContent()) {
+        toast.error('Add a title or content first.');
+        return;
+      }
+      pendingSubmitRef.current = true;
+      toast('Sign in to share your post — we\'ll post it for you when you do.', { icon: '🔒' });
+      onRequireAuth?.();
       return;
     }
 
-    if (topicType === 'preselected' && !isAdmin) {
-      toast.error('Only admins can create preselected topics');
-      return;
-    }
-
-    let result: unknown = null;
-
-    if (isCommunityPost) {
-      result = await createPost({
-        title: formData.title,
-        content: formData.content,
-        tags: formData.tags,
-        bible_verse: formData.bibleReference || undefined,
-        community_category: formData.communityCategory,
-        visibility: formData.visibility,
-      });
-    } else {
-      result = await createTopic({
-        title: formData.title,
-        category: formData.category,
-        content: formData.content,
-        tags: formData.tags,
-        topic_type: topicType,
-        bible_verse: formData.bibleReference || undefined,
-        visibility: 'public',
-      });
-    }
-
-    if (result) {
-      toast.success(
-        isCommunityPost ? 'Post created successfully!' : 'Topic created successfully!'
-      );
-      onClose();
-      setFormData({
-        title: '',
-        category: 'life-questions',
-        communityCategory: 'general',
-        content: '',
-        bibleReference: '',
-        tags: [],
-        questions: [''],
-        visibility: 'public',
-      });
-    }
+    await performSubmit();
   };
 
   return (

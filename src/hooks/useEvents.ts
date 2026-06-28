@@ -6,6 +6,20 @@ import toast from 'react-hot-toast';
 const INVITE_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CAPACITY_CACHE_KEY = 'event_capacity_cache_v1';
 
+// Events get archived from active feeds this many hours after their start
+// time. Six hours covers a typical Sunday service or evening gathering and
+// leaves a forgiving buffer for late finishes.
+const EVENT_GRACE_HOURS = 6;
+
+const eventEndedAt = (event: Pick<Event, 'date' | 'time'>): number => {
+  const start = new Date(`${event.date}T${event.time || '00:00'}`).getTime();
+  return start + EVENT_GRACE_HOURS * 60 * 60 * 1000;
+};
+
+export const isEventPast = (event: Pick<Event, 'date' | 'time'>): boolean => {
+  return eventEndedAt(event) < Date.now();
+};
+
 const generateInviteCode = (length = 8) => {
   let code = '';
   for (let i = 0; i < length; i += 1) {
@@ -40,6 +54,7 @@ export const useEvents = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [drafts, setDrafts] = useState<Event[]>([]);
   const [rsvpEventIds, setRsvpEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -209,7 +224,9 @@ export const useEvents = () => {
         });
 
         normalizedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        return normalizedEvents;
+        // Hide events more than 6 hours past their start from the discover
+        // feed and map. They stay accessible via My Events → Past.
+        return normalizedEvents.filter((e) => !isEventPast(e));
       });
     } catch (error: any) {
       console.error('Error fetching events:', error);
@@ -305,25 +322,32 @@ export const useEvents = () => {
       ];
 
       const myEventsWithCounts = await attachAttendeeCounts(allMyEvents as Event[]);
-      setMyEvents((previousEvents) => {
+      const normalize = (eventList: Event[], previousList: Event[]) => {
         const previousCapacityById = new Map(
-          previousEvents.map((event) => [event.id, event.capacity])
+          previousList.map((event) => [event.id, event.capacity])
         );
-
-        return myEventsWithCounts.map((event) => {
+        return eventList.map((event) => {
           const previousCapacity = previousCapacityById.get(event.id);
           const cachedCapacity = getCachedCapacity(event.id);
           const stableCapacity = previousCapacity
             ? Math.max(previousCapacity, cachedCapacity, event.capacity, event.attendees || 0)
             : Math.max(cachedCapacity, event.capacity, event.attendees || 0);
-
           setCachedCapacity(event.id, stableCapacity);
-
-          return {
-            ...event,
-            capacity: stableCapacity
-          };
+          return { ...event, capacity: stableCapacity };
         });
+      };
+      // Split upcoming vs past — drafts never count as upcoming or past;
+      // they live in the Drafts list.
+      const upcoming = myEventsWithCounts.filter((e: any) => !e.is_draft && !isEventPast(e));
+      const past = myEventsWithCounts.filter((e: any) => !e.is_draft && isEventPast(e));
+      setMyEvents((prev) => normalize(upcoming, prev));
+      setPastEvents((prev) => {
+        const normalized = normalize(past, prev);
+        // Most recent first for history view.
+        return normalized.sort((a, b) =>
+          new Date(`${b.date}T${b.time || '00:00'}`).getTime() -
+          new Date(`${a.date}T${a.time || '00:00'}`).getTime()
+        );
       });
     } catch (error) {
       console.error('Error fetching my events:', error);
@@ -584,6 +608,7 @@ export const useEvents = () => {
   return {
     events,
     myEvents,
+    pastEvents,
     drafts,
     rsvpEventIds,
     loading,

@@ -250,10 +250,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 </button>
               ) : (
                 <>
-                  {onStartChat && (
+                  {/* DMs are gated to connections only — connect first to message. */}
+                  {onStartChat && connected && (
                     <button
                       onClick={() => onStartChat(userId)}
                       className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      title="Send a message"
                     >
                       <MessageCircle className="w-4 h-4" />
                     </button>

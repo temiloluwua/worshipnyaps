@@ -3,7 +3,7 @@ import {
   ArrowRight, Sun, Moon, Bell,
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
   BookOpen, Users, MessageSquare, ShieldCheck,
-  User as UserIcon, Search, Spade, ClipboardList, Shuffle,
+  User as UserIcon, Search, Spade, ClipboardList, Sparkles,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { WaitlistModal } from './WaitlistModal';
@@ -112,16 +112,17 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [activeFeature, setActiveFeature] = useState(0);
-  const [yapsIndex, setYapsIndex] = useState(0);
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
+        // Matches the source TopicsView uses for its Topic of the Day pick.
+        // Same row set + same created_at DESC sort + same date hash modulo
+        // means both pages always agree on today's topic.
         const { data, error } = await supabase
           .from('topics')
-          .select('id, title, category, bible_verse, tags, content, users!topics_author_id_fkey(name, city)')
-          .order('created_at', { ascending: false })
-          .limit(20);
+          .select('id, title, category, bible_verse, tags, content, created_at, users!topics_author_id_fkey(name, city)')
+          .order('created_at', { ascending: false });
         if (error) throw error;
         setAllTopics((data || []) as Topic[]);
       } catch (e) {
@@ -137,15 +138,15 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   // featured prompt. Falls back to the curated YAPS_CARDS if the table is
   // empty or hasn't loaded yet.
   const yapsCards = useMemo(() => {
-    const usable = allTopics.filter(
-      (t) => !!t.bible_verse && !!(t.title || t.content)
-    );
-    if (usable.length === 0) return YAPS_CARDS;
+    // Same source + same hash as TopicsView.getTopicOfTheDay so both pages
+    // pick the same row for "today". No bible_verse filter — TopicsView
+    // doesn't apply one either, and filtering would skew the modulo.
+    if (allTopics.length === 0) return YAPS_CARDS;
 
     const today = new Date().toDateString();
     const dateHash = today.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const todIndex = dateHash % usable.length;
-    const ordered = [usable[todIndex], ...usable.slice(0, todIndex), ...usable.slice(todIndex + 1)];
+    const todIndex = dateHash % allTopics.length;
+    const ordered = [allTopics[todIndex], ...allTopics.slice(0, todIndex), ...allTopics.slice(todIndex + 1)];
 
     return ordered.slice(0, 8).map((t) => ({
       question: (t.title || t.content || '').trim().replace(/\s+/g, ' ').slice(0, 140),
@@ -158,8 +159,8 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const isNativeApp = Capacitor.isNativePlatform();
   const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
   const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Get the App';
-  const seeHowItWorks = () => {
-    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+  const seeHowToYap = () => {
+    document.getElementById('how-to-yap')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -218,7 +219,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       <section className="max-w-5xl mx-auto px-6 pt-16 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#14b8a6]/15 text-[#14b8a6] dark:bg-[#14b8a6]/25 dark:text-teal-300 text-xs font-semibold tracking-wide mb-8">
           <Globe className="w-3.5 h-3.5" />
-          <span>Community beyond Sunday</span>
+          <span>Join the conversation</span>
         </div>
 
         <h1 className="font-logo font-bold text-[clamp(2.5rem,7vw,5rem)] leading-[1.05] tracking-tight mb-8">
@@ -242,10 +243,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             <span>{primaryCtaLabel}</span>
           </button>
           <button
-            onClick={seeHowItWorks}
+            onClick={seeHowToYap}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-black/15 dark:border-white/20 text-[#0F172A] dark:text-[#F8FAFC] font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
           >
-            <span>See how it works</span>
+            <span>How to Yap</span>
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -282,49 +283,47 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             </ul>
           </div>
 
-          <div className="relative h-80 sm:h-96 flex flex-col items-center">
-            <div className="relative flex-1 w-full">
-              {[2, 1, 0].map((slot) => {
-                // slot 0 = top (drawable), slot 1 = middle peek, slot 2 = back peek
-                const card = yapsCards[(yapsIndex + slot) % yapsCards.length];
-                const isTop = slot === 0;
-                // Spread the back cards left/right of center, top card centered.
-                const rotate = slot === 0 ? 0 : (slot === 1 ? -6 : 6);
-                const offsetY = slot * 6;
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={isTop ? () => setYapsIndex((i) => (i + 1) % yapsCards.length) : undefined}
-                    disabled={!isTop}
-                    aria-label={isTop ? 'Draw next yap card' : undefined}
-                    className={`absolute left-1/2 top-1/2 w-44 h-60 sm:w-52 sm:h-72 rounded-2xl bg-[#2563eb] text-white p-5 shadow-xl flex flex-col text-left transition-all duration-300 ease-out ${
-                      isTop ? 'cursor-pointer hover:scale-[1.03] focus:scale-[1.03] focus:outline-none focus:ring-4 focus:ring-white/30' : 'pointer-events-none'
-                    }`}
-                    style={{
-                      transform: `translate(-50%, -50%) rotate(${rotate}deg) translateY(${offsetY}px)`,
-                      zIndex: 10 - slot,
-                      opacity: slot === 2 ? 0.7 : 1,
-                    }}
-                  >
-                    <p className="font-logo text-base leading-snug">{card.question}</p>
-                    <div className="flex-1 flex items-center justify-center">
-                      <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-white/30" strokeWidth={1.25} aria-hidden="true" />
-                    </div>
-                    <p className="text-[10px] uppercase tracking-wider opacity-80 text-center">{card.verse}</p>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => setYapsIndex((i) => (i + 1) % yapsCards.length)}
-              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold tracking-wide transition-colors"
-            >
-              <Shuffle className="w-3.5 h-3.5" />
-              Shuffle ({((yapsIndex % yapsCards.length) + 1)} / {yapsCards.length})
-            </button>
-          </div>
+          {/* Topic of the Day — yapsCards is already date-hash-rotated so
+              index 0 is today's featured prompt. */}
+          {(() => {
+            const today = yapsCards[0];
+            const todayTopicId = (today as { topicId?: string }).topicId;
+            const goTopic = () => {
+              if (todayTopicId && onViewTopicOfDay) onViewTopicOfDay(todayTopicId);
+              else onEnter();
+            };
+            return (
+              <div className="flex flex-col items-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-[10px] font-bold uppercase tracking-[0.18em] mb-4">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Topic of the Day
+                </span>
+                <button
+                  type="button"
+                  onClick={goTopic}
+                  className="w-full max-w-md rounded-3xl bg-white text-[#0F172A] p-7 sm:p-8 shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all text-left focus:outline-none focus:ring-4 focus:ring-white/30"
+                >
+                  {today.verse && (
+                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#14b8a6]/15 text-[#14b8a6] text-[11px] font-semibold mb-4">
+                      {today.verse}
+                    </span>
+                  )}
+                  <p className="font-logo text-2xl sm:text-3xl leading-snug mb-6">
+                    {today.question}
+                  </p>
+                  <div className="flex items-center gap-2 text-[#2563eb] font-semibold text-sm">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Join the conversation</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </button>
+                <p className="text-white/80 text-sm mt-5 max-w-md text-center leading-relaxed">
+                  A new prompt every day. Drop your reflection, ask a question, or
+                  read what believers from anywhere on the map are saying.
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </section>
 
@@ -400,8 +399,13 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               <button
                 key={cat.key}
                 onClick={() => {
+                  // Persist the chosen community sub-tab so TopicsView's
+                  // mount effect can pick it up. Use onViewTopics (not raw
+                  // onEnter) so the bottom-nav tab is forced to 'topics' —
+                  // otherwise an existing active tab like Messages stops
+                  // TopicsView from mounting and the signal is lost.
                   try { sessionStorage.setItem('wny_initial_community_sub', cat.key); } catch { /* ignore */ }
-                  onEnter();
+                  (onViewTopics ?? onEnter)();
                 }}
                 className="text-left bg-white dark:bg-[#1E293B] rounded-2xl p-5 border border-black/10 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:translate-y-[-2px] flex flex-col gap-2"
               >
@@ -418,12 +422,161 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
           <div className="text-center mt-10">
             <button
-              onClick={onEnter}
+              onClick={() => (onViewTopics ?? onEnter)()}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0F172A] dark:bg-[#F8FAFC] text-[#F8FAFC] dark:text-[#0F172A] text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               See the full feed
               <ArrowRight className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 6.5 How to Yap — pulled from the WnY card-game instruction sheets */}
+      <section id="how-to-yap" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">How to Yap</p>
+        <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-4">
+          So, you want to host a Yap.
+        </h2>
+        <p className="text-center text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto mb-14 leading-relaxed">
+          Here's the same flow we use for the in-person Yaps. Print it, screenshot it,
+          or just keep this page open while you host.
+        </p>
+
+        {/* Create a vibe — vertical timeline */}
+        <div className="rounded-3xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 p-7 md:p-10 mb-8 shadow-sm">
+          <h3 className="font-logo font-bold text-2xl md:text-3xl mb-8">How to create a vibe</h3>
+          <div className="relative pl-6">
+            <div className="absolute left-[11px] top-2 bottom-2 w-px bg-[#E2E8F0] dark:bg-white/15" aria-hidden="true" />
+            {[
+              { dot: '#F59E0B', title: 'Fellowship',        body: 'Open time to connect and build relationships.' },
+              { dot: '#10B981', title: 'Communion',         body: 'Share and eat food to build energy.' },
+              { dot: '#EF4444', title: 'Worship',           body: 'Focus on God, which unites us.' },
+              { dot: '#EC4899', title: 'Prayer',            body: 'Acknowledging God and conversing with Him.' },
+              { dot: '#0EA5E9', title: 'Yap',               body: 'Conversation between people — not a sermon in one direction.' },
+              { dot: '#A78BFA', title: 'Order and Freedom', body: 'Have a plan but be sensitive to the Holy Spirit and the people in the room.' },
+            ].map((step) => (
+              <div key={step.title} className="relative pl-6 pb-6 last:pb-0">
+                <span
+                  className="absolute -left-[19px] top-1 w-5 h-5 rounded-full border-4 border-white dark:border-[#1E293B]"
+                  style={{ backgroundColor: step.dot }}
+                  aria-hidden="true"
+                />
+                <div className="font-semibold text-[#0F172A] dark:text-[#F8FAFC] text-sm uppercase tracking-wider mb-1">
+                  {step.title}
+                </div>
+                <p className="text-[#64748B] dark:text-[#CBD5E1] text-sm leading-relaxed">{step.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Roles */}
+        <div className="rounded-3xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 p-7 md:p-10 mb-8 shadow-sm">
+          <h3 className="font-logo font-bold text-2xl md:text-3xl mb-8">Roles</h3>
+          <div className="grid md:grid-cols-2 gap-5">
+            {[
+              {
+                label: 'Host',
+                pill: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+                points: [
+                  'Welcome everyone and create a good atmosphere',
+                  'Help coordinate food',
+                  'Explain house rules and considerations',
+                ],
+              },
+              {
+                label: 'Guest',
+                pill: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
+                points: [
+                  'Arrive on time',
+                  'Bring food if possible',
+                  'Serve others and help clean',
+                ],
+              },
+              {
+                label: 'Worship Leader',
+                pill: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200',
+                points: [
+                  'Come early to practice',
+                  'Pick 2–3 God-focused songs',
+                  'Keep it simple',
+                  'After worship, share a short word or Bible verse',
+                ],
+              },
+              {
+                label: 'Discussion Leader',
+                pill: 'bg-stone-200 text-stone-800 dark:bg-stone-700/50 dark:text-stone-200',
+                points: [
+                  'Get the conversation going — maybe an icebreaker to start',
+                  'Help the group stay on topic',
+                  'Use hand-raising to avoid interruptions',
+                ],
+              },
+            ].map((role) => (
+              <div
+                key={role.label}
+                className="rounded-2xl border border-black/10 dark:border-white/10 p-5"
+              >
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 ${role.pill}`}>
+                  {role.label}
+                </span>
+                <ul className="space-y-1.5">
+                  {role.points.map((p) => (
+                    <li key={p} className="flex items-start gap-2 text-sm text-[#0F172A]/85 dark:text-[#F8FAFC]/85 leading-relaxed">
+                      <span className="text-[#2563eb] mt-1.5 leading-none">•</span>
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* How to ask good questions */}
+          <div className="rounded-3xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 p-7 md:p-9 shadow-sm">
+            <h3 className="font-logo font-bold text-2xl mb-5">How to ask good questions</h3>
+            <ul className="space-y-2.5">
+              {[
+                'Consider what challenges we face and what choices we can make.',
+                'Try to find a relevant scripture and apply the principle.',
+                "Don't expose sin — expose heart, intentions, and positions.",
+                'Invite stories (e.g. "Tell me about a time when…").',
+                'Flip it on its head and see the other side.',
+                'Follow up with "Can you unpack that more?" or "What makes you say that?"',
+                'Silence is okay.',
+              ].map((q) => (
+                <li key={q} className="flex items-start gap-2 text-sm text-[#0F172A]/85 dark:text-[#F8FAFC]/85 leading-relaxed">
+                  <span className="text-[#2563eb] mt-1.5 leading-none">•</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] italic mt-5">
+              In the gospels, Jesus spent a lot of time asking and answering questions. Be like Jesus.
+            </p>
+          </div>
+
+          {/* Icebreaker ideas */}
+          <div className="rounded-3xl bg-[#2563eb] text-white p-7 md:p-9 shadow-sm flex flex-col">
+            <h3 className="font-logo font-bold text-2xl mb-5">Ice breaker ideas</h3>
+            <ul className="space-y-3 flex-1">
+              {[
+                'What are you thankful for?',
+                'A testimony of what God has done this week?',
+                'Your favourite Bible verse?',
+              ].map((q) => (
+                <li key={q} className="flex items-start gap-2 text-base leading-relaxed">
+                  <span className="mt-1.5 leading-none opacity-80">→</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-white/70 mt-5">
+              Pull one of these when the room goes quiet. Then let the Yap follow.
+            </p>
           </div>
         </div>
       </section>

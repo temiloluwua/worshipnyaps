@@ -216,7 +216,12 @@ export function TopicsView({
 
   const hasSearchQuery = normalizedQuery.length > 0;
   const shouldShowFeaturedCard = false;
-  const showTopicOfTheDayCard = false;
+  // Show today's pick at the top of the Topics tab whenever the user is
+  // browsing the full feed (not searching, not category-filtering). Same
+  // date hash as the landing page so both pages always agree.
+  const showTopicOfTheDayCard = Boolean(
+    topicOfTheDay && !hasSearchQuery && selectedCategory === 'all' && activeTab === 'topics'
+  );
   const showRandomCard = false;
 
   const featuredExclusions = new Set<string>();
@@ -453,10 +458,8 @@ export function TopicsView({
   };
 
   const handleCreateTopic = () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
+    // Logged-out users can open the modal and fill it out — the auth gate
+    // moves to submit time so people don't feel ambushed by a sign-in wall.
     setShowCreateModal(true);
   };
 
@@ -660,6 +663,30 @@ export function TopicsView({
 
       {activeTab === 'topics' ? (
         <div className="p-4">
+          {showTopicOfTheDayCard && topicOfTheDay && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                  Topic of the Day
+                </h2>
+              </div>
+              <TopicOfTheDayCard
+                topic={{
+                  ...topicOfTheDay,
+                  likes: getLikeCount('topic', topicOfTheDay.id),
+                }}
+                isLiked={isLiked('topic', topicOfTheDay.id)}
+                isBookmarked={isBookmarked(topicOfTheDay.id)}
+                onLike={() => handleLike(topicOfTheDay.id)}
+                onBookmark={() => handleBookmark(topicOfTheDay.id)}
+                onShare={() => handleShare(topicOfTheDay)}
+                onEdit={() => handleEdit(topicOfTheDay)}
+                onView={() => handleViewTopic(topicOfTheDay)}
+                frameTone="gold"
+              />
+            </div>
+          )}
           {visibleTopics.length > 0 ? (
             <div className="grid gap-6">
               {visibleTopics.map((topic, index) => {
@@ -744,13 +771,25 @@ export function TopicsView({
                       </div>
                     )}
                     <div className="flex gap-6 text-xs text-gray-500 dark:text-gray-400">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleLike(topic.id); }}
-                        className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isLiked('community_post', topic.id) ? 'text-red-600 dark:text-red-400' : ''}`}
-                      >
-                        <Heart className={`w-4 h-4 inline mr-1 ${isLiked('community_post', topic.id) ? 'fill-current' : ''}`} />
-                        {getLikeCount('community_post', topic.id)}
-                      </button>
+                      {/* Prayer requests get a praying-hands react instead of a heart. */}
+                      {topic.community_category === 'prayer_point' ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleLike(topic.id); }}
+                          className={`hover:text-amber-600 dark:hover:text-amber-400 transition-colors ${isLiked('community_post', topic.id) ? 'text-amber-600 dark:text-amber-400' : ''}`}
+                          title={isLiked('community_post', topic.id) ? 'You prayed for this' : 'Praying for you'}
+                        >
+                          <span className="text-base inline-block mr-1 align-middle">🙏</span>
+                          {getLikeCount('community_post', topic.id)}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleLike(topic.id); }}
+                          className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isLiked('community_post', topic.id) ? 'text-red-600 dark:text-red-400' : ''}`}
+                        >
+                          <Heart className={`w-4 h-4 inline mr-1 ${isLiked('community_post', topic.id) ? 'fill-current' : ''}`} />
+                          {getLikeCount('community_post', topic.id)}
+                        </button>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleBookmark(topic.id); }}
                         className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${isBookmarked(topic.id) ? 'text-yellow-600 dark:text-yellow-400' : ''}`}
@@ -838,6 +877,7 @@ export function TopicsView({
       <CreateTopicModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
+        onRequireAuth={() => setShowAuthModal(true)}
         topicType={activeTab === 'topics' ? 'preselected' : 'community'}
       />
 
