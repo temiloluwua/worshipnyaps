@@ -30,7 +30,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     <nav
       id="main-navigation"
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-2 transition-colors"
+      className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 pt-2 transition-colors"
+      style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
     >
       <div className="flex justify-around">
         {tabs.map((tab) => {

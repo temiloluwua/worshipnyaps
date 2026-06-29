@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Eye, EyeOff, UserPlus, Mail, CheckCircle2, AtSign, Check, X as XIcon } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Mail, CheckCircle2, AtSign, Check, X as XIcon, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
@@ -23,6 +23,23 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
+  // Two-step flow: credentials first, profile second. Reduces the
+  // perceived weight of the form and lets us validate email/password
+  // before asking for name + username.
+  const [step, setStep] = useState<'credentials' | 'profile'>('credentials');
+
+  const advanceToProfile = () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    setStep('profile');
+  };
 
   // Debounced availability check
   useEffect(() => {
@@ -133,123 +150,156 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <UserPlus className="w-7 h-7 text-blue-600 dark:text-blue-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('authModal.createAccountCta')}</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Join our community</p>
+          {/* Step progress dots — visual only, no numbered label so other sign-in options stay the focus */}
+          <div className="flex items-center justify-center gap-1.5 mt-3" aria-hidden="true">
+            <span className={`h-1.5 rounded-full transition-all ${step === 'credentials' ? 'w-8 bg-blue-600' : 'w-1.5 bg-blue-200 dark:bg-blue-900/60'}`} />
+            <span className={`h-1.5 rounded-full transition-all ${step === 'profile'     ? 'w-8 bg-blue-600' : 'w-1.5 bg-gray-200 dark:bg-gray-700'}`} />
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Full Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              placeholder="Enter your full name"
-            />
-          </div>
+          {step === 'credentials' ? (
+            <>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder={t('authModal.emailPlaceholder')}
+                  autoFocus
+                />
+              </div>
 
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Username
-            </label>
-            <div className="relative">
-              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                required
-                minLength={3}
-                maxLength={20}
-                className="w-full pl-9 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="your_username"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-              {usernameStatus === 'checking' && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">…</span>
-              )}
-              {usernameStatus === 'available' && (
-                <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
-              )}
-              {(usernameStatus === 'taken' || usernameStatus === 'invalid') && (
-                <XIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
-              )}
-            </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {usernameStatus === 'taken' && <span className="text-red-500">Taken — try another</span>}
-              {usernameStatus === 'invalid' && <span className="text-red-500">3-20 chars, lowercase letters / numbers / underscores</span>}
-              {usernameStatus === 'available' && <span className="text-green-600">Available!</span>}
-              {(usernameStatus === 'idle' || usernameStatus === 'checking') && 'How people will find you — 3-20 chars'}
-            </p>
-          </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 pr-11 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    placeholder="Create a password (min. 6 characters)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              placeholder={t('authModal.emailPlaceholder')}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-4 py-3 pr-11 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Create a password (min. 6 characters)"
-              />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={advanceToProfile}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-sm inline-flex items-center justify-center gap-2"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
+                Continue
+                <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Full Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Enter your full name"
+                  autoFocus
+                />
+              </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors text-sm"
-          >
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-            ) : (
-              t('authModal.createAccountCta')
-            )}
-          </button>
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Username
+                </label>
+                <div className="relative">
+                  <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    required
+                    minLength={3}
+                    maxLength={20}
+                    className="w-full pl-9 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    placeholder="your_username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                  {usernameStatus === 'checking' && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">…</span>
+                  )}
+                  {usernameStatus === 'available' && (
+                    <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                  )}
+                  {(usernameStatus === 'taken' || usernameStatus === 'invalid') && (
+                    <XIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {usernameStatus === 'taken' && <span className="text-red-500">Taken — try another</span>}
+                  {usernameStatus === 'invalid' && <span className="text-red-500">3-20 chars, lowercase letters / numbers / underscores</span>}
+                  {usernameStatus === 'available' && <span className="text-green-600">Available!</span>}
+                  {(usernameStatus === 'idle' || usernameStatus === 'checking') && 'How people will find you — 3-20 chars'}
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setStep('credentials')}
+                  disabled={isLoading}
+                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm inline-flex items-center justify-center gap-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors text-sm"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+                  ) : (
+                    t('authModal.createAccountCta')
+                  )}
+                </button>
+              </div>
+            </>
+          )}
 
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center leading-relaxed">
             By creating an account, you agree to our{' '}
@@ -260,6 +310,9 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           </p>
         </form>
 
+        {/* Social auth is always visible so users always have a path that
+            doesn't require typing a password — picking Google/Apple/Phone
+            bypasses the profile-collection step too. */}
         <div className="mt-6">
           <SocialAuthButtons onSuccess={onSuccess} mode="signup" />
         </div>

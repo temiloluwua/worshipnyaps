@@ -162,6 +162,12 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const seeHowToYap = () => {
     document.getElementById('how-to-yap')?.scrollIntoView({ behavior: 'smooth' });
   };
+  // Direct Stripe checkout for the card game — bypasses the in-app Shop page
+  // entirely. Stays in sync with ProductCard's SHOP_CHECKOUT_URL.
+  const CARD_GAME_CHECKOUT_URL = 'https://buy.stripe.com/bJeaEX7a38rZ1jv9ao0oM00';
+  const openCardGameCheckout = () => {
+    window.open(CARD_GAME_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] text-[#0F172A] dark:text-[#F8FAFC] transition-colors font-sans">
@@ -175,7 +181,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       </button>
 
       {/* 1. Nav bar */}
-      <nav className="sticky top-0 z-20 bg-[#F8FAFC]/85 dark:bg-[#0F172A]/85 backdrop-blur-md border-b border-black/10 dark:border-white/10">
+      <nav
+        className="sticky top-0 z-20 bg-[#F8FAFC]/85 dark:bg-[#0F172A]/85 backdrop-blur-md border-b border-black/10 dark:border-white/10"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <button onClick={onEnter} className="flex items-center gap-3 group text-left">
             <Logo size="sm" />
@@ -199,7 +208,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               Events
             </button>
             <button
-              onClick={onPreOrder}
+              onClick={openCardGameCheckout}
               className="px-3 py-2 rounded-lg text-sm font-medium text-[#64748B] hover:text-[#2563eb] hover:bg-[#EFF6FF] dark:hover:bg-white/5 transition-colors"
             >
               Shop
@@ -575,7 +584,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               ))}
             </ul>
             <p className="text-xs text-white/70 mt-5">
-              Pull one of these when the room goes quiet. Then let the Yap follow.
+              Start a conversation with a fun question, Then let the Yap follow.
             </p>
           </div>
         </div>
@@ -660,14 +669,12 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               <span>Join the waitlist</span>
             </button>
           </div>
-          {onPreOrder && (
-            <button
-              onClick={onPreOrder}
-              className="mt-6 text-white/85 underline underline-offset-4 text-sm hover:text-white"
-            >
-              Or pre-order the card game →
-            </button>
-          )}
+          <button
+            onClick={openCardGameCheckout}
+            className="mt-6 text-white/85 underline underline-offset-4 text-sm hover:text-white"
+          >
+            Or buy the card game →
+          </button>
         </div>
       </section>
 

@@ -504,6 +504,7 @@ export function TopicsView({
         className={`sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-10 transition-all duration-300 ease-in-out ${
           showSearch ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
         }`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">

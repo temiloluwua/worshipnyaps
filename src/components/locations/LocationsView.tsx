@@ -41,7 +41,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
     { value: 'all', label: 'All' },
     { value: 'today', label: 'Today' },
     { value: 'bible_study_yaps', label: '📖 Bible Study / Yaps' },
-    { value: 'church', label: '⛪ Church' },
+    { value: 'church', label: '✨ Yap' },
     { value: 'other', label: 'Other' },
   ];
 
@@ -220,7 +220,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen pb-24">
-      <div className="p-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white">
+      <div
+        className="p-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white"
+        style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
+      >
         <h1 className="text-2xl font-bold mb-1">{t('events.nearYou')}</h1>
         <p className="text-blue-100 text-sm">{t('events.discover')}</p>
       </div>
@@ -939,7 +942,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
             <div className="flex flex-wrap gap-2">
               {([
                 { value: 'bible_study', label: '📖 Bible Study / Yaps', eventType: 'bible_study', vibe: '', tone: 'blue' },
-                { value: 'church',      label: '⛪ Church',      eventType: 'church',      vibe: '', tone: 'violet' },
+                { value: 'church',      label: '✨ Yap',         eventType: 'church',      vibe: '', tone: 'violet' },
                 { value: 'games',       label: '🎲 Games',       eventType: 'yap',         vibe: 'games', tone: 'amber' },
                 { value: 'food',        label: '🍽️ Food / Potluck', eventType: 'yap',     vibe: 'food', tone: 'amber' },
                 { value: 'sports',      label: '🏅 Sports',      eventType: 'yap',         vibe: 'sports', tone: 'amber' },
