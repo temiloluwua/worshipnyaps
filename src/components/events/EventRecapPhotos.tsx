@@ -56,13 +56,22 @@ export const EventRecapPhotos: React.FC<EventRecapPhotosProps> = ({ eventId, hos
         const { error } = await supabase
           .from('event_photos')
           .insert({ event_id: eventId, uploader_id: user.id, image_url: url });
-        if (error) throw error;
+        if (error) {
+          // The most common cause here is the RLS check — you have to be host,
+          // cohost, or an attendee to upload. Surface a clearer message than
+          // the raw "new row violates row-level security policy".
+          if (/row-level security/i.test(error.message)) {
+            throw new Error('Only the host, cohosts, and attendees can post recap photos.');
+          }
+          throw error;
+        }
         added++;
       }
       await fetchPhotos();
       toast.success(`Added ${added} ${added === 1 ? 'photo' : 'photos'}`);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to upload');
+      console.error('event_photos upload failed:', err);
+      toast.error(err?.message || 'Failed to upload');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

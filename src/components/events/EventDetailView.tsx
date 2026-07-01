@@ -20,6 +20,7 @@ import { CoHostManager } from './CoHostManager';
 import { EventAnnouncements } from './EventAnnouncements';
 import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
 import { shareIcs } from '../../lib/icsExport';
+import { mapLinkFor } from '../../lib/mapLink';
 import { ReportButton } from '../moderation/ReportButton';
 
 interface EventDetailViewProps {
@@ -1427,7 +1428,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                     const visibility = event.address_visibility || 'public';
                     const canSeeAddress = isHost || isRsvped || visibility === 'public';
                     if (canSeeAddress) {
-                      return event.locations?.address || t('events.addressAfterRSVP');
+                      const addr = event.locations?.address;
+                      if (!addr) return t('events.addressAfterRSVP');
+                      return (
+                        <a
+                          href={mapLinkFor(addr)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          {addr}
+                        </a>
+                      );
                     }
                     if (visibility === 'general_area') {
                       return 'General area only — exact address is hidden.';
@@ -1537,7 +1549,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             })() && (
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <a
-                  href={`https://www.google.com/maps/search/${encodeURIComponent(event.locations.address)}`}
+                  href={mapLinkFor(event.locations.address)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"

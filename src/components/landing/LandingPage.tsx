@@ -159,9 +159,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const isNativeApp = Capacitor.isNativePlatform();
   const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
   const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Get the App';
-  const seeHowToYap = () => {
-    document.getElementById('how-to-yap')?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToZone = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
+  const seeHowToYap = () => scrollToZone('how-to-play');
   // Direct Stripe checkout for the card game — bypasses the in-app Shop page
   // entirely. Stays in sync with ProductCard's SHOP_CHECKOUT_URL.
   const CARD_GAME_CHECKOUT_URL = 'https://buy.stripe.com/bJeaEX7a38rZ1jv9ao0oM00';
@@ -255,7 +256,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             onClick={seeHowToYap}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-black/15 dark:border-white/20 text-[#0F172A] dark:text-[#F8FAFC] font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
           >
-            <span>How to Yap</span>
+            <span>How to Play</span>
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -265,8 +266,18 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </p>
       </section>
 
+      {/* Chapter break — The App */}
+      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center gap-6">
+        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
+        <div className="text-center">
+          <span className="block text-[10px] font-bold tracking-[0.3em] uppercase text-[#64748B] dark:text-[#94A3B8] mb-1">Part one</span>
+          <span className="block font-logo text-2xl text-[#0F172A] dark:text-[#F8FAFC]">The App</span>
+        </div>
+        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
+      </div>
+
       {/* Yaps explainer — dark */}
-      <section className="bg-[#0F172A] text-[#F8FAFC]">
+      <section id="the-app" className="bg-[#0F172A] text-[#F8FAFC] scroll-mt-16">
         <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#14b8a6] mb-4">The Signature Feature</p>
@@ -441,9 +452,19 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 6.5 How to Yap — pulled from the WnY card-game instruction sheets */}
-      <section id="how-to-yap" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">How to Yap</p>
+      {/* Chapter break — How to Play */}
+      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center gap-6">
+        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
+        <div className="text-center">
+          <span className="block text-[10px] font-bold tracking-[0.3em] uppercase text-[#64748B] dark:text-[#94A3B8] mb-1">Part two</span>
+          <span className="block font-logo text-2xl text-[#0F172A] dark:text-[#F8FAFC]">How to Play</span>
+        </div>
+        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
+      </div>
+
+      {/* 6.5 How to Play — pulled from the WnY card-game instruction sheets */}
+      <section id="how-to-play" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">How to Play</p>
         <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-4">
           So, you want to host a Yap.
         </h2>
@@ -590,9 +611,9 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 7. How it works */}
-      <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-20">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">How It Works</p>
+      {/* 7. How it works — still part of the "How to Play" zone */}
+      <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">Up and running</p>
         <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-14">
           Up and running in minutes
         </h2>
@@ -641,8 +662,18 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 9. Final CTA */}
-      <section className="max-w-6xl mx-auto px-6 py-20">
+      {/* Chapter break — Get the Deck */}
+      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center gap-6">
+        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
+        <div className="text-center">
+          <span className="block text-[10px] font-bold tracking-[0.3em] uppercase text-[#64748B] dark:text-[#94A3B8] mb-1">Part three</span>
+          <span className="block font-logo text-2xl text-[#0F172A] dark:text-[#F8FAFC]">Get the Deck</span>
+        </div>
+        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
+      </div>
+
+      {/* 9. Final CTA — "Get the Deck" zone */}
+      <section id="get-the-deck" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <div className="rounded-3xl bg-[#2563eb] text-white p-10 md:p-16 text-center shadow-xl">
           <div className="text-5xl mb-5">🃏</div>
           <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-5">

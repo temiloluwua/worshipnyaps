@@ -6,8 +6,25 @@ import './index.css'
 import './i18n'
 import { Toaster } from 'react-hot-toast'
 import { initSentry, sentryEnabled, Sentry } from './lib/sentry'
+import { RootErrorBoundary } from './components/RootErrorBoundary'
 
-initSentry()
+// Init Sentry in a try/catch — a busted DSN or network hiccup during
+// startup shouldn't take down the whole app render.
+try {
+  initSentry()
+} catch (e) {
+  console.error('[main] initSentry failed:', e)
+}
+
+// Surface uncaught errors + promise rejections in the console so App Store
+// review logs can be diagnosed. Without these, a bad JS eval in production
+// leaves no trace.
+window.addEventListener('error', (e) => {
+  console.error('[window.onerror]', e.message, e.error);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[unhandledrejection]', e.reason);
+});
 
 CapacitorApp.addListener('backButton', () => {
   const modal = document.querySelector('div[role="dialog"]')
@@ -24,23 +41,38 @@ const AppTree = (
     <Toaster
       position="top-right"
       toastOptions={{
-        duration: 4000,
+        duration: 2000,
         style: { background: '#363636', color: '#fff' },
-        success: { duration: 3000, iconTheme: { primary: '#4ade80', secondary: '#fff' } },
-        error: { duration: 5000, iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+        success: { duration: 2000, iconTheme: { primary: '#4ade80', secondary: '#fff' } },
+        error: { duration: 2500, iconTheme: { primary: '#ef4444', secondary: '#fff' } },
       }}
     />
   </>
 )
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    {sentryEnabled ? (
-      <Sentry.ErrorBoundary fallback={<div style={{ padding: 24, fontFamily: 'system-ui' }}>Something went wrong. Please reload the app.</div>}>
-        {AppTree}
-      </Sentry.ErrorBoundary>
-    ) : (
-      AppTree
-    )}
-  </React.StrictMode>,
-)
+const rootEl = document.getElementById('root');
+if (!rootEl) {
+  // No #root — hydrate a visible message instead of the previous non-null
+  // assertion that would silently throw. Extremely unlikely, but shipped as
+  // a safety net.
+  document.body.innerHTML =
+    '<div style="padding:24px;font-family:system-ui;text-align:center">App failed to mount. Please reload.</div>';
+} else {
+  ReactDOM.createRoot(rootEl).render(
+    <React.StrictMode>
+      <RootErrorBoundary>
+        {sentryEnabled ? (
+          <Sentry.ErrorBoundary
+            fallback={
+              <div style={{ padding: 24, fontFamily: 'system-ui' }}>Something went wrong. Please reload the app.</div>
+            }
+          >
+            {AppTree}
+          </Sentry.ErrorBoundary>
+        ) : (
+          AppTree
+        )}
+      </RootErrorBoundary>
+    </React.StrictMode>,
+  );
+}

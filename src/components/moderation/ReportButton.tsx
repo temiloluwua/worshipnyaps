@@ -24,6 +24,10 @@ export interface ReportTarget {
   authorId?: string;
   // Snapshot of the content for moderator review (in case the original is deleted)
   contentSnapshot?: Record<string, unknown>;
+  // Skip setting the FK entity column. Used when the target ID doesn't live in
+  // the table the column references (e.g. community_posts reported under the
+  // 'topic' type). The ID is preserved in content_snapshot for moderators.
+  skipEntityRef?: boolean;
 }
 
 interface ReportButtonProps {
@@ -81,8 +85,14 @@ export const ReportButton: React.FC<ReportButtonProps> = ({ target, className, v
       };
       if (target.authorId) row.reported_user_id = target.authorId;
       const entityCol = ENTITY_COLUMN_BY_TYPE[target.type];
-      if (entityCol) row[entityCol] = target.id;
-      if (target.contentSnapshot) row.content_snapshot = target.contentSnapshot;
+      if (entityCol && !target.skipEntityRef) row[entityCol] = target.id;
+      // Merge the raw id into the snapshot so moderators can still trace it
+      // when we're skipping the FK column (e.g. community_posts).
+      const snapshot = {
+        ...(target.contentSnapshot || {}),
+        ...(target.skipEntityRef ? { target_id: target.id, target_type: target.type } : {}),
+      };
+      if (Object.keys(snapshot).length > 0) row.content_snapshot = snapshot;
 
       const { error } = await supabase.from('reports').insert(row);
       if (error) throw error;

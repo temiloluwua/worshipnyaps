@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, UserCheck, Send, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Search, UserCheck, Send, Clock, CheckCircle2, Copy, Check, Share2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useEventInvitations } from '../../hooks/useEventInvitations';
@@ -25,6 +25,40 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
   const [loadingFriends, setLoadingFriends] = useState(true);
   const [sending, setSending] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const shareOrigin = (() => {
+    const origin = window.location.origin;
+    if (origin.startsWith('http://localhost') || origin.startsWith('capacitor://')) {
+      return 'https://worshipnyaps.app';
+    }
+    return origin;
+  })();
+  const eventLink = `${shareOrigin}/event/${eventId}`;
+  const shareText = `Join me at "${eventTitle}" on Worship N Yaps`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(eventLink);
+      setCopied(true);
+      toast.success('Link copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator.share !== 'function') {
+      await handleCopyLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: eventTitle, text: shareText, url: eventLink });
+    } catch {
+      // user cancelled — no-op
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -89,6 +123,25 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
         </div>
 
         <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors touch-manipulation"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copied!' : 'Copy link'}
+            </button>
+            <button
+              type="button"
+              onClick={handleNativeShare}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors touch-manipulation"
+              title="Instagram, WhatsApp, Messenger, and more"
+            >
+              <Share2 className="w-4 h-4" />
+              Share
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input

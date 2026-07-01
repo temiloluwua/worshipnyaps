@@ -22,7 +22,9 @@
     <meta property="twitter:title" content="Worship N Yaps - Calgary Bible Study Community" />
     <meta property="twitter:description" content="Join Bible studies and community events across Calgary. Swipe through discussion cards, find local events, and connect with fellow believers." />
     <meta property="twitter:image" content="https://worshipnyaps.com/og-image.jpg" />
-<script type="text/javascript" src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+    <!-- Third-party auth widgets — always loaded async/defer so a slow CDN
+         can never block first paint. App Store review flagged blank-screen
+         on iPad; a blocking third-party script is a common cause. -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">

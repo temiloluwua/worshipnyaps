@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Repeat, MessageSquare, Link2, Copy, Check,
-  Send, Twitter, Facebook, Users
+  Send, Facebook, Users, Share2
 } from 'lucide-react';
 import { Topic, supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -44,7 +44,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [eventChatsLoading, setEventChatsLoading] = useState(false);
   const [sendingToEventId, setSendingToEventId] = useState<string | null>(null);
 
-  const shareUrl = `${window.location.origin}/topic/${topic.id}`;
+  // Inside Capacitor's WebView, window.location.origin is capacitor://localhost
+  // — not shareable. Force the production origin so links to X/Facebook/native
+  // share actually resolve to a real page.
+  const shareOrigin = (() => {
+    const origin = window.location.origin;
+    if (origin.startsWith('http://localhost') || origin.startsWith('capacitor://')) {
+      return 'https://worshipnyaps.app';
+    }
+    return origin;
+  })();
+  const shareUrl = `${shareOrigin}/topic/${topic.id}`;
   const shareText = `Check out "${topic.title}" on Worship N Yaps`;
 
   useEffect(() => {
@@ -163,16 +173,43 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
-  const handleShareExternal = (platform: 'twitter' | 'facebook') => {
+  const handleShareExternal = async (platform: 'x' | 'facebook') => {
     let url = '';
 
-    if (platform === 'twitter') {
-      url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    if (platform === 'x') {
+      // x.com is the canonical host now; twitter.com still forwards but x.com
+      // is cleaner and avoids any tracker interstitials some browsers add.
+      url = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
     } else if (platform === 'facebook') {
       url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
     }
 
-    window.open(url, '_blank', 'width=600,height=400');
+    // On iOS Capacitor, window.open ignores width/height and often opens a
+    // blank inline webview. Fall back to the native share sheet when it's
+    // available so Facebook / X can be picked from the OS-level picker too.
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: topic.title, text: shareText, url: shareUrl });
+        return;
+      } catch {
+        // user cancelled or share failed — fall through to opening the URL
+      }
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator.share !== 'function') {
+      // No native share sheet — copy the link as the next best thing so the
+      // user can still paste into IG / WhatsApp / Messenger themselves.
+      await handleCopyLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: topic.title, text: shareText, url: shareUrl });
+    } catch {
+      // silently ignore cancellation
+    }
   };
 
   return (
@@ -417,21 +454,30 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <Copy className="w-4 h-4 text-gray-400" />
               </button>
 
-              <div className="flex space-x-3">
+              <div className="grid grid-cols-3 gap-2">
                 <button
-                  onClick={() => handleShareExternal('twitter')}
-                  className="flex-1 flex items-center justify-center space-x-2 p-3 bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white rounded-lg transition-colors"
+                  onClick={() => handleShareExternal('x')}
+                  className="flex items-center justify-center space-x-1.5 p-3 bg-black hover:bg-gray-800 text-white rounded-lg transition-colors touch-manipulation"
                 >
-                  <Twitter className="w-5 h-5" />
-                  <span className="font-medium">Twitter</span>
+                  <span className="font-bold text-lg leading-none">𝕏</span>
+                  <span className="font-medium text-sm">Post</span>
                 </button>
 
                 <button
                   onClick={() => handleShareExternal('facebook')}
-                  className="flex-1 flex items-center justify-center space-x-2 p-3 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-lg transition-colors"
+                  className="flex items-center justify-center space-x-1.5 p-3 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-lg transition-colors touch-manipulation"
                 >
                   <Facebook className="w-5 h-5" />
-                  <span className="font-medium">Facebook</span>
+                  <span className="font-medium text-sm">Facebook</span>
+                </button>
+
+                <button
+                  onClick={handleNativeShare}
+                  className="flex items-center justify-center space-x-1.5 p-3 bg-gray-800 hover:bg-gray-900 dark:bg-gray-600 dark:hover:bg-gray-500 text-white rounded-lg transition-colors touch-manipulation"
+                  title="Instagram, WhatsApp, Messenger, and more"
+                >
+                  <Share2 className="w-5 h-5" />
+                  <span className="font-medium text-sm">More</span>
                 </button>
               </div>
             </>

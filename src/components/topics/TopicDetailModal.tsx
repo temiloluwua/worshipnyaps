@@ -22,6 +22,7 @@ interface TopicDetailModalProps {
   onShare: () => void;
   onEdit: () => void;
   onDeleted?: () => void;
+  onViewProfile?: (userId: string) => void;
 }
 
 export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
@@ -35,6 +36,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   onShare,
   onEdit,
   onDeleted,
+  onViewProfile,
 }) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
@@ -153,7 +155,10 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 id: topic.id,
                 authorId: topic.author_id || topic.authorId,
                 preview: (topic.title || topic.content || '').slice(0, 200),
-                contentSnapshot: { title: topic.title, content: topic.content, category: topic.category },
+                contentSnapshot: { title: topic.title, content: topic.content, category: topic.category, source: topic.topic_type === 'community' ? 'community_post' : 'topic' },
+                // community_posts.id isn't a valid FK into topics.id, so skip
+                // the reported_topic_id column and rely on the snapshot instead.
+                skipEntityRef: topic.topic_type === 'community',
               }}
               className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             />
@@ -165,16 +170,39 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {(topic.authorName || topic.users?.name || 'A').charAt(0)}
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white text-sm">
-                  {topic.authorName || topic.users?.name || 'Anonymous'}
+            {(() => {
+              const authorId: string | undefined = topic.author_id || topic.authorId || topic.users?.id;
+              const openProfile = () => {
+                if (onViewProfile && authorId) {
+                  onClose();
+                  onViewProfile(authorId);
+                }
+              };
+              const canOpen = Boolean(onViewProfile && authorId);
+              return (
+                <div className="flex items-center gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={openProfile}
+                    disabled={!canOpen}
+                    className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 touch-manipulation"
+                    aria-label={canOpen ? `View ${topic.authorName || topic.users?.name || 'author'}'s profile` : undefined}
+                  >
+                    {(topic.authorName || topic.users?.name || 'A').charAt(0)}
+                  </button>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={openProfile}
+                      disabled={!canOpen}
+                      className="font-medium text-gray-900 dark:text-white text-sm hover:underline disabled:no-underline focus:outline-none touch-manipulation"
+                    >
+                      {topic.authorName || topic.users?.name || 'Anonymous'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight" style={{ fontFamily: 'Georgia, serif' }}>{safeTitle}</h1>
 

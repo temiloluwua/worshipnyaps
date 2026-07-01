@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Eye, EyeOff, UserPlus, Mail, CheckCircle2, AtSign, Check, X as XIcon, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Mail, CheckCircle2, AtSign, Check, X as XIcon, ArrowRight, ArrowLeft, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { SocialAuthButtons } from './SocialAuthButtons';
 import { getTurnstileToken } from '../../lib/turnstile';
+import { SUPPORTED_CITIES } from '../../lib/cities';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 
@@ -19,6 +20,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
+  const [city, setCity] = useState('');
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +81,10 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       toast.error('That username is taken. Try another.');
       return;
     }
+    if (!city) {
+      toast.error('Please select your city.');
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -87,7 +93,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         email,
         password,
         options: {
-          data: { name, username: trimmedUsername },
+          data: { name, username: trimmedUsername, city },
           ...(captchaToken ? { captchaToken } : {}),
         },
       });
@@ -102,7 +108,12 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           toast.error('An account with this email already exists. Please sign in instead.');
           return;
         }
+        // Persist city to the public.users profile row directly in case the
+        // handle_new_user() trigger doesn't map raw_user_meta_data.city.
         if (authData.session) {
+          try {
+            await supabase.from('users').update({ city }).eq('id', authData.user.id);
+          } catch { /* non-fatal — profile edit can set it later */ }
           toast.success('Account created successfully!');
           onSuccess?.();
         } else {
@@ -273,6 +284,30 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
                   {usernameStatus === 'invalid' && <span className="text-red-500">3-20 chars, lowercase letters / numbers / underscores</span>}
                   {usernameStatus === 'available' && <span className="text-green-600">Available!</span>}
                   {(usernameStatus === 'idle' || usernameStatus === 'checking') && 'How people will find you — 3-20 chars'}
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  City
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <select
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    required
+                    className="w-full pl-9 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none"
+                  >
+                    <option value="" disabled>Select your city</option>
+                    {SUPPORTED_CITIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Helps us show events and connections near you
                 </p>
               </div>
 

@@ -182,15 +182,22 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[65] p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             {isCommunityPost ? 'Create a Post' : 'Create Discussion Topic'}
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors touch-manipulation"
             aria-label="Close modal"
           >
             <X size={20} className="text-gray-500 dark:text-gray-400" />
@@ -266,7 +273,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                       key={opt.value}
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, communityCategory: opt.value }))}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all touch-manipulation ${
                         formData.communityCategory === opt.value
                           ? `${opt.color} ring-2 ring-offset-1 ring-blue-500`
                           : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:border-gray-300'
@@ -293,7 +300,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                       key={opt.value}
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, visibility: opt.value as 'public' | 'friends_only' }))}
-                      className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
+                      className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left touch-manipulation ${
                         formData.visibility === opt.value
                           ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
                           : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
@@ -405,16 +412,16 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                 {formData.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full"
+                    className="inline-flex items-center pl-3 pr-1 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full"
                   >
                     #{tag}
                     <button
                       type="button"
-                      onClick={() => removeTag(tag)}
-                      className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeTag(tag); }}
+                      className="ml-1 p-1.5 -mr-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 active:bg-blue-300 dark:active:bg-blue-700 touch-manipulation"
                       aria-label={`Remove ${tag} tag`}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4" />
                     </button>
                   </span>
                 ))}
@@ -443,13 +450,13 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 touch-manipulation"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
               disabled={topicType === 'preselected' && !isAdmin}
             >
               {isCommunityPost ? 'Post' : 'Create Topic'}

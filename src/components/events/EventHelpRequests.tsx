@@ -21,6 +21,7 @@ interface UnifiedHelpItem {
   assigned_user_id: string | null;
   status: 'open' | 'filled' | 'in_progress' | 'completed';
   is_filled: boolean;
+  open_to_volunteers: boolean;
   created_at: string;
   assigned_user?: { name: string; avatar_url?: string } | null;
 }
@@ -76,10 +77,12 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   const [newHelp, setNewHelp] = useState({
     request_type: 'other' as typeof HELP_REQUEST_TYPES[number],
     title: '', description: '', assigned_user_id: '',
+    open_to_volunteers: true,
   });
   const [newFood, setNewFood] = useState({
     item: '', category: 'main' as typeof FOOD_CATEGORIES[number],
     notes: '', assigned_to: '',
+    open_to_volunteers: true,
   });
 
   const fetchAttendees = async () => {
@@ -147,6 +150,8 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
         assigned_user_id: r.assigned_user_id,
         status: r.status,
         is_filled: r.status === 'filled' || r.is_filled,
+        // Legacy rows (pre-migration) have no column — default to open.
+        open_to_volunteers: r.open_to_volunteers ?? true,
         created_at: r.created_at,
         assigned_user: r.assigned_user,
       }));
@@ -161,6 +166,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
         assigned_user_id: f.assigned_to,
         status: f.completed ? 'filled' : 'open',
         is_filled: f.completed,
+        open_to_volunteers: f.open_to_volunteers ?? true,
         created_at: f.created_at,
         assigned_user: f.assigned_user,
       }));
@@ -357,9 +363,10 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
         description: newHelp.description.trim() || null,
         assigned_user_id: newHelp.assigned_user_id || null,
         status: newHelp.assigned_user_id ? 'filled' : 'open',
+        open_to_volunteers: newHelp.open_to_volunteers,
       });
       if (error) throw error;
-      setNewHelp({ request_type: 'other', title: '', description: '', assigned_user_id: '' });
+      setNewHelp({ request_type: 'other', title: '', description: '', assigned_user_id: '', open_to_volunteers: true });
       setShowForm(null);
       await fetchItems();
       toast.success('Help request added!');
@@ -381,9 +388,10 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
         notes: newFood.notes.trim() || null,
         assigned_to: newFood.assigned_to || null,
         completed: false,
+        open_to_volunteers: newFood.open_to_volunteers,
       });
       if (error) throw error;
-      setNewFood({ item: '', category: 'main', notes: '', assigned_to: '' });
+      setNewFood({ item: '', category: 'main', notes: '', assigned_to: '', open_to_volunteers: true });
       setShowForm(null);
       await fetchItems();
       toast.success('Food item added!');
@@ -511,13 +519,18 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                       </button>
                     </>
                   )}
-                  {isOpen && user && !isHost && (
+                  {isOpen && user && !isHost && item.open_to_volunteers && (
                     <button
                       onClick={() => handleVolunteer(item)}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium touch-manipulation"
                     >
                       I'll do it
                     </button>
+                  )}
+                  {isOpen && !isHost && !item.open_to_volunteers && (
+                    <span className="px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium">
+                      🔒 Host will fill
+                    </span>
                   )}
                   {isMine && item.is_filled && (
                     <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
@@ -607,13 +620,39 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
           />
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setNewHelp(p => ({ ...p, open_to_volunteers: true }))}
+              className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors text-left ${
+                newHelp.open_to_volunteers
+                  ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 text-blue-700 dark:text-blue-300'
+                  : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              🙋 Open to volunteers
+              <div className="text-[10px] font-normal opacity-80 mt-0.5">Anyone attending can grab it</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewHelp(p => ({ ...p, open_to_volunteers: false }))}
+              className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors text-left ${
+                !newHelp.open_to_volunteers
+                  ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-400 text-purple-700 dark:text-purple-300'
+                  : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              🔒 Assign only
+              <div className="text-[10px] font-normal opacity-80 mt-0.5">Only you can fill this role</div>
+            </button>
+          </div>
           {attendees.length > 0 && (
             <select
               value={newHelp.assigned_user_id}
               onChange={(e) => setNewHelp(p => ({ ...p, assigned_user_id: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
             >
-              <option value="">Leave open for volunteers</option>
+              <option value="">{newHelp.open_to_volunteers ? 'Leave open for volunteers' : 'Assign later'}</option>
               {attendees.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
@@ -660,13 +699,39 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
             placeholder="Any notes? e.g. nut-free (optional)"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           />
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setNewFood(p => ({ ...p, open_to_volunteers: true }))}
+              className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors text-left ${
+                newFood.open_to_volunteers
+                  ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-400 text-orange-700 dark:text-orange-300'
+                  : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              🙋 Open to volunteers
+              <div className="text-[10px] font-normal opacity-80 mt-0.5">Anyone attending can bring it</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewFood(p => ({ ...p, open_to_volunteers: false }))}
+              className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors text-left ${
+                !newFood.open_to_volunteers
+                  ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-400 text-purple-700 dark:text-purple-300'
+                  : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              🔒 Assign only
+              <div className="text-[10px] font-normal opacity-80 mt-0.5">Only you can fill this</div>
+            </button>
+          </div>
           {attendees.length > 0 && (
             <select
               value={newFood.assigned_to}
               onChange={(e) => setNewFood(p => ({ ...p, assigned_to: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
             >
-              <option value="">Leave open for volunteers</option>
+              <option value="">{newFood.open_to_volunteers ? 'Leave open for volunteers' : 'Assign later'}</option>
               {attendees.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}

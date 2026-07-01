@@ -927,6 +927,7 @@ export function TopicsView({
               if (viewingTopic.topic_type === 'community') fetchCommunityPosts();
               else fetchTopics();
             }}
+            onViewProfile={onViewProfile}
           />
         );
       })()}
