@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Let CSS env(safe-area-inset-*) actually resolve on iOS + iPad. Without
+         viewport-fit=cover the WKWebView renders in a smaller safe frame and
+         the app looks zoomed / cropped. maximum-scale=1 prevents iOS from
+         zooming in when a form field is focused. -->
     <title>Worship N Yaps - Calgary Bible Study Community</title>
     <meta name="description" content="Join Bible studies and community events across Calgary. Swipe through discussion cards, find local events, and connect with fellow believers." />
     <meta name="keywords" content="bible study, calgary, community, faith, worship, discussion, volunteer, christian, fellowship" />

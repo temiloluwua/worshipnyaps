@@ -266,16 +266,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </p>
       </section>
 
-      {/* Chapter break — The App */}
-      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center gap-6">
-        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
-        <div className="text-center">
-          <span className="block text-[10px] font-bold tracking-[0.3em] uppercase text-[#64748B] dark:text-[#94A3B8] mb-1">Part one</span>
-          <span className="block font-logo text-2xl text-[#0F172A] dark:text-[#F8FAFC]">The App</span>
-        </div>
-        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
-      </div>
-
       {/* Yaps explainer — dark */}
       <section id="the-app" className="bg-[#0F172A] text-[#F8FAFC] scroll-mt-16">
         <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
@@ -451,16 +441,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           </div>
         </div>
       </section>
-
-      {/* Chapter break — How to Play */}
-      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center gap-6">
-        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
-        <div className="text-center">
-          <span className="block text-[10px] font-bold tracking-[0.3em] uppercase text-[#64748B] dark:text-[#94A3B8] mb-1">Part two</span>
-          <span className="block font-logo text-2xl text-[#0F172A] dark:text-[#F8FAFC]">How to Play</span>
-        </div>
-        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
-      </div>
 
       {/* 6.5 How to Play — pulled from the WnY card-game instruction sheets */}
       <section id="how-to-play" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
@@ -661,16 +641,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           </div>
         </div>
       </section>
-
-      {/* Chapter break — Get the Deck */}
-      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center gap-6">
-        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
-        <div className="text-center">
-          <span className="block text-[10px] font-bold tracking-[0.3em] uppercase text-[#64748B] dark:text-[#94A3B8] mb-1">Part three</span>
-          <span className="block font-logo text-2xl text-[#0F172A] dark:text-[#F8FAFC]">Get the Deck</span>
-        </div>
-        <div className="flex-1 h-px bg-[#0F172A]/15 dark:bg-white/15" />
-      </div>
 
       {/* 9. Final CTA — "Get the Deck" zone */}
       <section id="get-the-deck" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
