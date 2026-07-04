@@ -107,6 +107,19 @@
     overflow-x: hidden;
   }
 
+  /* iOS auto-zooms the viewport whenever a focused input has a font smaller
+     than 16px — that's what makes the app look zoomed-in and drift/crop after
+     the login sheet opens. maximum-scale in the viewport meta isn't reliably
+     honored on iOS 26, so force every form control to 16px on touch devices.
+     (Left untouched on mouse/desktop where the smaller text looks right.) */
+  @media (pointer: coarse) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Fredoka One', sans-serif;
     font-weight: 700;

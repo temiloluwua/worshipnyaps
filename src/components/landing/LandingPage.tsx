@@ -155,8 +155,15 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     }));
   }, [allTopics]);
 
-  const goToApp = onCreateAccount ?? onEnter;
   const isNativeApp = Capacitor.isNativePlatform();
+  // In the native app, the primary CTA drops the user straight into the feed
+  // (no forced login) — sign-in is prompted later only when they take an
+  // action that needs an account. On the website the CTA still routes to
+  // account creation. This avoids an App Store 5.1.1 login-wall rejection and
+  // lets people see value before committing.
+  const goToApp = isNativeApp
+    ? (onViewTopics ?? onEnter)
+    : (onCreateAccount ?? onEnter);
   const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
   const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Get the App';
   const scrollToZone = (id: string) => {
