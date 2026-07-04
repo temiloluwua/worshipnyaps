@@ -83,6 +83,30 @@
     font-family: 'Quicksand', sans-serif;
   }
 
+  /* Native-app viewport hardening. Fixes the iOS symptoms of the app looking
+     "zoomed in", cropped at the edges, and drifting/bouncing when scrolled:
+     - text-size-adjust stops iOS from auto-inflating font sizes (the zoom).
+     - overflow-x hidden + max-width stops any element from pushing the page
+       wider than the screen (the horizontal crop / sideways drift).
+     - overscroll-behavior none kills the rubber-band bounce past the top and
+       bottom that makes the whole UI feel like it's moving around. */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Fredoka One', sans-serif;
     font-weight: 700;

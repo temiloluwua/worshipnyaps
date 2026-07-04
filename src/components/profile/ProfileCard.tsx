@@ -56,39 +56,46 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   if (compact) {
     return (
-      <div
-        onClick={onViewProfile}
-        className="flex items-center space-x-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
-      >
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0">
-          {user.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              alt={user.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-bold">
-              {user.name.charAt(0)}
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 dark:text-white truncate flex items-center gap-1">
-            <span className="truncate">{user.name}</span>
-            <VerifiedBadge verified={user.is_verified} />
-          </p>
-          {user.email && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-              @{user.email.split('@')[0]}
+      <div className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
+        {/* Actual tappable target — real button so iOS treats the tap as a
+            first-class interaction (a plain <div onClick> was being dropped
+            on iPad WKWebView). */}
+        <button
+          type="button"
+          onClick={onViewProfile}
+          className="flex items-center gap-3 flex-1 min-w-0 text-left touch-manipulation"
+        >
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0">
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white font-bold">
+                {user.name.charAt(0)}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-900 dark:text-white truncate flex items-center gap-1">
+              <span className="truncate">{user.name}</span>
+              <VerifiedBadge verified={user.is_verified} />
             </p>
-          )}
-        </div>
+            {user.email && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                @{user.email.split('@')[0]}
+              </p>
+            )}
+          </div>
+        </button>
         {showActions && !isOwnProfile && (
           <button
+            type="button"
             onClick={handleConnect}
             disabled={pending}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`ml-3 px-3 py-1.5 rounded-full text-sm font-medium transition-colors touch-manipulation ${
               connected
                 ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 : pending
@@ -104,15 +111,25 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   }
 
   return (
-    <div
-      onClick={onViewProfile}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-    >
-      <div className="h-20 bg-gradient-to-br from-blue-500 to-blue-700"></div>
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
+      {/* Tapping the banner / avatar / name area opens the profile. Kept as
+          a button so iOS reliably fires the tap. */}
+      <button
+        type="button"
+        onClick={onViewProfile}
+        className="block w-full text-left touch-manipulation"
+      >
+        <div className="h-20 bg-gradient-to-br from-blue-500 to-blue-700"></div>
+      </button>
 
       <div className="px-4 pb-4">
         <div className="relative -mt-10 mb-3">
-          <div className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600">
+          <button
+            type="button"
+            onClick={onViewProfile}
+            className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 block touch-manipulation"
+            aria-label={`View ${user.name}'s profile`}
+          >
             {user.avatar_url ? (
               <img
                 src={user.avatar_url}
@@ -124,13 +141,19 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 {user.name.charAt(0)}
               </div>
             )}
-          </div>
+          </button>
         </div>
 
-        <h3 className="font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
-          <span className="truncate">{user.name}</span>
-          <VerifiedBadge verified={user.is_verified} size={18} />
-        </h3>
+        <button
+          type="button"
+          onClick={onViewProfile}
+          className="block text-left touch-manipulation w-full"
+        >
+          <h3 className="font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
+            <span className="truncate">{user.name}</span>
+            <VerifiedBadge verified={user.is_verified} size={18} />
+          </h3>
+        </button>
         {user.email && (
           <p className="text-sm text-gray-500 dark:text-gray-400 truncate mb-2">
             @{user.email.split('@')[0]}

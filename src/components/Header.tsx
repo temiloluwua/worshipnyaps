@@ -27,20 +27,23 @@ export const Header: React.FC<HeaderProps> = ({
   const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
+    <header
+      className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 gap-2">
           <button
             type="button"
             onClick={onShowLanding}
-            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
+            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md min-w-0"
             aria-label="View welcome tour"
             disabled={!onShowLanding}
           >
             <Logo size="md" />
-            <div>
-              <h1 className="font-logo text-lg text-gray-900 dark:text-white tracking-tight">{t('app.name')}</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-light">{t('app.tagline')}</p>
+            <div className="min-w-0">
+              <h1 className="font-logo text-lg text-gray-900 dark:text-white tracking-tight truncate">{t('app.name')}</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-light truncate">{t('app.tagline')}</p>
             </div>
           </button>
 

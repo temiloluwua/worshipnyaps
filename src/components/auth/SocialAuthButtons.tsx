@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '../../lib/supabase';
 import { executeRecaptcha } from '../../lib/captcha';
 import { Mail, Phone, Apple } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PhoneVerificationModal } from './PhoneVerificationModal';
+import { signInWithAppleNative, isAppleCancel } from '../../lib/appleAuth';
 
 interface SocialAuthButtonsProps {
   onSuccess?: () => void;
@@ -16,6 +18,12 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showVerification, setShowVerification] = useState(false);
 
+  // Inside the native iOS app we must NOT open the system browser for auth
+  // (App Store Guideline 4). We use the native Apple sign-in sheet instead,
+  // and hide the web-only Google button (Google still works on the website).
+  const isNative = Capacitor.isNativePlatform();
+
+  // Web OAuth (Google + Apple) — used only in the browser build.
   const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
     setIsLoading(true);
     try {
@@ -33,6 +41,22 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
     } catch (error: any) {
       console.error(`${provider} sign in exception:`, error);
       toast.error(error?.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Native Apple sign-in sheet (iOS app only) — no browser.
+  const handleNativeApple = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithAppleNative();
+      onSuccess?.();
+    } catch (error: any) {
+      if (!isAppleCancel(error)) {
+        console.error('Native Apple sign in error:', error);
+        toast.error(error?.message || 'Failed to sign in with Apple');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -92,21 +116,27 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => handleOAuthSignIn('google')}
-        disabled={isLoading || showPhoneInput}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        <Mail className="w-4 h-4" />
-        {isLoading ? 'Signing in...' : 'Continue with Google'}
-      </button>
+      {/* Google is web-OAuth only (opens a redirect flow). We hide it inside
+          the native iOS app to comply with App Store Guideline 4; it stays
+          available on the website. */}
+      {!isNative && (
+        <button
+          type="button"
+          onClick={() => handleOAuthSignIn('google')}
+          disabled={isLoading || showPhoneInput}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
+        >
+          <Mail className="w-4 h-4" />
+          {isLoading ? 'Signing in...' : 'Continue with Google'}
+        </button>
+      )}
 
+      {/* Apple: native sheet inside the app (no browser), web-OAuth on the site. */}
       <button
         type="button"
-        onClick={() => handleOAuthSignIn('apple')}
+        onClick={() => (isNative ? handleNativeApple() : handleOAuthSignIn('apple'))}
         disabled={isLoading || showPhoneInput}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-black rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
       >
         <Apple className="w-4 h-4" />
         {isLoading ? 'Signing in...' : 'Continue with Apple'}

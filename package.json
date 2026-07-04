@@ -18,6 +18,7 @@
     "deploy": "npm run build && echo 'Build complete! Upload dist/ folder to your hosting provider.'"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/app": "^8.0.1",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",

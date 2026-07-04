@@ -321,7 +321,7 @@ function App() {
           onShowLanding={() => setShowLanding(true)}
           unreadNotifications={unreadNotifications}
         />
-        <main className="pb-16">
+        <main style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
           <CommunityView
             onViewProfile={handleViewProfile}
             onStartChat={handleStartChat}
@@ -358,7 +358,12 @@ function App() {
         unreadNotifications={unreadNotifications}
       />
 
-      <main id="main-content" tabIndex={-1} className="pb-16 focus:outline-none">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="focus:outline-none"
+        style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+      >
         {activeTab === 'topics' && (
           <TopicsView
             onViewProfile={handleViewProfile}
@@ -384,7 +389,13 @@ function App() {
           </Suspense>
         )}
         {activeTab === 'messages' && (
-          <div className="fixed inset-0 top-16 bottom-16 z-10">
+          <div
+            className="fixed left-0 right-0 z-10"
+            style={{
+              top: 'calc(4rem + env(safe-area-inset-top))',
+              bottom: 'calc(4rem + env(safe-area-inset-bottom))',
+            }}
+          >
             <MessagesView
               onBack={() => setActiveTab('topics')}
               initialUserId={viewState.initialChatUserId}
