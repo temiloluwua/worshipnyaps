@@ -295,6 +295,7 @@ function App() {
         onStartChat={handleStartChat}
         onViewTopic={handleViewTopic}
         onOpenEvent={handleOpenEvent}
+        onViewProfile={handleViewProfile}
       />
     );
   }

@@ -5,7 +5,13 @@
     "read": ["**"],
     "write": ["src/**", "supabase/migrations/**", "CLAUDE.md"],
     "bash": ["npm run build", "npm run lint", "npm run build:check"],
-    "tools": ["read", "write", "bash", "grep", "glob"]
+    "tools": ["read", "write", "bash", "grep", "glob"],
+    "allow": [
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)"
+    ]
   },
   "hooks": [
     {

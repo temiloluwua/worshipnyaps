@@ -27,6 +27,7 @@ interface ProfilePageProps {
   onStartChat?: (userId: string) => void;
   onViewTopic?: (topic: Topic) => void;
   onOpenEvent?: (eventId: string) => void;
+  onViewProfile?: (userId: string) => void;
 }
 
 type ProfileTab = 'posts' | 'events' | 'likes' | 'bookmarks';
@@ -47,6 +48,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onStartChat,
   onViewTopic,
   onOpenEvent,
+  onViewProfile,
 }) => {
   const { user, profile: currentUserProfile } = useAuth();
   const isStaff = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'moderator';
@@ -64,6 +66,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
+  const [showConnections, setShowConnections] = useState(false);
+  const [connectionsList, setConnectionsList] = useState<{ id: string; name: string; avatar_url?: string }[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+
+  // Load the connections for the profile being viewed. RLS lets a user read
+  // their own connections; for other people's profiles the list may be empty.
+  const openConnections = async () => {
+    setShowConnections(true);
+    setConnectionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('connections')
+        .select('connected_user:users!connections_connected_user_id_fkey(id, name, avatar_url)')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+      if (error) throw error;
+      setConnectionsList((data || []).map((c: any) => c.connected_user).filter(Boolean));
+    } catch (err) {
+      console.error('Failed to load connections:', err);
+      toast.error('Failed to load connections');
+    } finally {
+      setConnectionsLoading(false);
+    }
+  };
 
   const isOwnProfile = user?.id === userId;
   const connected = isConnected(userId);
@@ -383,10 +409,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           <div className="flex gap-5 mb-4">
-            <div>
+            <button
+              type="button"
+              onClick={openConnections}
+              className="hover:opacity-70 transition-opacity touch-manipulation"
+            >
               <span className="font-bold text-gray-900 dark:text-white text-sm">{viewingProfile.stats?.connections_count || 0}</span>
               <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">Connections</span>
-            </div>
+            </button>
             <div>
               <span className="font-bold text-gray-900 dark:text-white text-sm">{viewingProfile.stats?.posts_count || 0}</span>
               <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">Posts</span>
@@ -567,6 +597,65 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         onClose={() => { setShowCreatePost(false); fetchProfile(userId); }}
         topicType="community"
       />
+
+      {showConnections && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConnections(false); }}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Connections</h3>
+              <button
+                type="button"
+                onClick={() => setShowConnections(false)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation"
+                aria-label="Close"
+              >
+                <span className="text-lg leading-none">✕</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {connectionsLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                </div>
+              ) : connectionsList.length === 0 ? (
+                <p className="text-center py-10 px-6 text-sm text-gray-500 dark:text-gray-400">
+                  {isOwnProfile ? "You haven't connected with anyone yet." : 'No connections to show.'}
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {connectionsList.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowConnections(false);
+                          if (onViewProfile) onViewProfile(c.id);
+                        }}
+                        disabled={!onViewProfile}
+                        className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors touch-manipulation disabled:cursor-default"
+                      >
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0 flex items-center justify-center text-white font-bold">
+                          {c.avatar_url ? (
+                            <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            (c.name?.charAt(0) || '?')
+                          )}
+                        </div>
+                        <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {c.name || 'Unknown'}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

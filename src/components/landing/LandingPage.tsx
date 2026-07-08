@@ -260,6 +260,13 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             <span>{primaryCtaLabel}</span>
           </button>
           <button
+            onClick={openCardGameCheckout}
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#14b8a6] text-white font-semibold shadow-md hover:bg-[#0d9488] transition-all hover:translate-y-[-1px]"
+          >
+            <Spade className="w-5 h-5" />
+            <span>Buy the card game</span>
+          </button>
+          <button
             onClick={seeHowToYap}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-black/15 dark:border-white/20 text-[#0F172A] dark:text-[#F8FAFC] font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
           >
@@ -269,7 +276,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
 
         <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-          Free to download · No algorithm · Built for real people
+          Free to download · Card deck ships to you · Built for real people
         </p>
       </section>
 
