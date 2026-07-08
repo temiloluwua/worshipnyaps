@@ -23,6 +23,7 @@ import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
 import { useNotifications } from './hooks/useNotifications';
 import { useDevicePush } from './hooks/useDevicePush';
+import { useOAuthDeepLink } from './hooks/useOAuthDeepLink';
 import { Topic } from './lib/supabase';
 
 interface ViewState {
@@ -45,6 +46,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   const { loading, user, profile } = useAuth();
+  useOAuthDeepLink();
   const { theme } = useTheme();
   const { totalUnread: unreadMessages } = useDirectMessages();
   const { unreadCount: unreadNotifications } = useNotifications();

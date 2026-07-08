@@ -6,6 +6,7 @@ import { Mail, Phone, Apple } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PhoneVerificationModal } from './PhoneVerificationModal';
 import { signInWithAppleNative, isAppleCancel } from '../../lib/appleAuth';
+import { signInWithGoogleInApp } from '../../lib/googleAuth';
 
 interface SocialAuthButtonsProps {
   onSuccess?: () => void;
@@ -19,8 +20,9 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
   const [showVerification, setShowVerification] = useState(false);
 
   // Inside the native iOS app we must NOT open the system browser for auth
-  // (App Store Guideline 4). We use the native Apple sign-in sheet instead,
-  // and hide the web-only Google button (Google still works on the website).
+  // (App Store Guideline 4). Apple uses its native sheet; Google uses an
+  // in-app SFSafariViewController (Apple explicitly allows the Safari View
+  // Controller for sign-in). On the web we use the normal redirect flow.
   const isNative = Capacitor.isNativePlatform();
 
   // Web OAuth (Google + Apple) — used only in the browser build.
@@ -41,6 +43,22 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
     } catch (error: any) {
       console.error(`${provider} sign in exception:`, error);
       toast.error(error?.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Native Google sign-in via in-app Safari sheet (iOS app only). The redirect
+  // back into the app is handled by useOAuthDeepLink in App.tsx.
+  const handleNativeGoogle = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithGoogleInApp();
+      // Session completes asynchronously via the deep-link handler; no
+      // onSuccess() here. The auth state change closes the modal.
+    } catch (error: any) {
+      console.error('In-app Google sign in error:', error);
+      toast.error(error?.message || 'Failed to sign in with Google');
     } finally {
       setIsLoading(false);
     }
@@ -116,20 +134,17 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
         </div>
       </div>
 
-      {/* Google is web-OAuth only (opens a redirect flow). We hide it inside
-          the native iOS app to comply with App Store Guideline 4; it stays
-          available on the website. */}
-      {!isNative && (
-        <button
-          type="button"
-          onClick={() => handleOAuthSignIn('google')}
-          disabled={isLoading || showPhoneInput}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
-        >
-          <Mail className="w-4 h-4" />
-          {isLoading ? 'Signing in...' : 'Continue with Google'}
-        </button>
-      )}
+      {/* Google: in-app Safari sheet on native (Guideline-4 compliant),
+          normal redirect on the web. */}
+      <button
+        type="button"
+        onClick={() => (isNative ? handleNativeGoogle() : handleOAuthSignIn('google'))}
+        disabled={isLoading || showPhoneInput}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
+      >
+        <Mail className="w-4 h-4" />
+        {isLoading ? 'Signing in...' : 'Continue with Google'}
+      </button>
 
       {/* Apple: native sheet inside the app (no browser), web-OAuth on the site. */}
       <button
