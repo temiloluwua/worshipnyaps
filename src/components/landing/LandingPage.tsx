@@ -223,12 +223,23 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             </button>
           </div>
 
-          <button
-            onClick={goToApp}
-            className="px-5 py-2.5 rounded-full bg-[#2563eb] text-white text-sm font-semibold shadow-sm hover:bg-[#1d4ed8] transition-colors"
-          >
-            {primaryCtaShortLabel}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Buy the deck — kept in the sticky nav so it's above the fold on
+                every device, including phones where the hero buttons scroll off. */}
+            <button
+              onClick={openCardGameCheckout}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#14b8a6] text-white text-sm font-semibold shadow-sm hover:bg-[#0d9488] transition-colors"
+            >
+              <Spade className="w-4 h-4" />
+              <span>Buy deck</span>
+            </button>
+            <button
+              onClick={goToApp}
+              className="px-5 py-2.5 rounded-full bg-[#2563eb] text-white text-sm font-semibold shadow-sm hover:bg-[#1d4ed8] transition-colors"
+            >
+              {primaryCtaShortLabel}
+            </button>
+          </div>
         </div>
       </nav>
 
