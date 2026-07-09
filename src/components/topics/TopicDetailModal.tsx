@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, ChevronDown, ChevronUp, Edit, Crown, Trash2, Sparkles } from 'lucide-react';
+import { X, Heart, Share2, Bookmark, BookOpen, ExternalLink, MessageCircle, ChevronDown, ChevronUp, Edit, Crown, Trash2, Sparkles, Bell, BellOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { usePreferences } from '../../hooks/usePreferences';
+import { useNotificationSubscription } from '../../hooks/useNotificationSubscription';
 import { bibleLinkFor } from '../../lib/bibleLink';
 import { CommentThread } from './CommentThread';
 import { ReportButton } from '../moderation/ReportButton';
@@ -52,6 +53,11 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
     typeof topic?.comments === 'number' ? topic.comments :
     Array.isArray(topic?.comments) ? topic.comments.length : 0
   );
+
+  const topicAuthorId = topic?.author_id || topic?.authorId;
+  const isTopicAuthor = !!user && topicAuthorId === user.id;
+  const { subscribed: notifOn, toggle: toggleNotif, saving: notifSaving } =
+    useNotificationSubscription('topic', topic?.id, { isAuthor: isTopicAuthor });
 
   if (!isOpen || !topic) return null;
 
@@ -147,6 +153,17 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 title={isStaff && topic.author_id !== user?.id ? 'Delete (admin)' : 'Delete'}
               >
                 <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            {user && (
+              <button
+                onClick={toggleNotif}
+                disabled={notifSaving}
+                className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 touch-manipulation"
+                title={notifOn ? 'Notifications on — tap to mute' : 'Notifications off — tap to follow'}
+                aria-label={notifOn ? 'Mute notifications for this post' : 'Get notifications for this post'}
+              >
+                {notifOn ? <Bell className="w-4 h-4 text-blue-600" /> : <BellOff className="w-4 h-4" />}
               </button>
             )}
             <ReportButton

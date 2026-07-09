@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotificationSubscription } from '../../hooks/useNotificationSubscription';
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2 } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -64,6 +65,9 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
 export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile }) => {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
+  // Events notify by default; attendees can mute a specific event.
+  const { subscribed: notifOn, toggle: toggleNotif, saving: notifSaving } =
+    useNotificationSubscription('event', eventId);
   const [event, setEvent] = useState<DbEvent | null>(null);
   const [attendeeCount, setAttendeeCount] = useState(0);
   const [displayCapacity, setDisplayCapacity] = useState(0);
@@ -1493,6 +1497,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           {(isRsvped || isHost) && (
             <div className="mb-6 flex flex-wrap gap-2">
+              <button
+                onClick={toggleNotif}
+                disabled={notifSaving}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 touch-manipulation"
+                title={notifOn ? 'Notifications on — tap to mute this event' : 'Notifications off — tap to turn on'}
+              >
+                {notifOn ? <Bell className="w-4 h-4 text-blue-500" /> : <BellOff className="w-4 h-4 text-gray-400" />}
+                {notifOn ? 'Notifications on' : 'Notifications off'}
+              </button>
               <button
                 onClick={addToGoogleCalendar}
                 className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
