@@ -92,12 +92,6 @@ const FEATURES = [
   },
 ];
 
-const HOW_IT_WORKS = [
-  { num: '01', icon: UserIcon, title: 'Create your profile', body: 'Set your city, preferred gathering types, and optional spiritual gifts.' },
-  { num: '02', icon: Search, title: 'Find or host a gathering', body: 'Browse events in your city by type or create your own in under a minute.' },
-  { num: '03', icon: Spade, title: 'Show up & play Yaps', body: "RSVP and you're in the event chat. Arrive, grab a card, let conversation begin." },
-];
-
 const WHO_FOR = [
   { icon: BookOpen, title: 'Bible study seekers', body: 'Looking for a study group, prayer circle, or worship night near you.' },
   { icon: UserIcon, title: 'Hosts & leaders', body: 'Make leading less lonely. Delegate roles, coordinate RSVPs, keep everyone in one chat.' },
@@ -602,35 +596,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               Start a conversation with a fun question, Then let the Yap follow.
             </p>
           </div>
-        </div>
-      </section>
-
-      {/* 7. How it works — still part of the "How to Play" zone */}
-      <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">Up and running</p>
-        <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-14">
-          Up and running in minutes
-        </h2>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {HOW_IT_WORKS.map((step) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.num}
-                className="rounded-2xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 p-7 shadow-sm"
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <span className="text-3xl font-logo font-bold text-[#2563eb]">{step.num}</span>
-                  <div className="w-10 h-10 rounded-full bg-[#2563eb]/10 text-[#2563eb] flex items-center justify-center">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                </div>
-                <h3 className="font-logo font-bold text-xl mb-2">{step.title}</h3>
-                <p className="text-sm text-[#64748B] dark:text-[#CBD5E1] leading-relaxed">{step.body}</p>
-              </div>
-            );
-          })}
         </div>
       </section>
 
