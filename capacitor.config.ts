@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 // Live-reload from the local Vite dev server.
 // Only active when CAP_LIVE_RELOAD_URL is set, so this can never ship to the App Store.
@@ -32,7 +33,11 @@ const config: CapacitorConfig = {
       overlaysWebView: false,
     },
     Keyboard: {
-      resize: 'body',
+      // 'native' shrinks the whole webview when the keyboard opens so that
+      // fixed-position bottom bars (chat input, compose box) sit right above
+      // the keyboard instead of being covered by it. 'body' only resizes the
+      // document body, which fixed elements ignore.
+      resize: KeyboardResize.Native,
       resizeOnFullScreen: true,
     },
   },
