@@ -65,6 +65,10 @@ function App() {
       if (!isDeepLink) {
         setShowLanding(false);
       }
+      // Close the auth modal once signed in. The Google in-app flow completes
+      // via the OAuth deep-link handler, which doesn't call the modal's
+      // onSuccess, so close it here as a catch-all.
+      setShowAuthModal(false);
     }
   }, [loading, user]);
 

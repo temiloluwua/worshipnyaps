@@ -23,16 +23,28 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error) {
-      console.error('Failed to fetch profile:', error);
-      return;
+    // On a brand-new OAuth (Google/Apple) sign-up, the public.users row is
+    // created by the handle_new_user trigger a beat after the auth user
+    // exists. The auth listener fires once, so if we fetch before the trigger
+    // commits we'd get null and never onboard. Retry a few times to catch it.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) {
+        console.error('Failed to fetch profile:', error);
+        return;
+      }
+      if (data) {
+        setProfile(data);
+        return;
+      }
+      // No row yet — wait and retry (250ms, 500ms, 750ms).
+      await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
     }
-    setProfile(data);
+    setProfile(null);
   };
 
   useEffect(() => {
