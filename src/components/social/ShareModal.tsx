@@ -144,12 +144,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
+  // Community posts live in a different table; tell the repost which source
+  // to resolve later so it doesn't hit the topics-only path.
+  const sourceType: 'topic' | 'community_post' =
+    (topic as any).topic_type === 'community' ? 'community_post' : 'topic';
+
   const handleRepost = async () => {
     if (hasReposted(topic.id)) {
       toast.error('You have already reposted this');
       return;
     }
-    await createRepost(topic.id);
+    await createRepost(topic.id, undefined, sourceType);
     onClose();
   };
 
@@ -158,7 +163,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       toast.error('Please add a comment');
       return;
     }
-    await createRepost(topic.id, quoteText.trim());
+    await createRepost(topic.id, quoteText.trim(), sourceType);
     onClose();
   };
 

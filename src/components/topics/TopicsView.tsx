@@ -7,6 +7,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLikes } from '../../hooks/useLikes';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useConnections } from '../../hooks/useConnections';
+import { useReposts, Repost } from '../../hooks/useReposts';
+import { RepostCard } from '../social/RepostCard';
 import { useFollows } from '../../hooks/useFollows';
 import { discussionTopics } from '../../data/topics';
 import { TopicCard } from './TopicCard';
@@ -118,6 +120,8 @@ export function TopicsView({
   const { posts: communityPosts, fetchPosts: fetchCommunityPosts, toggleFeatured } = useCommunityPosts();
   const { isLiked, toggleLike, fetchLikeCounts, getLikeCount } = useLikes();
   const { isBookmarked, toggleBookmark } = useBookmarks();
+  const { fetchReposts } = useReposts();
+  const [reposts, setReposts] = useState<Repost[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -382,6 +386,14 @@ export function TopicsView({
       fetchLikeCounts('community_post', communityPosts.map(p => p.id));
     }
   }, [communityPosts, fetchLikeCounts]);
+
+  // Load reposts/quotes for the community feed. Refetch when the community
+  // posts refresh (e.g. after someone reposts and we re-pull the feed).
+  useEffect(() => {
+    let cancelled = false;
+    fetchReposts().then((rows) => { if (!cancelled) setReposts(rows); });
+    return () => { cancelled = true; };
+  }, [fetchReposts, communityPosts.length]);
 
   useEffect(() => {
     if (!focusTopicId || typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -742,6 +754,25 @@ export function TopicsView({
       ) : (
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           <NearbyEventsRail onOpenEvent={onOpenEvent} />
+          {reposts.map((rp) => {
+            const orig: any = rp.original_topic;
+            if (!orig) return null;
+            const likeType: 'topic' | 'community_post' =
+              orig.topic_type === 'community' ? 'community_post' : 'topic';
+            return (
+              <RepostCard
+                key={rp.id}
+                repost={rp}
+                isLiked={isLiked(likeType, orig.id)}
+                isBookmarked={isBookmarked(orig.id)}
+                onLike={() => { if (!user) { setShowAuthModal(true); return; } toggleLike(likeType, orig.id); }}
+                onBookmark={() => { if (!user) { setShowAuthModal(true); return; } toggleBookmark(orig.id, likeType); }}
+                onShare={() => handleShare(orig)}
+                onView={() => handleViewTopic(orig)}
+                onViewProfile={onViewProfile}
+              />
+            );
+          })}
           {visibleTopics.length > 0 ? (
             visibleTopics.map((topic) => (
               <div

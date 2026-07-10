@@ -68,7 +68,11 @@ export const useReposts = () => {
     }
   }, []);
 
-  const createRepost = useCallback(async (topicId: string, quoteText?: string) => {
+  const createRepost = useCallback(async (
+    topicId: string,
+    quoteText?: string,
+    sourceType: 'topic' | 'community_post' = 'topic'
+  ) => {
     if (!user) {
       toast.error('Please sign in to repost');
       return null;
@@ -86,7 +90,8 @@ export const useReposts = () => {
         .insert({
           user_id: user.id,
           original_topic_id: topicId,
-          quote_text: quoteText || null
+          quote_text: quoteText || null,
+          source_type: sourceType,
         })
         .select()
         .single();
@@ -103,7 +108,7 @@ export const useReposts = () => {
         user_id: user.id,
         activity_type: 'repost',
         target_id: topicId,
-        target_type: 'topic',
+        target_type: sourceType,
         metadata: quoteText ? { quote_text: quoteText } : {}
       });
 
@@ -187,6 +192,47 @@ export const useReposts = () => {
     }
   }, []);
 
+  // Load the most recent reposts for the feed and resolve each original from
+  // the right table (topics or community_posts). Returns items shaped for the
+  // RepostCard: reposter info + quote + the original post (TopicCard shape).
+  const fetchReposts = useCallback(async (limit = 40): Promise<Repost[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('reposts')
+        .select(`*, users:user_id ( id, name, avatar_url )`)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      const rows = data || [];
+      if (rows.length === 0) return [];
+
+      const topicIds = rows.filter(r => (r.source_type ?? 'topic') === 'topic').map(r => r.original_topic_id);
+      const postIds = rows.filter(r => r.source_type === 'community_post').map(r => r.original_topic_id);
+
+      const [topicsRes, postsRes] = await Promise.all([
+        topicIds.length
+          ? supabase.from('topics').select('*, users!topics_author_id_fkey ( id, name, avatar_url )').in('id', topicIds)
+          : Promise.resolve({ data: [] as any[] }),
+        postIds.length
+          ? supabase.from('community_posts').select('*, users!community_posts_author_id_fkey ( id, name, avatar_url )').in('id', postIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const byId: Record<string, any> = {};
+      (topicsRes.data || []).forEach((t: any) => { byId[t.id] = { ...t }; });
+      (postsRes.data || []).forEach((p: any) => {
+        byId[p.id] = { ...p, topic_type: 'community', category: p.community_category || 'general', bibleReference: p.bible_verse };
+      });
+
+      return rows
+        .map((r: any) => ({ ...r, user: r.users, original_topic: byId[r.original_topic_id] }))
+        .filter((r: any) => r.original_topic); // drop reposts whose original was deleted
+    } catch (error) {
+      console.error('Error fetching reposts feed:', error);
+      return [];
+    }
+  }, []);
+
   const hasReposted = useCallback((topicId: string) => {
     return userReposts.has(topicId);
   }, [userReposts]);
@@ -206,6 +252,7 @@ export const useReposts = () => {
     removeRepost,
     fetchRepostCounts,
     fetchUserRepostFeed,
+    fetchReposts,
     loading
   };
 };

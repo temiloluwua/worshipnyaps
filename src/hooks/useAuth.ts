@@ -12,6 +12,7 @@ interface Profile {
   is_approved: boolean;
   avatar_url?: string;
   bio?: string;
+  city?: string;
   created_at: string;
   updated_at: string;
 }
