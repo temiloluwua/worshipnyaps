@@ -107,6 +107,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const remoteTypingTimeoutsRef = useRef<Record<string, number>>({});
   const senderCacheRef = useRef<Record<string, ChatMessage['sender']>>({});
   const isHost = Boolean(user && event && user.id === event.host_id);
+
+  // Always open the event page at the top, regardless of the caller's scroll.
+  useEffect(() => { window.scrollTo(0, 0); }, [eventId]);
   const isAdmin = profile?.role === 'admin';
   const canAccessChat = Boolean(chatChannel && (isRsvped || isHost));
   const canAccessOrganizerChat = Boolean(isHost || isOrganizer);

@@ -163,6 +163,9 @@ function App() {
     setActiveTab('locations');
     setActiveEventId(eventId);
     window.history.pushState({}, '', `/event/${eventId}`);
+    // The event view is a full-flow page, not a fixed overlay, so reset the
+    // scroll position — otherwise it opens mid-page at the previous scroll.
+    window.scrollTo(0, 0);
   };
 
   const handleCloseEvent = () => {
@@ -172,6 +175,9 @@ function App() {
     if (window.location.pathname.startsWith('/event/')) {
       window.history.pushState({}, '', '/');
     }
+    // Return to the top of the locations view instead of wherever the event
+    // page happened to be scrolled.
+    window.scrollTo(0, 0);
   };
 
   const handleViewProfile = (userId: string) => {
