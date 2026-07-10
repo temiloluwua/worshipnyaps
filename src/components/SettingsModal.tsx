@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { Modal, ModalBody } from './ui/Modal';
+import { openExternal } from '../lib/openExternal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -266,33 +267,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Legal &amp; community</h3>
             </div>
             <div className="grid grid-cols-1 gap-2">
-              <a
-                href="/terms.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              <button
+                type="button"
+                onClick={() => openExternal('/terms.html')}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
               >
                 <FileText size={16} className="text-blue-500" />
                 <span className="flex-1">Terms of Service &amp; Community Guidelines</span>
-              </a>
-              <a
-                href="/privacy.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              </button>
+              <button
+                type="button"
+                onClick={() => openExternal('/privacy.html')}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
               >
                 <Shield size={16} className="text-blue-500" />
                 <span className="flex-1">Privacy Policy</span>
-              </a>
-              <a
-                href="/support.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              </button>
+              <button
+                type="button"
+                onClick={() => openExternal('/support.html')}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
               >
                 <AlertTriangle size={16} className="text-blue-500" />
                 <span className="flex-1">Support &amp; report abuse</span>
-              </a>
+              </button>
             </div>
           </div>
 

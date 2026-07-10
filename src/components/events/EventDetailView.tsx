@@ -871,20 +871,27 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     if (!event || !(isHost || canEditEvent)) return;
     setCancellingEvent(true);
     try {
-      const { error } = await supabase
+      // Return the row so we can confirm the update actually applied (an RLS
+      // block would otherwise update 0 rows with no error).
+      const { data: updated, error } = await supabase
         .from('events')
         .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-        .eq('id', event.id);
+        .eq('id', event.id)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!updated) throw new Error("You don't have permission to cancel this event.");
 
-      // Notify attendees so they see the cancellation in their notifications.
-      const { data: attendees } = await supabase
-        .from('event_attendees')
-        .select('user_id')
-        .eq('event_id', event.id)
-        .in('status', ['registered', 'attended']);
-      if (attendees && attendees.length > 0) {
-        const notifications = attendees
+      // Notifying attendees is best-effort — a failure here (e.g. a missing
+      // notification type) must NOT make the cancel look like it failed, since
+      // the event is already cancelled above.
+      try {
+        const { data: attendees } = await supabase
+          .from('event_attendees')
+          .select('user_id')
+          .eq('event_id', event.id)
+          .in('status', ['registered', 'attended']);
+        const notifications = (attendees || [])
           .filter(a => a.user_id !== user?.id)
           .map(a => ({
             user_id: a.user_id,
@@ -896,6 +903,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         if (notifications.length > 0) {
           await supabase.from('notifications').insert(notifications);
         }
+      } catch (notifyErr) {
+        console.warn('Cancel notification failed (event still cancelled):', notifyErr);
       }
 
       toast.success('Event cancelled');

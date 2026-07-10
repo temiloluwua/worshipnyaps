@@ -44,10 +44,39 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
   const [actors, setActors] = useState<Record<string, ActorInfo>>({});
   const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
   const [resolvedRequestIds, setResolvedRequestIds] = useState<Set<string>>(new Set());
+  // Connection-request ids that are still 'pending'. Only these show the
+  // Accept/Decline buttons — anything already accepted/declined (even from a
+  // previous session) is treated as resolved so the buttons don't reappear.
+  const [pendingRequestIds, setPendingRequestIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     fetchMyNotifications();
   }, [fetchMyNotifications]);
+
+  // Look up the real status of every connection request referenced by a
+  // notification, so resolved ones never show Accept/Decline again.
+  useEffect(() => {
+    const ids = Array.from(new Set(
+      notifications
+        .filter((n) => n.type === 'connection_request')
+        .map((n) => (n as any).payload?.request_id)
+        .filter(Boolean)
+    ));
+    if (ids.length === 0) { setPendingRequestIds(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('connection_requests')
+        .select('id, status')
+        .in('id', ids);
+      if (cancelled) return;
+      const pending = new Set<string>(
+        (data || []).filter((r: any) => r.status === 'pending').map((r: any) => r.id)
+      );
+      setPendingRequestIds(pending);
+    })();
+    return () => { cancelled = true; };
+  }, [notifications]);
 
   // Batch-fetch actor profiles (avatar + name) for any notification whose
   // payload names a `user_id`. Skip ids we've already resolved.
@@ -263,7 +292,12 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   ? { name: notification.user.name, avatar_url: notification.user.avatar_url }
                   : actors[actorId]
                 : undefined;
-              const isResolved = requestId ? resolvedRequestIds.has(requestId) : false;
+              // Resolved if we just acted on it this session, OR the DB says
+              // it's no longer pending (accepted/declined in a past session).
+              const isResolved = requestId
+                ? resolvedRequestIds.has(requestId) ||
+                  (pendingRequestIds !== null && !pendingRequestIds.has(requestId))
+                : false;
               const isResponding = requestId ? respondingRequestId === requestId : false;
 
               return (
@@ -323,8 +357,10 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
                             </p>
                           )}
 
-                          {/* Inline Accept / Decline for pending connection requests */}
-                          {isConnRequest && requestId && (
+                          {/* Inline Accept / Decline for pending connection requests.
+                              Once resolved in a past session we render nothing;
+                              only show "Responded" right after acting this session. */}
+                          {isConnRequest && requestId && (!isResolved || resolvedRequestIds.has(requestId)) && (
                             <div className="mt-2 flex gap-2">
                               {isResolved ? (
                                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Responded</span>
