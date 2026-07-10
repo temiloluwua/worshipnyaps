@@ -453,7 +453,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       {/* 6.5 How to Play — pulled from the WnY card-game instruction sheets */}
       <section id="how-to-play" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">How to Play</p>
-        <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-4">
+        <h2 className="font-logo font-bold text-2xl sm:text-4xl md:text-5xl leading-tight text-center mb-4">
           So, you want to host a Yap.
         </h2>
         <p className="text-center text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto mb-14 leading-relaxed">
