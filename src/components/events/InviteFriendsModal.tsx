@@ -30,7 +30,7 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
   const shareOrigin = (() => {
     const origin = window.location.origin;
     if (origin.startsWith('http://localhost') || origin.startsWith('capacitor://')) {
-      return 'https://worshipnyaps.com';
+      return 'https://www.worshipnyaps.com';
     }
     return origin;
   })();

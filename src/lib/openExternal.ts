@@ -4,7 +4,7 @@ import { Browser } from '@capacitor/browser';
 // Production origin where the static legal/support pages are hosted. In the
 // native app window.location.origin is capacitor://localhost, which can't be
 // opened by the system/in-app browser, so we point at the real site.
-const WEB_ORIGIN = 'https://worshipnyaps.com';
+const WEB_ORIGIN = 'https://www.worshipnyaps.com';
 
 // Open a URL the right way per platform:
 // - Native: in-app Safari sheet (@capacitor/browser). Relative paths are

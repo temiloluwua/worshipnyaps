@@ -50,7 +50,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const shareOrigin = (() => {
     const origin = window.location.origin;
     if (origin.startsWith('http://localhost') || origin.startsWith('capacitor://')) {
-      return 'https://worshipnyaps.com';
+      return 'https://www.worshipnyaps.com';
     }
     return origin;
   })();

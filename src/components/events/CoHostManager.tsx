@@ -71,7 +71,7 @@ function buildInviteMessage(opts: {
   roleDescription: string;
 }): string {
   const when = formatEventDateTime(opts.eventDate, opts.eventTime);
-  const link = `https://worshipnyaps.com/event/${opts.eventId}`;
+  const link = `https://www.worshipnyaps.com/event/${opts.eventId}`;
   const greeting = opts.friendName ? `Hey ${opts.friendName.split(' ')[0]}!` : 'Hey!';
   const eventLabel = opts.eventTitle ? `*${opts.eventTitle}*` : 'a gathering';
   const whenStr = when ? ` on ${when}` : '';

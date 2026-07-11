@@ -13,7 +13,7 @@
 
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org/search';
 const DEFAULT_COUNTRIES = ['ca', 'us'];
-const USER_AGENT = 'WorshipNYaps/1.0 (https://worshipnyaps.com)';
+const USER_AGENT = 'WorshipNYaps/1.0 (https://www.worshipnyaps.com)';
 
 interface GeocodeOptions {
   countryCodes?: string[];      // ISO 3166-1 alpha-2, e.g. ['ca', 'us']
