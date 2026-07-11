@@ -18,6 +18,7 @@ const SuccessPage = lazy(() => import('./components/shop/SuccessPage').then(m =>
 const EventDetailView = lazy(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { AgeGate } from './components/auth/AgeGate';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
@@ -45,6 +46,7 @@ function App() {
   const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
+  const [ageVerified, setAgeVerified] = useState(false);
   const { loading, user, profile } = useAuth();
   useOAuthDeepLink();
   const { theme } = useTheme();
@@ -256,6 +258,17 @@ function App() {
           <p className="text-gray-600 dark:text-gray-400">Loading Worship N Yaps...</p>
         </div>
       </div>
+    );
+  }
+
+  // Age verification gate: any signed-in user without a recorded birthdate
+  // must confirm they meet the 13+ minimum before using the app.
+  if (user && profile && !profile.birthdate && !ageVerified) {
+    return (
+      <AgeGate
+        onVerified={() => setAgeVerified(true)}
+        onUnderage={() => { setAgeVerified(false); setShowLanding(true); }}
+      />
     );
   }
 

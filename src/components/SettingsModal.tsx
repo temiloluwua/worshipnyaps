@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { Modal, ModalBody } from './ui/Modal';
-import { openExternal } from '../lib/openExternal';
+import { DocModal } from './ui/DocModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -47,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAdminConsole, setShowAdminConsole] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [doc, setDoc] = useState<{ title: string; path: string } | null>(null);
   const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
 
   const handleSignOut = async () => {
@@ -269,7 +270,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             <div className="grid grid-cols-1 gap-2">
               <button
                 type="button"
-                onClick={() => openExternal('/terms.html')}
+                onClick={() => setDoc({ title: 'Terms of Service & Community Guidelines', path: '/terms.html' })}
                 className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
               >
                 <FileText size={16} className="text-blue-500" />
@@ -277,7 +278,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               </button>
               <button
                 type="button"
-                onClick={() => openExternal('/privacy.html')}
+                onClick={() => setDoc({ title: 'Privacy Policy', path: '/privacy.html' })}
                 className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
               >
                 <Shield size={16} className="text-blue-500" />
@@ -285,7 +286,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               </button>
               <button
                 type="button"
-                onClick={() => openExternal('/support.html')}
+                onClick={() => setDoc({ title: 'Support & report abuse', path: '/support.html' })}
                 className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
               >
                 <AlertTriangle size={16} className="text-blue-500" />
@@ -380,6 +381,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         </div>
       </ModalBody>
     </Modal>
+    {doc && (
+      <DocModal isOpen={true} onClose={() => setDoc(null)} title={doc.title} path={doc.path} />
+    )}
     </>
   );
 };

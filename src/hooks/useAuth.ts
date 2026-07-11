@@ -13,6 +13,7 @@ interface Profile {
   avatar_url?: string;
   bio?: string;
   city?: string;
+  birthdate?: string | null;
   created_at: string;
   updated_at: string;
 }

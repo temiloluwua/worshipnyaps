@@ -67,6 +67,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
   const [showConnections, setShowConnections] = useState(false);
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState(false);
   const [connectionsList, setConnectionsList] = useState<{ id: string; name: string; avatar_url?: string }[]>([]);
   const [connectionsLoading, setConnectionsLoading] = useState(false);
 
@@ -249,7 +250,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="px-4 sm:px-6">
           <div className="relative -mt-14 sm:-mt-16 mb-4 flex justify-between items-end">
             <div className="relative shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-gray-900 overflow-hidden bg-gradient-to-br from-blue-500 to-teal-500 shadow-lg">
+              <button
+                type="button"
+                onClick={() => { if (viewingProfile.avatar_url) setShowAvatarLightbox(true); }}
+                disabled={!viewingProfile.avatar_url}
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-gray-900 overflow-hidden bg-gradient-to-br from-blue-500 to-teal-500 shadow-lg block touch-manipulation disabled:cursor-default"
+                aria-label={viewingProfile.avatar_url ? `View ${viewingProfile.name}'s photo` : undefined}
+              >
                 {viewingProfile.avatar_url ? (
                   <img src={viewingProfile.avatar_url} alt={viewingProfile.name} className="w-full h-full object-cover" />
                 ) : (
@@ -257,7 +264,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     {viewingProfile.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-              </div>
+              </button>
               {isOwnProfile && (
                 <button
                   onClick={() => setShowEditModal(true)}
@@ -597,6 +604,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         onClose={() => { setShowCreatePost(false); fetchProfile(userId); }}
         topicType="community"
       />
+
+      {showAvatarLightbox && viewingProfile.avatar_url && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setShowAvatarLightbox(false)}
+        >
+          <img
+            src={viewingProfile.avatar_url}
+            alt={viewingProfile.name}
+            className="max-w-full max-h-[85vh] object-contain rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {showConnections && (
         <div
