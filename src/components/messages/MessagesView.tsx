@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useDirectMessages, Conversation, DirectMessage } from '../../hooks/useDirectMessages';
 import { useAuth } from '../../hooks/useAuth';
 import { useConnections } from '../../hooks/useConnections';
+import { linkifyMessage } from '../../lib/linkify';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { ReportButton } from '../moderation/ReportButton';
@@ -171,7 +172,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    <p className="whitespace-pre-wrap break-words">{linkifyMessage(message.content || '', isOwn)}</p>
                     <div className={`flex items-center justify-end space-x-1 mt-1 ${
                       isOwn ? 'text-blue-200' : 'text-gray-400'
                     }`}>
