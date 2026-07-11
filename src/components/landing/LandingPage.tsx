@@ -236,7 +236,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         <h1 className="font-logo font-bold text-[clamp(2.5rem,7vw,5rem)] leading-[1.05] tracking-tight mb-8">
           <span className="block">Because community</span>
           <span className="block">
-            is more than <span className="text-[#2563eb]">Sunday.</span>
+            is more than just <span className="text-[#2563eb]">Sunday.</span>
           </span>
         </h1>
 
@@ -279,7 +279,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#14b8a6] mb-4">The Signature Feature</p>
-            <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-6">
+            <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-6">
               Yaps — a card game for real conversations.
             </h2>
             <p className="text-[#CBD5E1] mb-8 leading-relaxed">
@@ -348,7 +348,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       {/* 5. Features — tab switcher */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">Everything you need</p>
-        <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight text-center mb-12">
+        <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight text-center mb-12">
           For your community
         </h2>
 
@@ -393,11 +393,11 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       <section className="bg-[#EFF6FF] dark:bg-[#1E293B]">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3">Global Groupchat</p>
-          <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-6 max-w-3xl">
+          <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-6 max-w-3xl">
             No one of us sees the whole picture.
           </h2>
           <p className="text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mb-4 leading-relaxed">
-            We're all searching for the same truth. None of us see the whole picture from where we're standing.
+            We're all searching for the same truth. None of us sees the whole picture from where we're standing.
             A believer in Lagos sees what someone in Calgary can't. A new Christian asks the question the
             ten-year-veteran forgot to ask. The fuller view comes from <em>each other</em>.
           </p>
@@ -603,7 +603,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       <section className="bg-[#0F172A] text-[#F8FAFC]">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#14b8a6] mb-3">Who It's For</p>
-          <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-12 max-w-3xl">
+          <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-12 max-w-3xl">
             Built for people who show up
           </h2>
 
@@ -625,7 +625,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       <section id="get-the-deck" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <div className="rounded-3xl bg-[#2563eb] text-white p-10 md:p-16 text-center shadow-xl">
           <div className="text-5xl mb-5">🃏</div>
-          <h2 className="font-logo font-bold text-4xl md:text-5xl leading-tight mb-5">
+          <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-5">
             Ready to play?
           </h2>
           <p className="max-w-2xl mx-auto text-white/90 leading-relaxed mb-9">
@@ -666,7 +666,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             <span className="font-logo font-bold">Worship N Yaps</span>
           </div>
           <p className="text-[#64748B] dark:text-[#94A3B8] text-center text-xs">
-            Because community is more than Sunday. · Calgary, Canada · Everywhere else too.
+            Because community is more than just Sunday. · Calgary, Canada · Everywhere else too.
           </p>
           <div className="flex items-center gap-5 text-[#64748B] dark:text-[#CBD5E1]">
             <a href="/privacy.html" className="hover:text-[#2563eb]">Privacy</a>
