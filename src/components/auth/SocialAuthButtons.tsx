@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../../lib/supabase';
 import { executeRecaptcha } from '../../lib/captcha';
-import { Mail, Phone, Apple } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PhoneVerificationModal } from './PhoneVerificationModal';
 import { signInWithAppleNative, isAppleCancel } from '../../lib/appleAuth';
 import { signInWithGoogleInApp } from '../../lib/googleAuth';
+import { AppleLogo, GoogleLogo } from './BrandLogos';
 
 interface SocialAuthButtonsProps {
   onSuccess?: () => void;
@@ -134,27 +135,33 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
         </div>
       </div>
 
-      {/* Google: in-app Safari sheet on native (Guideline-4 compliant),
-          normal redirect on the web. */}
-      <button
-        type="button"
-        onClick={() => (isNative ? handleNativeGoogle() : handleOAuthSignIn('google'))}
-        disabled={isLoading || showPhoneInput}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
-      >
-        <Mail className="w-4 h-4" />
-        {isLoading ? 'Signing in...' : 'Continue with Google'}
-      </button>
-
-      {/* Apple: native sheet inside the app (no browser), web-OAuth on the site. */}
+      {/* Sign in with Apple — styled per Apple's Human Interface Guidelines:
+          black button, official Apple logo mark, "Sign in with Apple" label,
+          system font, 44pt+ height, 8px corner radius. */}
       <button
         type="button"
         onClick={() => (isNative ? handleNativeApple() : handleOAuthSignIn('apple'))}
         disabled={isLoading || showPhoneInput}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-black rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
+        aria-label="Sign in with Apple"
+        style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
+        className="w-full flex items-center justify-center gap-2.5 h-[50px] rounded-lg text-[17px] font-medium text-white bg-black hover:bg-black/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
       >
-        <Apple className="w-4 h-4" />
-        {isLoading ? 'Signing in...' : 'Continue with Apple'}
+        <AppleLogo className="w-[18px] h-[18px]" />
+        <span>{isLoading ? 'Signing in…' : 'Sign in with Apple'}</span>
+      </button>
+
+      {/* Google: in-app Safari sheet on native (Guideline-4 compliant),
+          normal redirect on the web. Uses the official Google "G" logo. */}
+      <button
+        type="button"
+        onClick={() => (isNative ? handleNativeGoogle() : handleOAuthSignIn('google'))}
+        disabled={isLoading || showPhoneInput}
+        aria-label="Sign in with Google"
+        style={{ fontFamily: 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
+        className="w-full flex items-center justify-center gap-2.5 h-[50px] rounded-lg border border-gray-300 dark:border-gray-600 text-[17px] font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
+      >
+        <GoogleLogo className="w-[18px] h-[18px]" />
+        <span>{isLoading ? 'Signing in…' : 'Sign in with Google'}</span>
       </button>
 
       {!showPhoneInput ? (
