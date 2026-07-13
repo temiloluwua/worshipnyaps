@@ -39,7 +39,23 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
   const [bio, setBio] = useState(profile.bio || '');
   const [city, setCity] = useState(profile.city || '');
   const [relationshipStatus, setRelationshipStatus] = useState(((profile as { relationship_status?: string }).relationship_status) || '');
-  const [age, setAge] = useState<string>(((profile as { age?: number }).age ?? '').toString());
+  // Age is verified at sign-up (date of birth, 13+). Derive it read-only from
+  // birthdate; fall back to a legacy stored age if birthdate isn't set.
+  const verifiedAge: number | null = (() => {
+    const bd = (profile as { birthdate?: string | null }).birthdate;
+    if (bd) {
+      const d = new Date(`${bd}T00:00:00`);
+      if (!isNaN(d.getTime())) {
+        const now = new Date();
+        let a = now.getFullYear() - d.getFullYear();
+        const m = now.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+        return a;
+      }
+    }
+    const legacy = (profile as { age?: number }).age;
+    return typeof legacy === 'number' ? legacy : null;
+  })();
   const [interests, setInterests] = useState<string[]>(profile.interests || []);
   const [newInterest, setNewInterest] = useState('');
   const [spiritualGifts, setSpiritualGifts] = useState<string[]>(profile.spiritual_gifts || []);
@@ -141,7 +157,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
         bio: bio.trim(),
         city: city.trim(),
         relationship_status: relationshipStatus || null,
-        age: age && !isNaN(parseInt(age, 10)) ? parseInt(age, 10) : null,
+        age: verifiedAge,
         interests,
         spiritual_gifts: spiritualGifts,
         avatar_url: avatarUrl,
@@ -336,18 +352,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                  Age <span className="text-gray-400 font-normal">(optional)</span>
+                  Age
                 </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={13}
-                  max={120}
-                  value={age}
-                  onChange={(e) => setAge(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="e.g. 28"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+                {/* Age is verified at sign-up via date of birth (13+ required)
+                    and shown read-only here — it isn't an optional field. */}
+                <div className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm">
+                  {verifiedAge != null ? `${verifiedAge} · verified` : 'Verified at sign-up'}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
