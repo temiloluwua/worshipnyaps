@@ -1264,24 +1264,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 )}
               </button>
             )}
-            {canAccessOrganizerChat && (
-              <button
-                onClick={() => setActiveTab('organizer')}
-                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
-                  activeTab === 'organizer'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-              >
-                <span className="flex items-center justify-center gap-1">
-                  <Shield size={16} />
-                  {t('chat.organizerChat')}
-                </span>
-                {activeTab === 'organizer' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-                )}
-              </button>
-            )}
             {(isRsvped || isHost || isOrganizer) && (
               <button
                 onClick={() => setActiveTab('people')}
@@ -1632,18 +1614,76 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <PostEventFriendSuggestions eventId={eventId} eventTitle={event.title} />
               </div>
             )}
-          </div>
-          </div>
-          </div>
-        ) : activeTab === 'help' ? (
-          <>
-            <EventHelpRequests eventId={eventId} isHost={isHost} />
+
+            {/* Recap photos live under event details. */}
             {event && (
               <EventRecapPhotos
                 eventId={eventId}
                 hostId={event.host_id}
                 canUpload={Boolean(isHost || isRsvped)}
               />
+            )}
+          </div>
+          </div>
+          </div>
+        ) : activeTab === 'help' ? (
+          <>
+            <EventHelpRequests eventId={eventId} isHost={isHost} />
+
+            {/* Organizer group chat now lives under Help Needed (below the
+                requests and roles), for hosts and organizers only. */}
+            {canAccessOrganizerChat && (
+              <div className="border-t border-gray-200 dark:border-gray-700 mt-2">
+                <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                    <Shield size={12} />
+                    {t('chat.organizerChat')} - {isHost ? 'Host' : 'Organizer'}
+                  </p>
+                </div>
+                <div className="h-[55vh] overflow-y-auto p-4 space-y-4">
+                  {orgMessages.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>{t('chat.noMessages')}</p>
+                      <p className="text-sm mt-1">{t('chat.beFirst')}</p>
+                    </div>
+                  ) : (
+                    orgMessages.map((message) => (
+                      <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} rounded-lg px-4 py-2`}>
+                          {message.sender_id !== user?.id && (
+                            <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown'}</div>
+                          )}
+                          <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                          <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-amber-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                            {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={orgMessagesEndRef} />
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={orgMessageContent}
+                      onChange={(e) => setOrgMessageContent(e.target.value)}
+                      onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendOrgMessage(); } }}
+                      placeholder={t('chat.typePlaceholder')}
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={sendOrgMessage}
+                      disabled={!orgMessageContent.trim() || sending}
+                      className="p-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Send size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </>
         ) : activeTab === 'people' ? (
@@ -1654,58 +1694,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               isRsvped={isRsvped}
               onRsvp={() => setShowRsvpDisclaimer(true)}
             />
-          </div>
-        ) : activeTab === 'organizer' ? (
-          <div className="flex flex-col h-[calc(100vh-120px)]">
-            <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
-              <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                <Shield size={12} />
-                {t('chat.organizerChat')} - {isHost ? 'Host' : 'Organizer'}
-              </p>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {orgMessages.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                  <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>{t('chat.noMessages')}</p>
-                  <p className="text-sm mt-1">{t('chat.beFirst')}</p>
-                </div>
-              ) : (
-                orgMessages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} rounded-lg px-4 py-2`}>
-                      {message.sender_id !== user?.id && (
-                        <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown'}</div>
-                      )}
-                      <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-                      <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-amber-200' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={orgMessagesEndRef} />
-            </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={orgMessageContent}
-                  onChange={(e) => setOrgMessageContent(e.target.value)}
-                  onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendOrgMessage(); } }}
-                  placeholder={t('chat.typePlaceholder')}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-                <button
-                  onClick={sendOrgMessage}
-                  disabled={!orgMessageContent.trim() || sending}
-                  className="p-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Send size={20} />
-                </button>
-              </div>
-            </div>
           </div>
         ) : (
           <div className="flex flex-col h-[calc(100vh-120px)]">
