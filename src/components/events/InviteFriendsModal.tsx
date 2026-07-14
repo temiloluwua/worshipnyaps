@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, UserCheck, Send, Clock, CheckCircle2, Copy, Check, Share2 } from 'lucide-react';
+import { X, Search, UserCheck, Send, Clock, CheckCircle2, Copy, Check, Share2, Users, CalendarClock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useEventInvitations } from '../../hooks/useEventInvitations';
@@ -26,6 +26,14 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
   const [sending, setSending] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Source of invitees: your connections, or the attendees of one of your
+  // past events (so you can quickly re-invite the same group).
+  const [source, setSource] = useState<'friends' | 'past'>('friends');
+  const [pastEvents, setPastEvents] = useState<{ id: string; title: string; date: string }[]>([]);
+  const [selectedPastEventId, setSelectedPastEventId] = useState('');
+  const [pastAttendees, setPastAttendees] = useState<Friend[]>([]);
+  const [loadingPast, setLoadingPast] = useState(false);
 
   const shareOrigin = (() => {
     const origin = window.location.origin;
@@ -87,15 +95,69 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
     load();
   }, [user]);
 
+  // Load the host's past events the first time they switch to that tab.
+  useEffect(() => {
+    if (source !== 'past' || !user || pastEvents.length > 0) return;
+    (async () => {
+      setLoadingPast(true);
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from('events')
+          .select('id, title, date')
+          .eq('host_id', user.id)
+          .lt('date', today)
+          .neq('id', eventId)
+          .order('date', { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        setPastEvents(data || []);
+      } catch (err) {
+        console.error('Error loading past events:', err);
+      } finally {
+        setLoadingPast(false);
+      }
+    })();
+  }, [source, user, eventId, pastEvents.length]);
+
+  // Load attendees of the selected past event.
+  useEffect(() => {
+    if (!selectedPastEventId) { setPastAttendees([]); return; }
+    let cancelled = false;
+    (async () => {
+      setLoadingPast(true);
+      try {
+        const { data, error } = await supabase
+          .from('event_attendees')
+          .select('users!user_id(id, name, avatar_url)')
+          .eq('event_id', selectedPastEventId)
+          .eq('status', 'registered');
+        if (error) throw error;
+        const people = (data || [])
+          .map((r: any) => r.users)
+          .filter((u: any) => u && u.id !== user?.id);
+        if (!cancelled) setPastAttendees(people);
+      } catch (err) {
+        console.error('Error loading past attendees:', err);
+        if (!cancelled) toast.error('Failed to load attendees');
+      } finally {
+        if (!cancelled) setLoadingPast(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedPastEventId, user]);
+
   const alreadyInvited = new Set(
     sentInvitations
       .filter(inv => inv.event_id === eventId)
       .map(inv => inv.invitee_id)
   );
 
-  const filtered = friends.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase())
+  const sourceList = source === 'friends' ? friends : pastAttendees;
+  const filtered = sourceList.filter(f =>
+    (f.name || '').toLowerCase().includes(search.toLowerCase())
   );
+  const listLoading = source === 'friends' ? loadingFriends : loadingPast;
 
   const handleInvite = async (friendId: string) => {
     setSending(prev => ({ ...prev, [friendId]: true }));
@@ -142,13 +204,48 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
               Share
             </button>
           </div>
+          {/* Source toggle: connections vs. a past event's attendees. */}
+          <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setSource('friends')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm font-medium transition-colors touch-manipulation ${
+                source === 'friends' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              <Users className="w-4 h-4" /> Friends
+            </button>
+            <button
+              type="button"
+              onClick={() => setSource('past')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm font-medium transition-colors touch-manipulation ${
+                source === 'past' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              <CalendarClock className="w-4 h-4" /> Past event
+            </button>
+          </div>
+
+          {source === 'past' && (
+            <select
+              value={selectedPastEventId}
+              onChange={(e) => setSelectedPastEventId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">{pastEvents.length ? 'Choose a past event…' : 'No past events you hosted'}</option>
+              {pastEvents.map((e) => (
+                <option key={e.id} value={e.id}>{e.title}</option>
+              ))}
+            </select>
+          )}
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search friends..."
+              placeholder={source === 'friends' ? 'Search friends...' : 'Search attendees...'}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -165,7 +262,7 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {loadingFriends ? (
+          {listLoading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
             </div>
@@ -173,7 +270,9 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
             <div className="text-center py-12 px-6">
               <UserCheck className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {friends.length === 0 ? 'You have no connections yet' : 'No friends match your search'}
+                {source === 'friends'
+                  ? (friends.length === 0 ? 'You have no connections yet' : 'No friends match your search')
+                  : (!selectedPastEventId ? 'Pick a past event to see who came' : 'No attendees to show')}
               </p>
             </div>
           ) : (
