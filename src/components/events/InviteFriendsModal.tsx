@@ -34,6 +34,10 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
   const [selectedPastEventId, setSelectedPastEventId] = useState('');
   const [pastAttendees, setPastAttendees] = useState<Friend[]>([]);
   const [loadingPast, setLoadingPast] = useState(false);
+  // Multi-select for the past-event flow: everyone is selected by default and
+  // the host unchecks anyone they don't want, then invites in one tap.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSending, setBulkSending] = useState(false);
 
   const shareOrigin = (() => {
     const origin = window.location.origin;
@@ -136,7 +140,10 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
         const people = (data || [])
           .map((r: any) => r.users)
           .filter((u: any) => u && u.id !== user?.id);
-        if (!cancelled) setPastAttendees(people);
+        if (!cancelled) {
+          setPastAttendees(people);
+          setSelectedIds(new Set(people.map((p: Friend) => p.id)));
+        }
       } catch (err) {
         console.error('Error loading past attendees:', err);
         if (!cancelled) toast.error('Failed to load attendees');
@@ -163,6 +170,43 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
     setSending(prev => ({ ...prev, [friendId]: true }));
     await sendInvitation(eventId, friendId, message || undefined);
     setSending(prev => ({ ...prev, [friendId]: false }));
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Invitable = attendees matching the search who aren't already invited.
+  const invitableIds = filtered.filter(p => !alreadyInvited.has(p.id)).map(p => p.id);
+  const allSelected = invitableIds.length > 0 && invitableIds.every(id => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) invitableIds.forEach(id => next.delete(id));
+      else invitableIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const handleInviteSelected = async () => {
+    const ids = invitableIds.filter(id => selectedIds.has(id));
+    if (ids.length === 0) { toast.error('Select at least one person'); return; }
+    setBulkSending(true);
+    let sent = 0;
+    try {
+      for (const id of ids) {
+        const ok = await sendInvitation(eventId, id, message || undefined);
+        if (ok) sent++;
+      }
+      toast.success(`Invited ${sent} ${sent === 1 ? 'person' : 'people'}`);
+    } finally {
+      setBulkSending(false);
+    }
   };
 
   return (
@@ -276,12 +320,28 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filtered.map((friend) => {
-                const invited = alreadyInvited.has(friend.id);
-                const isSending = sending[friend.id];
-                return (
-                  <li key={friend.id} className="flex items-center gap-3 px-5 py-3">
+            <>
+              {/* Select all — only in the past-event multi-select flow. */}
+              {source === 'past' && invitableIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="w-full flex items-center gap-3 px-5 py-2.5 border-b border-gray-100 dark:border-gray-700 text-left touch-manipulation"
+                >
+                  <span className={`w-5 h-5 rounded-md border flex items-center justify-center ${allSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                    {allSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                  </span>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {allSelected ? 'Deselect all' : 'Select all'} ({invitableIds.length})
+                  </span>
+                </button>
+              )}
+              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                {filtered.map((friend) => {
+                  const invited = alreadyInvited.has(friend.id);
+                  const isSending = sending[friend.id];
+                  const isSelected = selectedIds.has(friend.id);
+                  const avatar = (
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-teal-400 flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden">
                       {friend.avatar_url ? (
                         <img src={friend.avatar_url} alt={friend.name} className="w-full h-full object-cover" />
@@ -289,34 +349,79 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
                         friend.name.charAt(0).toUpperCase()
                       )}
                     </div>
-                    <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">{friend.name}</span>
-                    {invited ? (
-                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Invited
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleInvite(friend.id)}
-                        disabled={isSending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        {isSending ? (
-                          <Clock className="w-3.5 h-3.5 animate-pulse" />
-                        ) : (
-                          <Send className="w-3.5 h-3.5" />
-                        )}
-                        {isSending ? 'Sending...' : 'Invite'}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+                  );
+
+                  // Past-event flow: tappable row with a checkbox.
+                  if (source === 'past') {
+                    return (
+                      <li key={friend.id}>
+                        <button
+                          type="button"
+                          onClick={() => !invited && toggleSelected(friend.id)}
+                          disabled={invited}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-left touch-manipulation disabled:opacity-60"
+                        >
+                          <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                            invited ? 'border-gray-200 dark:border-gray-700' : isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'
+                          }`}>
+                            {(isSelected && !invited) && <Check className="w-3.5 h-3.5 text-white" />}
+                          </span>
+                          {avatar}
+                          <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">{friend.name}</span>
+                          {invited && (
+                            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Invited
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  }
+
+                  // Friends flow: per-row Invite button.
+                  return (
+                    <li key={friend.id} className="flex items-center gap-3 px-5 py-3">
+                      {avatar}
+                      <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">{friend.name}</span>
+                      {invited ? (
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Invited
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleInvite(friend.id)}
+                          disabled={isSending}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {isSending ? (
+                            <Clock className="w-3.5 h-3.5 animate-pulse" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5" />
+                          )}
+                          {isSending ? 'Sending...' : 'Invite'}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          {source === 'past' && invitableIds.length > 0 && (
+            <button
+              onClick={handleInviteSelected}
+              disabled={bulkSending || invitableIds.filter(id => selectedIds.has(id)).length === 0}
+              className="w-full py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors touch-manipulation"
+            >
+              {bulkSending
+                ? 'Inviting…'
+                : `Invite ${invitableIds.filter(id => selectedIds.has(id)).length} ${invitableIds.filter(id => selectedIds.has(id)).length === 1 ? 'person' : 'people'}`}
+            </button>
+          )}
           <button
             onClick={onClose}
             className="w-full py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
