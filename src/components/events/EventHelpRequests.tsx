@@ -185,12 +185,18 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   }, [eventId]);
 
   const handleShareItem = async (item: UnifiedHelpItem) => {
-    const url = `${window.location.origin}/event/${eventId}`;
+    // window.location.origin is capacitor://localhost inside the app, which
+    // isn't a shareable URL — use the real site origin.
+    const origin = window.location.origin;
+    const shareOrigin = origin.startsWith('http://localhost') || origin.startsWith('capacitor://')
+      ? 'https://www.worshipnyaps.com'
+      : origin;
+    const url = `${shareOrigin}/event/${eventId}`;
     const message = item.source === 'food_item'
       ? `Can you bring "${item.title}" for our event? Tap to RSVP and sign up: ${url}`
       : `Can you help with "${item.title}" at our event? Tap to RSVP and sign up: ${url}`;
     try {
-      if (navigator.share) {
+      if (typeof navigator.share === 'function') {
         await navigator.share({ title: item.title, text: message, url });
       } else {
         await navigator.clipboard.writeText(message);
@@ -573,7 +579,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
           </button>
           <button
             onClick={() => setShowForm('food')}
-            className="flex-1 py-2.5 border-2 border-dashed border-orange-200 dark:border-orange-800 rounded-xl text-orange-400 dark:text-orange-500 hover:border-orange-400 hover:text-orange-500 transition-colors text-sm flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 border-2 border-dashed border-orange-400 dark:border-orange-600 rounded-xl text-orange-600 dark:text-orange-400 hover:border-orange-500 hover:text-orange-700 dark:hover:text-orange-300 transition-colors text-sm font-medium flex items-center justify-center gap-1.5"
           >
             <Utensils className="w-4 h-4" /> Add Food Item
           </button>

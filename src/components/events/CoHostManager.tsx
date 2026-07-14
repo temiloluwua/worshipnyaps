@@ -146,6 +146,25 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
     return ROLES[c.role]?.label || null;
   };
 
+  // Open the native share sheet so the host can actually send the invite
+  // (Messages, WhatsApp, etc.). Falls back to copying to the clipboard.
+  const shareInvite = async (message: string, copiedMsg: string) => {
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ text: message });
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return; // user dismissed the sheet
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success(copiedMsg);
+    } catch {
+      toast.error('Could not share the invite');
+    }
+  };
+
   const handleAddAndCopy = async (friend: Friend) => {
     if (!user) return;
     setAdding(friend.id);
@@ -180,12 +199,8 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
         roleDescription,
       });
 
-      try {
-        await navigator.clipboard.writeText(message);
-        toast.success(`Added ${friend.name.split(' ')[0]} — invite copied. Paste in iMessage to send.`);
-      } catch {
-        toast.success('Co-host added!');
-      }
+      toast.success(`Added ${friend.name.split(' ')[0]} as co-host`);
+      await shareInvite(message, 'Invite copied — paste to send.');
 
       await fetchCoHosts();
       setShowAdd(false);
@@ -218,12 +233,7 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
       roleLabel,
       roleDescription,
     });
-    try {
-      await navigator.clipboard.writeText(message);
-      toast.success('Invite copied. Paste in iMessage to send.');
-    } catch {
-      toast.error('Could not copy — your browser blocked clipboard access');
-    }
+    await shareInvite(message, 'Invite copied. Paste in iMessage to send.');
   };
 
   const handleRemove = async (coHostId: string) => {
