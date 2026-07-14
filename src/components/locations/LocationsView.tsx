@@ -964,7 +964,11 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
                     onClick={() => setFormData(p => ({
                       ...p,
                       event_type: opt.eventType,
-                      eventType: opt.eventType === 'bible_study' ? 'bible-study' : opt.eventType === 'church' ? 'church' : 'other',
+                      // Legacy `type` column has a narrow CHECK
+                      // (bible-study/basketball-yap/hiking-yap/other). The
+                      // precise kind lives in event_type; map everything that
+                      // isn't a bible study to 'other' so the insert passes.
+                      eventType: opt.eventType === 'bible_study' ? 'bible-study' : 'other',
                       yap_vibe: opt.vibe,
                     }))}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
