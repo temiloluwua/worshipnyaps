@@ -420,7 +420,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <HeartHandshake className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Help Needed</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Help</h3>
         </div>
         {items.length > 0 && (
           <div className="flex gap-2 text-xs">
