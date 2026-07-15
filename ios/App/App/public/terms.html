@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service &amp; Community Guidelines — Worship N Yaps</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue-600: #2563eb;
+      --blue-700: #1d4ed8;
+      --blue-50: #eff6ff;
+      --red-600: #dc2626;
+      --red-50: #fef2f2;
+      --amber-50: #fffbeb;
+      --amber-600: #d97706;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-700);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    header { background: var(--blue-600); color: #fff; padding: 0 24px; }
+    .header-inner {
+      max-width: 800px; margin: 0 auto; padding: 20px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { font-size: 20px; font-weight: 700; color: #fff; text-decoration: none; letter-spacing: -0.3px; }
+    .back-link { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
+    .back-link:hover { color: #fff; }
+
+    .hero {
+      background: linear-gradient(135deg, var(--blue-600) 0%, #1e40af 100%);
+      color: #fff; padding: 64px 24px 56px; text-align: center;
+    }
+    .hero h1 { font-size: 36px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
+    .hero p { font-size: 16px; color: rgba(255,255,255,0.8); max-width: 540px; margin: 0 auto; }
+    .last-updated {
+      display: inline-block; margin-top: 16px; background: rgba(255,255,255,0.15);
+      border-radius: 20px; padding: 4px 14px; font-size: 13px; color: rgba(255,255,255,0.9);
+    }
+
+    main { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    .toc {
+      background: #fff; border: 1px solid var(--gray-200); border-radius: 12px;
+      padding: 24px 28px; margin-bottom: 48px;
+    }
+    .toc h2 {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--gray-500); margin-bottom: 12px;
+    }
+    .toc ol { padding-left: 20px; display: grid; gap: 6px; }
+    .toc a { color: var(--blue-600); text-decoration: none; font-size: 14px; }
+    .toc a:hover { text-decoration: underline; }
+
+    section { margin-bottom: 48px; }
+    section h2 {
+      font-size: 22px; font-weight: 700; color: var(--gray-900);
+      margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--blue-50);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; background: var(--blue-600); color: #fff;
+      border-radius: 50%; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    section h3 {
+      font-size: 17px; font-weight: 600; color: var(--gray-900);
+      margin: 20px 0 8px; letter-spacing: -0.1px;
+    }
+
+    p { margin-bottom: 14px; }
+    p:last-child { margin-bottom: 0; }
+    ul, ol { padding-left: 20px; margin-bottom: 14px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--gray-900); }
+
+    .prohibited-box {
+      background: var(--red-50); border-left: 4px solid var(--red-600);
+      border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 20px 0;
+    }
+    .prohibited-box h4 { color: var(--red-600); font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .prohibited-box ul { margin-bottom: 0; padding-left: 18px; }
+    .prohibited-box li { color: var(--gray-700); font-size: 14px; }
+
+    .notice-box {
+      background: var(--amber-50); border-left: 4px solid var(--amber-600);
+      border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 20px 0; font-size: 15px;
+    }
+
+    .highlight-box {
+      background: var(--blue-50); border-left: 4px solid var(--blue-600);
+      border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 20px 0; font-size: 15px;
+    }
+
+    .contact-card {
+      background: #fff; border: 1px solid var(--gray-200); border-radius: 12px;
+      padding: 28px; text-align: center;
+    }
+    .contact-card h3 { font-size: 18px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+    .contact-card p { color: var(--gray-500); margin-bottom: 16px; }
+    .contact-email {
+      display: inline-block; background: var(--blue-600); color: #fff;
+      padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;
+      transition: background 0.15s;
+    }
+    .contact-email:hover { background: var(--blue-700); }
+
+    footer {
+      background: #fff; border-top: 1px solid var(--gray-200);
+      padding: 24px; text-align: center; color: var(--gray-500); font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 28px; }
+      .hero { padding: 48px 20px 40px; }
+      main { padding: 32px 20px 60px; }
+      section h2 { font-size: 19px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="/" class="logo">Worship N Yaps</a>
+      <a href="/" class="back-link">← Back to app</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>Terms of Service &amp; Community Guidelines</h1>
+    <p>The rules of the table. Read these before you join the conversation.</p>
+    <div class="last-updated">Last updated: June 8, 2026</div>
+  </div>
+
+  <main>
+    <div class="toc">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#agreement">Your agreement with us</a></li>
+        <li><a href="#account">Your account</a></li>
+        <li><a href="#conduct">Community Guidelines (Code of Conduct)</a></li>
+        <li><a href="#content">Your content &amp; our license</a></li>
+        <li><a href="#enforcement">Reports, moderation &amp; enforcement</a></li>
+        <li><a href="#safety">Your safety at in-person events</a></li>
+        <li><a href="#termination">Suspension and termination</a></li>
+        <li><a href="#disclaimers">Disclaimers &amp; limitation of liability</a></li>
+        <li><a href="#changes">Changes to these terms</a></li>
+        <li><a href="#contact">Contact us</a></li>
+      </ol>
+    </div>
+
+    <section id="agreement">
+      <h2><span class="section-num">1</span>Your agreement with us</h2>
+      <p>
+        Welcome to Worship N Yaps. By creating an account or using the app, you agree to be bound by
+        these Terms of Service ("Terms") and our <a href="/privacy.html">Privacy Policy</a>.
+        If you don't agree, please don't use the app.
+      </p>
+      <p>
+        You must be at least 13 years old to use Worship N Yaps. If you're under 18, you confirm
+        that a parent or guardian has reviewed these Terms and agrees to them on your behalf.
+      </p>
+    </section>
+
+    <section id="account">
+      <h2><span class="section-num">2</span>Your account</h2>
+      <p>
+        You're responsible for keeping your account secure, for any activity that happens under it,
+        and for the information you share. Please use a real name and accurate profile information —
+        impersonation, fake accounts, and bots are not allowed.
+      </p>
+      <p>
+        You can delete your account at any time from Settings &rarr; Delete account. Deletion is
+        permanent and removes your profile, posts, comments, events, and messages from public view.
+      </p>
+    </section>
+
+    <section id="conduct">
+      <h2><span class="section-num">3</span>Community Guidelines (Code of Conduct)</h2>
+      <p>
+        Worship N Yaps exists to help Christians find each other, study scripture together, and host
+        real-life events. We want every interaction to reflect love, respect, and dignity. By using
+        the app, you agree to follow these guidelines on every surface — topics, comments, messages,
+        events, profiles, group chats, and anywhere else you post or interact.
+      </p>
+
+      <h3>Be kind. Be respectful. Be honest.</h3>
+      <ul>
+        <li>Treat others how you'd want to be treated. Disagree without attacking.</li>
+        <li>Speak truthfully. Don't mislead, deceive, or impersonate others.</li>
+        <li>Welcome new members and lift each other up.</li>
+      </ul>
+
+      <div class="prohibited-box">
+        <h4>Strictly prohibited content and behavior</h4>
+        <p style="color: var(--gray-700); font-size: 14px; margin-bottom: 10px;">
+          The following are not allowed anywhere on the platform and will result in content removal,
+          account suspension, or permanent ban:
+        </p>
+        <ul>
+          <li><strong>Harassment, bullying, or threats</strong> directed at any person or group.</li>
+          <li><strong>Hate speech</strong> — content that attacks or dehumanizes people based on race, ethnicity, national origin, religion, gender identity, sexual orientation, disability, or any other identifying trait.</li>
+          <li><strong>Sexual or pornographic material</strong> of any kind, including nudity, sexually suggestive content, or content sexualizing minors. We have zero tolerance for child sexual abuse material — confirmed reports are forwarded to authorities.</li>
+          <li><strong>Violence, glorification of violence, or threats of violence</strong> against any person, group, or place of worship.</li>
+          <li><strong>Self-harm or suicide content</strong> that promotes, encourages, or provides instructions for harm. (See the safety resources at the bottom of this page if you or someone you know is in crisis.)</li>
+          <li><strong>Illegal activity</strong> — including the sale or promotion of drugs, weapons, stolen goods, counterfeit products, or any other illegal acts.</li>
+          <li><strong>Doxing and unauthorized disclosure of personal information</strong> — sharing someone's address, phone number, workplace, or other private details without their permission.</li>
+          <li><strong>Scams, fraud, spam, and unsolicited promotion</strong> — including pyramid schemes, fake giveaways, mass-DMing, fake fundraisers, or repetitive low-quality posting.</li>
+          <li><strong>Predatory behavior</strong> — particularly toward minors, vulnerable adults, or new community members. This includes grooming, coercion, and any attempt to isolate someone from their support network.</li>
+          <li><strong>Impersonation</strong> — pretending to be someone else (real or fictional), including pastors, leaders, or other members.</li>
+          <li><strong>Content that exploits the platform's purpose</strong> — using events, chats, or topics to recruit for cults, MLMs, political campaigns, or non-faith-based commercial purposes.</li>
+          <li><strong>Malware, phishing, or attempts to compromise the platform or other users' accounts.</strong></li>
+        </ul>
+      </div>
+
+      <h3>About faith and disagreement</h3>
+      <p>
+        Christians don't all worship in the same way or believe the same things on every issue.
+        Honest theological discussion is welcome and encouraged. Personal attacks, contempt, and
+        weaponizing scripture to demean others are not.
+      </p>
+    </section>
+
+    <section id="content">
+      <h2><span class="section-num">4</span>Your content &amp; our license</h2>
+      <p>
+        You own the content you post. By posting on Worship N Yaps, you grant us a worldwide,
+        non-exclusive, royalty-free license to display, distribute, and store your content as
+        needed to operate the service. This license ends when you delete your content or account.
+      </p>
+      <p>
+        You're responsible for the content you post. Don't post anything you don't have the right
+        to share, including copyrighted material owned by others.
+      </p>
+    </section>
+
+    <section id="enforcement">
+      <h2><span class="section-num">5</span>Reports, moderation &amp; enforcement</h2>
+      <p>
+        Every post, comment, message, event, and profile has a "Report" option. If you see content
+        that violates these guidelines, please report it. Our team reviews reports promptly and
+        takes action including:
+      </p>
+      <ul>
+        <li>Removing the offending content</li>
+        <li>Warning the user</li>
+        <li>Suspending the user's account temporarily</li>
+        <li>Permanently banning the user from the platform</li>
+        <li>Notifying authorities in cases involving illegal activity or imminent harm</li>
+      </ul>
+      <p>
+        You can also block any user from Settings or their profile. Blocking prevents them from
+        contacting you, seeing your posts, or appearing in your event attendee lists.
+      </p>
+      <div class="highlight-box">
+        <strong>To report abuse or escalate a serious concern</strong>, email
+        <a href="mailto:support@worshipandyapps.com">support@worshipandyapps.com</a> with the
+        username and a description of what happened. We aim to respond within 24 hours for safety
+        issues and 1-2 business days for everything else.
+      </div>
+    </section>
+
+    <section id="safety">
+      <h2><span class="section-num">6</span>Your safety at in-person events</h2>
+      <p>
+        Worship N Yaps helps you find and host gatherings in the real world. We can't verify every
+        host, attendee, or location, so please use good judgment:
+      </p>
+      <ul>
+        <li>Meet in public or well-attended places when meeting new people.</li>
+        <li>Bring a friend if you can. Tell someone where you're going.</li>
+        <li>Trust your instincts. Leave any situation that feels unsafe.</li>
+        <li>If a host or attendee makes you uncomfortable, block them, report them, and contact local authorities if you feel unsafe.</li>
+      </ul>
+      <p>
+        Worship N Yaps is not responsible for the conduct of users or third parties at any
+        in-person event. Hosts and attendees participate at their own risk.
+      </p>
+    </section>
+
+    <section id="termination">
+      <h2><span class="section-num">7</span>Suspension and termination</h2>
+      <p>
+        We may suspend or terminate your account for any violation of these Terms or our Community
+        Guidelines, with or without notice. Serious violations — including any prohibited content
+        listed above — typically result in immediate permanent ban.
+      </p>
+      <p>
+        You may terminate your account at any time from Settings &rarr; Delete account.
+      </p>
+    </section>
+
+    <section id="disclaimers">
+      <h2><span class="section-num">8</span>Disclaimers &amp; limitation of liability</h2>
+      <p>
+        Worship N Yaps is provided "as is" and "as available." We make no warranties about the
+        accuracy, reliability, or availability of the service. To the maximum extent permitted by
+        law, we are not liable for any indirect, incidental, or consequential damages arising from
+        your use of the service.
+      </p>
+      <p>
+        We're not a substitute for professional pastoral, medical, legal, or mental health
+        services. Content shared by other users is not endorsed by us and may not be accurate.
+      </p>
+    </section>
+
+    <section id="changes">
+      <h2><span class="section-num">9</span>Changes to these terms</h2>
+      <p>
+        We may update these Terms from time to time. Significant changes will be announced in the
+        app or by email. Your continued use after changes go into effect means you accept the
+        updated Terms.
+      </p>
+    </section>
+
+    <section id="contact">
+      <h2><span class="section-num">10</span>Contact us</h2>
+      <div class="contact-card">
+        <h3>Questions, reports, or concerns?</h3>
+        <p>We're here to help. Email us and we'll get back to you.</p>
+        <a href="mailto:support@worshipandyapps.com" class="contact-email">support@worshipandyapps.com</a>
+      </div>
+      <div class="notice-box" style="margin-top: 24px;">
+        <strong>In crisis?</strong> If you or someone you know is in immediate danger, please call
+        your local emergency number. In Canada and the US, you can also reach the 988 Suicide
+        &amp; Crisis Lifeline at <strong>988</strong>.
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2026 Worship N Yaps. Built with love for the Calgary Bible Study community.
+  </footer>
+</body>
+</html>

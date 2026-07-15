@@ -50,13 +50,35 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
   const shareText = `Join me at "${eventTitle}" on Worship N Yaps`;
 
   const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(eventLink);
+    // Prefer the async clipboard API; fall back to a hidden textarea +
+    // execCommand for WebViews where it's unavailable/blocked.
+    const ok = await (async () => {
+      try {
+        await navigator.clipboard.writeText(eventLink);
+        return true;
+      } catch {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = eventLink;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const done = document.execCommand('copy');
+          document.body.removeChild(ta);
+          return done;
+        } catch {
+          return false;
+        }
+      }
+    })();
+    if (ok) {
       setCopied(true);
-      toast.success('Link copied!');
+      toast.success('Invite link copied!');
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error('Failed to copy link');
+    } else {
+      toast.error('Couldn’t copy — tap and hold the link to copy it.');
     }
   };
 
@@ -229,25 +251,38 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
         </div>
 
         <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors touch-manipulation"
-            >
-              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Copied!' : 'Copy link'}
-            </button>
-            <button
-              type="button"
-              onClick={handleNativeShare}
-              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors touch-manipulation"
-              title="Instagram, WhatsApp, Messenger, and more"
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </button>
+          {/* Clear, simple invite link: show the URL, copy it, or share it. */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Invite link</label>
+            <div className="flex items-stretch gap-2">
+              <input
+                type="text"
+                readOnly
+                value={eventLink}
+                onFocus={(e) => e.currentTarget.select()}
+                className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm truncate"
+              />
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={`flex items-center justify-center gap-1.5 px-4 rounded-lg text-sm font-semibold transition-colors touch-manipulation ${
+                  copied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={handleNativeShare}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors touch-manipulation"
+            title="Share via Messages, WhatsApp, Instagram, and more"
+          >
+            <Share2 className="w-4 h-4" />
+            Share via…
+          </button>
           {/* Source toggle: connections vs. a past event's attendees. */}
           <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
             <button

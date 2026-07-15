@@ -36,19 +36,19 @@ const HELP_REQUEST_TYPES = [
 ] as const;
 
 const FOOD_CATEGORIES = [
-  'main', 'side', 'dessert', 'beverage', 'setup'
+  'main', 'side', 'snacks', 'dessert', 'beverage', 'setup'
 ] as const;
 
 const typeIcons: Record<string, string> = {
   prayer: '🙏', worship: '🎵', tech: '🖥️', discussion: '💬',
   hospitality: '🏠', food: '🍕', setup: '🔧', other: '📋',
-  main: '🍽️', side: '🥗', dessert: '🍰', beverage: '🥤',
+  main: '🍽️', side: '🥗', snacks: '🍿', dessert: '🍰', beverage: '🥤',
 };
 
 const categoryLabel: Record<string, string> = {
   prayer: 'Prayer', worship: 'Worship', tech: 'Tech', discussion: 'Discussion',
   hospitality: 'Hospitality', setup: 'Setup', other: 'Other',
-  main: 'Main Dish', side: 'Side', dessert: 'Dessert', beverage: 'Drinks', food: 'Food',
+  main: 'Main Dish', side: 'Side', snacks: 'Snacks', dessert: 'Dessert', beverage: 'Drinks', food: 'Food',
 };
 
 // What each role actually involves at the event. Shown as helper text in the
@@ -63,6 +63,7 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   other: 'Anything not covered by the standard roles.',
   main: 'A main dish that feeds several people.',
   side: 'A side dish — salad, bread, fruit, etc.',
+  snacks: 'Snacks or finger food to share.',
   dessert: 'A dessert to share.',
   beverage: 'Drinks — coffee, tea, juice, water.',
 };
