@@ -1793,7 +1793,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       )}
 
       {showCancelConfirm && event && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !cancellingEvent && setShowCancelConfirm(false)}>
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !cancellingEvent && setShowCancelConfirm(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
@@ -1827,7 +1827,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       )}
 
       {showAdminDeleteConfirm && event && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !adminDeleting && setShowAdminDeleteConfirm(false)}>
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !adminDeleting && setShowAdminDeleteConfirm(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
@@ -1861,7 +1861,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       )}
 
       {showPostponeModal && event && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !postponing && setShowPostponeModal(false)}>
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !postponing && setShowPostponeModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
