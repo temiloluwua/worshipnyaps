@@ -50,6 +50,17 @@ const AppTree = (
   </>
 )
 
+// Remove the branded HTML loading screen once React has committed its first
+// render. rAF fires after the commit/paint, so the app is on-screen before the
+// splash fades — no white flash in between. If the initial render throws, the
+// RootErrorBoundary still counts as a mount, so its fallback is revealed too.
+const removeSplash = () => {
+  const splash = document.getElementById('app-splash');
+  if (!splash) return;
+  splash.classList.add('app-splash--hide');
+  window.setTimeout(() => splash.remove(), 400);
+};
+
 const rootEl = document.getElementById('root');
 if (!rootEl) {
   // No #root — hydrate a visible message instead of the previous non-null
@@ -75,4 +86,5 @@ if (!rootEl) {
       </RootErrorBoundary>
     </React.StrictMode>,
   );
+  requestAnimationFrame(() => requestAnimationFrame(removeSplash));
 }

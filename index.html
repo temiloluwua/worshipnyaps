@@ -35,30 +35,95 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <!-- Branded loading screen, styled with plain CSS so it paints instantly —
+         before the JS bundle loads. Matches the native splash colour (#2650eb)
+         so there is a seamless native-splash → this → app hand-off with no
+         white flash. React removes it on mount; if the bundle never loads it
+         stays branded (and turns into a Reload prompt) instead of going white. -->
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: #2650eb;
+        font-family: 'Fredoka One', system-ui, -apple-system, sans-serif;
+        transition: opacity 0.35s ease;
+      }
+      #app-splash.app-splash--hide { opacity: 0; pointer-events: none; }
+      #app-splash .app-splash__mark { width: 88px; height: 88px; }
+      #app-splash .app-splash__name {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      #app-splash .app-splash__spinner {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        animation: app-splash-spin 0.8s linear infinite;
+      }
+      #app-splash .app-splash__msg {
+        color: #fff;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 15px;
+        max-width: 300px;
+        text-align: center;
+        padding: 0 24px;
+        line-height: 1.4;
+      }
+      #app-splash .app-splash__btn {
+        margin-top: 4px;
+        padding: 12px 28px;
+        background: #fff;
+        color: #2650eb;
+        border: none;
+        border-radius: 12px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+      }
+      @keyframes app-splash-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <!-- Last-resort visible fallback. If the module bundle fails to execute
-         (e.g. a WKWebView refuses the entry script under the capacitor://
-         scheme), the app would otherwise show a pure-white screen with no
-         way to recover. This inline script runs even if the bundle never
-         does, so review/users get a message + reload instead of a blank page. -->
+
+    <!-- Branded loading screen (see <style> above). Shown until React mounts. -->
+    <div id="app-splash" role="status" aria-label="Loading Worship N Yaps">
+      <svg class="app-splash__mark" viewBox="0 0 100 100" aria-hidden="true">
+        <rect width="100" height="100" fill="#ffffff" rx="18" />
+        <text x="50" y="66" font-size="44" font-family="'Fredoka One', system-ui, sans-serif"
+              font-weight="700" text-anchor="middle" fill="#2650eb" letter-spacing="-2">WnY</text>
+      </svg>
+      <div class="app-splash__name">Worship N Yaps</div>
+      <div class="app-splash__spinner" aria-hidden="true"></div>
+    </div>
+
+    <!-- If the JS bundle never executes (e.g. a WKWebView refuses the entry
+         script under the capacitor:// scheme), React never removes the splash.
+         After a grace period, turn the still-visible branded splash into a
+         Reload prompt so users never see a dead blank page. -->
     <script>
       window.setTimeout(function () {
-        var root = document.getElementById('root');
-        if (root && root.childElementCount === 0) {
-          root.innerHTML =
-            '<div style="min-height:100vh;display:flex;flex-direction:column;' +
-            'align-items:center;justify-content:center;gap:16px;padding:24px;' +
-            'font-family:system-ui,-apple-system,sans-serif;text-align:center;color:#111">' +
-            '<div style="font-size:18px;font-weight:600">Worship N Yaps couldn\'t finish loading</div>' +
-            '<div style="font-size:14px;color:#666;max-width:320px">Please check your connection and try again.</div>' +
-            '<button onclick="window.location.reload()" style="padding:12px 24px;' +
-            'background:#2650eb;color:#fff;border:none;border-radius:10px;font-size:16px;' +
-            'font-weight:600">Reload</button></div>';
+        var splash = document.getElementById('app-splash');
+        // Present === React never mounted (a successful mount removes it).
+        if (splash) {
+          splash.innerHTML =
+            '<div class="app-splash__name">Worship N Yaps</div>' +
+            '<div class="app-splash__msg">Couldn\'t finish loading. Please check your connection and try again.</div>' +
+            '<button class="app-splash__btn" onclick="window.location.reload()">Reload</button>';
         }
-      }, 8000);
+      }, 10000);
     </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
