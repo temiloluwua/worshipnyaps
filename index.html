@@ -38,6 +38,27 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Last-resort visible fallback. If the module bundle fails to execute
+         (e.g. a WKWebView refuses the entry script under the capacitor://
+         scheme), the app would otherwise show a pure-white screen with no
+         way to recover. This inline script runs even if the bundle never
+         does, so review/users get a message + reload instead of a blank page. -->
+    <script>
+      window.setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && root.childElementCount === 0) {
+          root.innerHTML =
+            '<div style="min-height:100vh;display:flex;flex-direction:column;' +
+            'align-items:center;justify-content:center;gap:16px;padding:24px;' +
+            'font-family:system-ui,-apple-system,sans-serif;text-align:center;color:#111">' +
+            '<div style="font-size:18px;font-weight:600">Worship N Yaps couldn\'t finish loading</div>' +
+            '<div style="font-size:14px;color:#666;max-width:320px">Please check your connection and try again.</div>' +
+            '<button onclick="window.location.reload()" style="padding:12px 24px;' +
+            'background:#2650eb;color:#fff;border:none;border-radius:10px;font-size:16px;' +
+            'font-weight:600">Reload</button></div>';
+        }
+      }, 8000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
