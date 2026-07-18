@@ -50,18 +50,32 @@ const AppTree = (
   </>
 )
 
-// Remove the branded HTML loading screen once React has committed its first
-// render. rAF fires after the commit/paint, so the app is on-screen before the
-// splash fades — no white flash in between. If the initial render throws, the
-// RootErrorBoundary still counts as a mount, so its fallback is revealed too.
+// Branded splash handling. The splash stays up through the whole load — App
+// calls window.__removeAppSplash() only once it's ready to paint real content,
+// so there is never a white gap between "splash gone" and "app painted".
 const removeSplash = () => {
   const splash = document.getElementById('app-splash');
   if (!splash) return;
   splash.classList.add('app-splash--hide');
   window.setTimeout(() => splash.remove(), 400);
 };
+(window as unknown as { __removeAppSplash?: () => void }).__removeAppSplash = removeSplash;
 
 const rootEl = document.getElementById('root');
+
+// Mark that React actually committed DOM to #root. This distinguishes a real
+// bundle failure (script never executed → this never fires → show Reload) from
+// a merely slow load (React mounted, still fetching → keep the branded splash).
+if (rootEl) {
+  const mo = new MutationObserver(() => {
+    if (rootEl.childElementCount > 0) {
+      (window as unknown as { __reactMounted?: boolean }).__reactMounted = true;
+      mo.disconnect();
+    }
+  });
+  mo.observe(rootEl, { childList: true });
+}
+
 if (!rootEl) {
   // No #root — hydrate a visible message instead of the previous non-null
   // assertion that would silently throw. Extremely unlikely, but shipped as
@@ -86,5 +100,4 @@ if (!rootEl) {
       </RootErrorBoundary>
     </React.StrictMode>,
   );
-  requestAnimationFrame(() => requestAnimationFrame(removeSplash));
 }

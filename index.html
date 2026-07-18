@@ -114,14 +114,16 @@
     <script>
       window.setTimeout(function () {
         var splash = document.getElementById('app-splash');
-        // Present === React never mounted (a successful mount removes it).
-        if (splash) {
+        // Only offer Reload if React never committed any DOM — i.e. the bundle
+        // failed to execute. If React mounted but is still loading, leave the
+        // branded splash spinning rather than a false error.
+        if (splash && !window.__reactMounted) {
           splash.innerHTML =
             '<div class="app-splash__name">Worship N Yaps</div>' +
             '<div class="app-splash__msg">Couldn\'t finish loading. Please check your connection and try again.</div>' +
             '<button class="app-splash__btn" onclick="window.location.reload()">Reload</button>';
         }
-      }, 10000);
+      }, 12000);
     </script>
 
     <script type="module" src="/src/main.tsx"></script>
