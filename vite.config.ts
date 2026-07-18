@@ -18,9 +18,11 @@ const stripCrossOrigin = (): Plugin => ({
 
 export default defineConfig({
   plugins: [react(), stripCrossOrigin()],
-  // Relative paths so assets resolve under the capacitor:// custom scheme
-  // regardless of the current in-app route.
-  base: './',
+  // Absolute base: assets always resolve to capacitor://localhost/assets/...
+  // regardless of the current client-side route (/event/:id, /shop). Relative
+  // paths break when the app is loaded on a nested route. The crossorigin
+  // strip above (not the base) is what fixes the blank-screen launch.
+  base: '/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
