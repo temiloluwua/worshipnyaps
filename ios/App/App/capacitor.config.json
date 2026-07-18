@@ -4,7 +4,7 @@
 	"webDir": "dist",
 	"plugins": {
 		"SplashScreen": {
-			"launchShowDuration": 6000,
+			"launchShowDuration": 12000,
 			"launchAutoHide": true,
 			"launchFadeOutDuration": 300,
 			"backgroundColor": "#2650eb",

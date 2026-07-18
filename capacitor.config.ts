@@ -23,7 +23,7 @@ const config: CapacitorConfig = {
       // layer never signals ready, the splash still auto-hides so the app can
       // never be stuck on it forever. Keeping the native splash up until paint
       // means there is no white gap during the cold-start window.
-      launchShowDuration: 6000,
+      launchShowDuration: 12000,
       launchAutoHide: true,
       launchFadeOutDuration: 300,
       backgroundColor: '#2650eb',

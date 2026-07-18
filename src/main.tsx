@@ -86,9 +86,10 @@ if (rootEl) {
   mo.observe(rootEl, { childList: true });
 }
 
-// Failsafe: never keep the splash up longer than this even if something above
-// misfires. The native launchShowDuration is a second, independent backstop.
-window.setTimeout(revealApp, 7000);
+// No JS reveal timeout here on purpose: revealing before React has actually
+// painted would expose a white screen on a slow cold start. The reveal happens
+// on the first real paint (above); the native splash's launchShowDuration is
+// the independent backstop if the bundle never runs at all.
 
 if (!rootEl) {
   // No #root — hydrate a visible message instead of the previous non-null
