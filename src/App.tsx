@@ -58,15 +58,6 @@ function App() {
     document.documentElement.classList.add(theme);
   }, [theme]);
 
-  // Remove the branded HTML splash only once auth loading has resolved and the
-  // app is about to paint real content. Keeping it up through `loading` means
-  // there is no white flash between the splash and the first real screen.
-  useEffect(() => {
-    if (!loading) {
-      (window as unknown as { __removeAppSplash?: () => void }).__removeAppSplash?.();
-    }
-  }, [loading]);
-
   // Skip landing page on reload if the user is already signed in,
   // unless they're explicitly visiting /shop or /event/...
   useEffect(() => {

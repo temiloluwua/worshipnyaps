@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Capacitor } from '@capacitor/core'
 import { App as CapacitorApp } from '@capacitor/app'
+import { SplashScreen } from '@capacitor/splash-screen'
 import App from './App'
 import './index.css'
 import './i18n'
@@ -50,31 +52,43 @@ const AppTree = (
   </>
 )
 
-// Branded splash handling. The splash stays up through the whole load — App
-// calls window.__removeAppSplash() only once it's ready to paint real content,
-// so there is never a white gap between "splash gone" and "app painted".
-const removeSplash = () => {
+// Reveal the app once React has actually painted its first screen: hide the
+// native splash (iOS/Android) and remove the branded HTML splash together, so
+// the blue splash covers the entire cold-start window with no white gap.
+let revealed = false;
+const revealApp = () => {
+  if (revealed) return;
+  revealed = true;
+  if (Capacitor.isNativePlatform()) {
+    SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {});
+  }
   const splash = document.getElementById('app-splash');
-  if (!splash) return;
-  splash.classList.add('app-splash--hide');
-  window.setTimeout(() => splash.remove(), 400);
+  if (splash) {
+    splash.classList.add('app-splash--hide');
+    window.setTimeout(() => splash.remove(), 400);
+  }
 };
-(window as unknown as { __removeAppSplash?: () => void }).__removeAppSplash = removeSplash;
 
 const rootEl = document.getElementById('root');
 
-// Mark that React actually committed DOM to #root. This distinguishes a real
-// bundle failure (script never executed → this never fires → show Reload) from
-// a merely slow load (React mounted, still fetching → keep the branded splash).
+// Reveal as soon as React commits its first DOM into #root, then wait one paint
+// frame so the content is actually on-screen before the splash fades. Setting
+// __reactMounted also lets the HTML failsafe tell a real bundle failure (never
+// mounts → show Reload) from a merely slow load.
 if (rootEl) {
   const mo = new MutationObserver(() => {
     if (rootEl.childElementCount > 0) {
       (window as unknown as { __reactMounted?: boolean }).__reactMounted = true;
       mo.disconnect();
+      requestAnimationFrame(() => requestAnimationFrame(revealApp));
     }
   });
   mo.observe(rootEl, { childList: true });
 }
+
+// Failsafe: never keep the splash up longer than this even if something above
+// misfires. The native launchShowDuration is a second, independent backstop.
+window.setTimeout(revealApp, 7000);
 
 if (!rootEl) {
   // No #root — hydrate a visible message instead of the previous non-null

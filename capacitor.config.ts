@@ -17,9 +17,15 @@ const config: CapacitorConfig = {
   }),
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      // The web app calls SplashScreen.hide() the moment React paints its
+      // first screen, so on a normal launch the splash hides as soon as the
+      // content is ready. launchShowDuration is a hard safety cap: if the web
+      // layer never signals ready, the splash still auto-hides so the app can
+      // never be stuck on it forever. Keeping the native splash up until paint
+      // means there is no white gap during the cold-start window.
+      launchShowDuration: 6000,
       launchAutoHide: true,
-      launchFadeOutDuration: 400,
+      launchFadeOutDuration: 300,
       backgroundColor: '#2650eb',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
