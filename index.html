@@ -33,8 +33,23 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <!-- Load web fonts WITHOUT blocking first paint. A plain
+         <link rel="stylesheet"> to a remote font blocks the whole page from
+         rendering until it downloads — on a slow/restricted network that can
+         hang for many seconds and show a blank white screen (this was a major
+         cause of the App Store blank-screen reports). Loading them as a
+         non-blocking preload lets the app paint instantly with system fonts,
+         then swap to the brand fonts when they arrive. -->
+    <link rel="preload" as="style"
+          href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap"
+          onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" as="style"
+          href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap"
+          onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap">
+    </noscript>
     <!-- Branded loading screen, styled with plain CSS so it paints instantly —
          before the JS bundle loads. Matches the native splash colour (#2650eb)
          so there is a seamless native-splash → this → app hand-off with no
