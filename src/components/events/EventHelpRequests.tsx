@@ -456,15 +456,17 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
           return (
             <div
               key={item.id}
-              className={`border rounded-xl p-4 transition-all ${
+              className={`border rounded-xl transition-all overflow-hidden ${
                 item.is_filled
                   ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10'
-                  : isPending
-                    ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10'
-                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                  : isMine && isPending
+                    ? 'border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/10'
+                    : isPending
+                      ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10'
+                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
               }`}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 p-4">
                 <span className="text-xl mt-0.5">{typeIcons[item.category] || '📋'}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -509,23 +511,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Accept / Decline buttons for the person who was asked */}
-                  {isMine && isPending && (
-                    <>
-                      <button
-                        onClick={() => handleDeclineRequest(item)}
-                        className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-xs font-medium"
-                      >
-                        Decline
-                      </button>
-                      <button
-                        onClick={() => handleAcceptRequest(item)}
-                        className="px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
-                      >
-                        Accept
-                      </button>
-                    </>
-                  )}
+                  {/* Accept / Decline — not shown inline when isMine+isPending; full-width section below handles it */}
                   {isOpen && user && !isHost && item.open_to_volunteers && (
                     <button
                       onClick={() => handleVolunteer(item)}
@@ -564,6 +550,32 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                   )}
                 </div>
               </div>
+
+              {/* Prominent accept/decline section — only for the assigned user before they respond */}
+              {isMine && isPending && (
+                <div className="px-4 pb-4 pt-1 space-y-2">
+                  <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg px-3 py-2">
+                    <span className="text-base">🙋</span>
+                    <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">
+                      The host is asking for your help!
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDeclineRequest(item)}
+                      className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => handleAcceptRequest(item)}
+                      className="flex-1 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-semibold shadow-sm"
+                    >
+                      Accept ✓
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
