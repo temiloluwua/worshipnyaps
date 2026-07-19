@@ -56,6 +56,10 @@
          white flash. React removes it on mount; if the bundle never loads it
          stays branded (and turns into a Reload prompt) instead of going white. -->
     <style>
+      /* Match WKWebView background to the native splash so there is no white
+         flash if the Capacitor splash drops before React has painted. The app
+         shell (bg-gray-50 / bg-gray-900) covers this once React mounts. */
+      html, body { background: #2650eb; margin: 0; }
       #app-splash {
         position: fixed;
         inset: 0;
