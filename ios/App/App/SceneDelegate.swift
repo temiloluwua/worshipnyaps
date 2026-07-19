@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import Capacitor
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -22,6 +23,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = rootVC
         window.makeKeyAndVisible()
         self.window = window
+
+        // WKWebView is opaque white by default — even with the container view
+        // set to blue, the WKWebView paints on top and shows white until the
+        // first HTML paint. Set it to blue at the native layer so the cold-start
+        // gap is invisible regardless of how long the web content takes to load.
+        applyBlueBackground(to: rootVC.view, color: brandBlue)
+    }
+
+    // Walk the view hierarchy to find the WKWebView and neutralise its white
+    // background. Called synchronously after makeKeyAndVisible() so the webview
+    // already exists (CAPBridgeViewController sets it up in viewDidLoad).
+    private func applyBlueBackground(to view: UIView, color: UIColor) {
+        if let webView = view as? WKWebView {
+            webView.isOpaque = false
+            webView.backgroundColor = color
+            webView.scrollView.backgroundColor = color
+            return
+        }
+        view.subviews.forEach { applyBlueBackground(to: $0, color: color) }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}
