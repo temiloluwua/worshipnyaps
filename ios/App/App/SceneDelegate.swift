@@ -6,9 +6,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // UIKit creates the window automatically from the storyboard declared in
-        // UISceneStoryboardFile (Info.plist). Nothing to set up manually here.
-        guard (scene as? UIWindowScene) != nil else { return }
+        guard let windowScene = (scene as? UIWindowScene) else { return }
+
+        // Brand blue — must match the Capacitor splash and #app-splash in index.html
+        // so there is zero visible difference between the native splash, the
+        // HTML splash, and the raw WKWebView background before first paint.
+        let brandBlue = UIColor(red: 38/255, green: 80/255, blue: 235/255, alpha: 1)
+
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        guard let rootVC = storyboard.instantiateInitialViewController() else { return }
+        rootVC.view.backgroundColor = brandBlue
+
+        let window = UIWindow(windowScene: windowScene)
+        window.backgroundColor = brandBlue
+        window.rootViewController = rootVC
+        window.makeKeyAndVisible()
+        self.window = window
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}
