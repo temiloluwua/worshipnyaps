@@ -98,6 +98,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [showRsvpDisclaimer, setShowRsvpDisclaimer] = useState(false);
   const [showAdminDeleteConfirm, setShowAdminDeleteConfirm] = useState(false);
   const [adminDeleting, setAdminDeleting] = useState(false);
+  const [showHostDeleteConfirm, setShowHostDeleteConfirm] = useState(false);
+  const [hostDeleting, setHostDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const orgMessagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
@@ -933,6 +935,22 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     }
   };
 
+  const deleteEventAsHost = async () => {
+    if (!event || !isHost) return;
+    setHostDeleting(true);
+    try {
+      const { error } = await supabase.from('events').delete().eq('id', event.id);
+      if (error) throw error;
+      toast.success('Event deleted');
+      setShowHostDeleteConfirm(false);
+      onBack();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete event');
+    } finally {
+      setHostDeleting(false);
+    }
+  };
+
   const postponeEvent = async () => {
     if (!event || !(isHost || canEditEvent)) return;
     if (!postponeDate || !postponeTime) {
@@ -1154,6 +1172,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                       >
                         <XCircle className="w-4 h-4" />
                         Cancel Event
+                      </button>
+                      <button
+                        onClick={() => { setShowHostActions(false); setShowHostDeleteConfirm(true); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Event
                       </button>
                     </div>
                   )}
@@ -1854,6 +1879,43 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
               >
                 {adminDeleting ? 'Deleting...' : 'Delete event'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHostDeleteConfirm && event && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !hostDeleting && setShowHostDeleteConfirm(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Delete this event?</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  "{event.title}" will be permanently removed — all RSVPs, chat, and photos will be gone. This can't be undone.
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                  If you want to keep a record but stop new RSVPs, use Cancel Event instead.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowHostDeleteConfirm(false)}
+                disabled={hostDeleting}
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Never mind
+              </button>
+              <button
+                onClick={deleteEventAsHost}
+                disabled={hostDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {hostDeleting ? 'Deleting...' : 'Delete event'}
               </button>
             </div>
           </div>
