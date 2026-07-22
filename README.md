@@ -19,7 +19,7 @@ A modern web application for Calgary Bible studies and fellowship events, built 
 - **Icons**: Lucide React
 - **Notifications**: React Hot Toast
 - **Version Control**: Git
-- **Deployment**: Netlify (configured)
+- **Deployment**: Vercel (configured via `vercel.json`)
 
 ## 📦 Installation
 

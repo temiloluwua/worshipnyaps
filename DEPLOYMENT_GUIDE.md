@@ -1,20 +1,19 @@
 # Deployment Guide - Worship and Yapps
 
-Your app is ready to deploy. Choose any hosting platform below. The `vercel.toml` file (which is actually a Netlify config) will automatically handle the build and routing.
+This app deploys to **Vercel**. The `vercel.json` file handles the build command,
+output directory, and the SPA rewrite that serves `index.html` for client-side
+routes and deep links (e.g. `/event/{id}`). Pushing to `main` triggers a deploy.
 
-## Quick Deployment Options
+## Primary: Vercel (Recommended)
 
-### Option 1: Netlify (Recommended - Easiest)
-
-Netlify is pre-configured in your project.
+Vercel is pre-configured in this project via `vercel.json`.
 
 **Steps:**
 1. Push your code to GitHub
-2. Go to [netlify.com](https://netlify.com)
-3. Click **"New site from Git"**
-4. Select your repository
-5. Netlify will auto-detect the build settings from `vercel.toml`
-6. Add environment variables under **Site settings → Build & deploy → Environment**:
+2. Go to [vercel.com](https://vercel.com)
+3. Click **"New Project"** and select your repository
+4. Vercel auto-detects the Vite app and reads `vercel.json`
+5. Add environment variables under **Project Settings → Environment Variables**:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
    - `VITE_APP_NAME`
@@ -22,78 +21,48 @@ Netlify is pre-configured in your project.
    - `VITE_SQUARE_APPLICATION_ID`
    - `VITE_SQUARE_ACCESS_TOKEN`
    - `VITE_SQUARE_LOCATION_ID`
-7. Click **Deploy**
-
-**Deploy time:** ~2 minutes  
-**Cost:** Free tier available (pay as you grow)
-
----
-
-### Option 2: Vercel (Fast, Free)
-
-Works great with Vite apps.
-
-**Steps:**
-1. Go to [vercel.com](https://vercel.com)
-2. Click **"New Project"**
-3. Select your GitHub repository
-4. Vercel will auto-detect it's a Vite app
-5. Add the same environment variables (see Option 1)
 6. Click **Deploy**
+
+Once connected, every push to `main` auto-deploys.
 
 **Deploy time:** ~1-2 minutes  
 **Cost:** Free tier available
 
 ---
 
-### Option 3: Firebase Hosting (Google)
+## Alternative Hosting Options
 
-Good for web apps with serverless functions.
+The build is a static SPA (`dist/`), so it runs on any static host. If you ever
+move off Vercel, make sure the host rewrites all routes to `/index.html` (the
+SPA fallback) — otherwise deep links like `/event/{id}` will 404.
 
-**Steps:**
+### Firebase Hosting (Google)
+
 1. Install Firebase CLI: `npm install -g firebase-tools`
-2. Run `firebase init hosting` in your project
+2. Run `firebase init hosting` in your project (set `dist` as the public dir, configure as an SPA)
 3. Build: `npm run build`
 4. Deploy: `firebase deploy`
 
-**Deploy time:** ~2 minutes  
-**Cost:** Free tier available
+### AWS Amplify
 
----
-
-### Option 4: AWS Amplify
-
-Good if you want full AWS integration.
-
-**Steps:**
 1. Go to [aws.amplify.console.com](https://aws.amplify.console.com)
-2. Click **"Create app"**
-3. Connect your Git repository
-4. Add environment variables
-5. Click **Deploy**
+2. Click **"Create app"** and connect your Git repository
+3. Add environment variables
+4. Click **Deploy**
 
-**Deploy time:** ~3-5 minutes  
-**Cost:** Free tier available
+### Self-Hosting (Advanced)
 
----
-
-### Option 5: Self-Hosting (Advanced)
-
-Deploy to your own server/VPS.
-
-**Steps:**
 1. Build locally: `npm run build`
 2. Upload the `dist/` folder to your server
-3. Configure your web server (nginx/Apache) to serve the app:
+3. Configure your web server (nginx/Apache) with an SPA fallback:
    ```nginx
-   # nginx example
    server {
      listen 80;
      server_name yourdomain.com;
-     
+
      root /var/www/dist;
      index index.html;
-     
+
      location / {
        try_files $uri $uri/ /index.html;
      }
@@ -101,13 +70,11 @@ Deploy to your own server/VPS.
    ```
 4. Point your domain to your server's IP
 
-**Cost:** Varies (typically $5-20/month for VPS)
-
 ---
 
 ## Environment Variables
 
-You need these for your app to work. Add them to your hosting platform:
+You need these for the app to work. Add them to your hosting platform:
 
 ```
 VITE_SUPABASE_URL=https://tijbvxhakeskvvquyjse.supabase.co
@@ -121,35 +88,22 @@ VITE_SQUARE_LOCATION_ID=LK5TS52BK0ZBZ
 
 ## Custom Domain Setup
 
-After deploying, point your domain to your hosting provider:
-
-**For Netlify/Vercel:** They provide a free SSL cert and handle DNS  
-**For AWS/Firebase:** Add your domain in their dashboard  
-**For self-hosting:** Update your domain registrar's A record to point to your server IP
+After deploying, point your domain at Vercel (Project → Settings → Domains).
+Vercel provisions a free SSL cert and handles DNS. For other hosts, add the
+domain in their dashboard (or update your registrar's A record for self-hosting).
 
 ## Monitoring & Logs
 
-- **Netlify**: Site settings → Deploys → View logs
-- **Vercel**: Dashboard → Select project → Deployments → View logs
+- **Vercel**: Dashboard → select project → Deployments → View logs
 - **Firebase**: Firebase Console → Hosting → View logs
 - **Self-hosted**: SSH into your server and check your web server logs
 
 ## Rolling Back
 
-- **Netlify/Vercel**: One-click rollback in the dashboard
+- **Vercel**: One-click rollback in the dashboard (promote a previous deployment)
 - **Firebase/AWS**: Previous versions available in deploy history
-- **Self-hosted**: Keep backup of previous `dist/` folders
-
-## Recommendations
-
-**For a production app, use Netlify or Vercel** because they:
-- Handle SSL certificates automatically
-- Provide global CDN (fast downloads worldwide)
-- Scale automatically
-- Have excellent free tiers
-- Support environment variables securely
-- Provide rollback capabilities
+- **Self-hosted**: Keep a backup of previous `dist/` folders
 
 ---
 
-**Your app is production-ready!** Just connect a Git repository and deploy. Choose Netlify or Vercel for the easiest experience.
+**Your app is production-ready.** Connect the Git repository to Vercel and pushes to `main` deploy automatically.

@@ -59,7 +59,7 @@ Key directories:
 1. **Use Claude Code for daily development** — All your changes will work the same way
 2. **Refer to CLAUDE.md** — When you (or future instances) need architecture guidance
 3. **Commit regularly** — TypeScript + build validation runs on commit
-4. **Deploy when ready** — Build output is in `dist/` folder, ready for Netlify/hosting
+4. **Deploy when ready** — Build output is in `dist/` folder, deployed via Vercel
 
 ---
 

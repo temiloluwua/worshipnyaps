@@ -168,7 +168,7 @@ Events have `visibility` (public, friends_only, private) + `is_private` (legacy)
 
 ## Deployment
 
-- **Hosting** — Configured for Netlify (see `vercel.toml` and `README.md`)
+- **Hosting** — Vercel (see `vercel.json` for the build command, output dir, and the SPA rewrite that serves `index.html` for deep links like `/event/{id}`)
 - **Build output** — `dist/` folder is production-ready
 - **Environment** — Deploy `.env` variables to hosting provider
 - **iOS** — Use Capacitor to build native iOS app; requires Xcode

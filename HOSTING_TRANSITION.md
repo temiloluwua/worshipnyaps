@@ -10,9 +10,9 @@ Your app has been successfully decoupled from Bolt. Here's what you need to know
 
 ## Your Deployment is Ready
 
-Your app is already configured for production deployment. The `vercel.toml` file (despite its name) is a standard build config that works with:
-- **Netlify** ✅ (recommended)
-- **Vercel** ✅ (recommended)
+Your app is configured for production deployment on **Vercel** via `vercel.json`.
+Because the build is a static SPA (`dist/`), it also runs on other static hosts:
+- **Vercel** ✅ (what we use)
 - **Firebase Hosting** ✅
 - **AWS Amplify** ✅
 - **Self-hosted servers** ✅
@@ -21,8 +21,7 @@ Your app is already configured for production deployment. The `vercel.toml` file
 
 ### 1. Choose a Hosting Provider
 See `DEPLOYMENT_GUIDE.md` for detailed instructions on each platform. My recommendation:
-- **Easiest**: Netlify (pre-configured, just connect Git)
-- **Fastest**: Vercel (similar to Netlify, slightly faster deploys)
+- **Default**: Vercel (pre-configured via `vercel.json`, just connect Git)
 - **Cheapest at scale**: Self-hosted VPS (~$5/month)
 
 ### 2. Push to Git
@@ -36,7 +35,7 @@ git push origin main
 Follow the instructions in `DEPLOYMENT_GUIDE.md` for your chosen provider. Should take ~5 minutes.
 
 ### 4. Point Your Domain
-Update your domain registrar to point to your hosting provider's servers. Netlify/Vercel handle SSL automatically.
+Update your domain registrar to point to your hosting provider's servers. Vercel handles SSL automatically.
 
 ## Environment Variables You'll Need
 
@@ -64,7 +63,6 @@ Before deploying, verify:
 ## Support Resources
 
 Each hosting platform has great docs:
-- **Netlify**: netlify.com/docs
 - **Vercel**: vercel.com/docs
 - **Firebase**: firebase.google.com/docs/hosting
 - **AWS Amplify**: docs.amplify.aws
