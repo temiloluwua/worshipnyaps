@@ -22,12 +22,16 @@ import { EventAnnouncements } from './EventAnnouncements';
 import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
 import { shareIcs } from '../../lib/icsExport';
 import { mapLinkFor } from '../../lib/mapLink';
+import { TeamBoard } from './TeamBoard';
 import { ReportButton } from '../moderation/ReportButton';
 
 interface EventDetailViewProps {
   eventId: string;
   onBack: () => void;
   onViewProfile?: (userId: string) => void;
+  // Opens the auth modal (used by the team-join flow when a logged-out visitor
+  // arrives via a shared "help run this event" link).
+  onRequireAuth?: () => void;
 }
 
 type TabType = 'details' | 'help' | 'chat' | 'organizer' | 'people';
@@ -62,8 +66,14 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
   }
 };
 
-export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile }) => {
+export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile, onRequireAuth }) => {
   const { user, profile } = useAuth();
+  // Team-recruitment link params (e.g. /event/{id}?team={code}&pick=cohost:worship).
+  const teamCode = new URLSearchParams(window.location.search).get('team');
+  const teamPick = new URLSearchParams(window.location.search).get('pick');
+  const [showTeamBoard, setShowTeamBoard] = useState<boolean>(() =>
+    !!new URLSearchParams(window.location.search).get('team')
+  );
   const { t } = useTranslation();
   // Events notify by default; attendees can mute a specific event.
   const { subscribed: notifOn, toggle: toggleNotif, saving: notifSaving } =
@@ -1337,6 +1347,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             );
           })()}
           <div className="p-6">
+          {teamCode && (
+            <button
+              onClick={() => setShowTeamBoard(true)}
+              className="w-full mb-4 flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+            >
+              <HeartHandshake className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <span className="flex-1 text-sm text-blue-800 dark:text-blue-200">
+                <span className="font-semibold">You're invited to help run this event.</span> Tap to see open roles.
+              </span>
+            </button>
+          )}
           <div className="flex items-center gap-2 mb-4">
             <span className="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
               {event.type.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
@@ -1807,6 +1828,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             await handleRSVP();
             setShowRsvpDisclaimer(false);
           }}
+        />
+      )}
+
+      {showTeamBoard && teamCode && event && (
+        <TeamBoard
+          eventId={eventId}
+          teamCode={teamCode}
+          pick={teamPick}
+          onClose={() => setShowTeamBoard(false)}
+          onRequireAuth={() => { setShowTeamBoard(false); onRequireAuth?.(); }}
+          onClaimed={() => { fetchAttendeeCount(eventId); }}
         />
       )}
 

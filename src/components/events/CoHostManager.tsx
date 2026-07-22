@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, X, Shield, Search, Copy, Music, BookOpen, Heart, Coffee, Wrench, MoreHorizontal } from 'lucide-react';
+import { UserPlus, X, Shield, Search, Copy, Music, BookOpen, Heart, Coffee, Wrench, MoreHorizontal, Link2, Check, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
@@ -32,6 +32,14 @@ interface Friend {
   id: string;
   name: string;
   avatar_url?: string;
+}
+
+interface PendingRequest {
+  id: string;
+  user_id: string;
+  role?: RoleKey | null;
+  custom_role_label?: string | null;
+  user: { name: string; avatar_url?: string } | null;
 }
 
 interface CoHostManagerProps {
@@ -83,6 +91,9 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
   const { user } = useAuth();
   const [coHosts, setCoHosts] = useState<CoHost[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [pending, setPending] = useState<PendingRequest[]>([]);
+  const [teamCode, setTeamCode] = useState<string | null>(null);
+  const [actingOn, setActingOn] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [grantEdit, setGrantEdit] = useState(false);
@@ -135,10 +146,103 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
     }
   };
 
+  const fetchPending = async () => {
+    if (!isHost) return;
+    try {
+      const { data, error } = await supabase
+        .from('event_cohost_requests')
+        .select('id, user_id, role, custom_role_label, user:users!event_cohost_requests_user_id_fkey(name, avatar_url)')
+        .eq('event_id', eventId);
+      if (error) throw error;
+      setPending((data || []) as unknown as PendingRequest[]);
+    } catch (err) {
+      console.error('Error fetching co-host requests:', err);
+    }
+  };
+
+  const fetchTeamCode = async () => {
+    if (!isHost) return;
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('team_code')
+        .eq('id', eventId)
+        .single();
+      if (error) throw error;
+      setTeamCode((data as { team_code?: string })?.team_code || null);
+    } catch (err) {
+      console.error('Error fetching team code:', err);
+    }
+  };
+
   useEffect(() => {
     fetchCoHosts();
-    if (isHost) fetchFriends();
+    if (isHost) {
+      fetchFriends();
+      fetchPending();
+      fetchTeamCode();
+    }
   }, [eventId, isHost]);
+
+  const teamOrigin = (() => {
+    try {
+      const h = window.location.hostname;
+      return h === 'localhost' || h === '127.0.0.1' ? window.location.origin : 'https://www.worshipnyaps.com';
+    } catch {
+      return 'https://www.worshipnyaps.com';
+    }
+  })();
+
+  const shareTeamLink = async () => {
+    if (!teamCode) {
+      toast.error('Team link not ready yet — try again in a moment.');
+      return;
+    }
+    const link = `${teamOrigin}/event/${eventId}?team=${teamCode}`;
+    const when = formatEventDateTime(eventDate, eventTime);
+    const msg = `Help me run ${eventTitle ? `*${eventTitle}*` : 'my event'}${when ? ` on ${when}` : ''}! Grab a role (lead a part, volunteer, or bring something):\n${link}`;
+    await shareInvite(msg, 'Team link copied — paste to send.');
+  };
+
+  const shareRoleLink = async (roleKey: RoleKey) => {
+    if (!teamCode) {
+      toast.error('Team link not ready yet — try again in a moment.');
+      return;
+    }
+    const link = `${teamOrigin}/event/${eventId}?team=${teamCode}&pick=cohost:${roleKey}`;
+    const label = ROLES[roleKey].label;
+    const when = formatEventDateTime(eventDate, eventTime);
+    const msg = `Would you lead *${label}* at ${eventTitle ? `*${eventTitle}*` : 'my event'}${when ? ` on ${when}` : ''}? Tap to join the team:\n${link}`;
+    await shareInvite(msg, 'Role link copied — paste to send.');
+  };
+
+  const handleApprove = async (req: PendingRequest) => {
+    setActingOn(req.id);
+    try {
+      const { error } = await supabase.rpc('approve_cohost_request', { p_request_id: req.id });
+      if (error) throw error;
+      toast.success(`${req.user?.name?.split(' ')[0] || 'They'} is now a co-host`);
+      setPending(prev => prev.filter(p => p.id !== req.id));
+      await fetchCoHosts();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to approve');
+    } finally {
+      setActingOn(null);
+    }
+  };
+
+  const handleDecline = async (req: PendingRequest) => {
+    setActingOn(req.id);
+    try {
+      const { error } = await supabase.from('event_cohost_requests').delete().eq('id', req.id);
+      if (error) throw error;
+      setPending(prev => prev.filter(p => p.id !== req.id));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to decline');
+    } finally {
+      setActingOn(null);
+    }
+  };
 
   const roleLabelFor = (c: { role?: RoleKey | null; custom_role_label?: string | null }): string | null => {
     if (!c.role) return null;
@@ -267,15 +371,63 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
           Hosts
         </h3>
         {isHost && (
-          <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Add Co-Host
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={shareTeamLink}
+              className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              title="Share a link so anyone can grab a role"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Share team link
+            </button>
+            <button
+              onClick={() => setShowAdd(!showAdd)}
+              className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Add Co-Host
+            </button>
+          </div>
         )}
       </div>
+
+      {isHost && pending.length > 0 && (
+        <div className="mb-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
+            <Clock className="w-3 h-3" /> Pending co-host requests
+          </p>
+          {pending.map((req) => {
+            const label = req.role === 'other' ? (req.custom_role_label || 'Other') : (req.role ? ROLES[req.role]?.label : null);
+            return (
+              <div key={req.id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-teal-400 flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden">
+                  {req.user?.avatar_url ? <img src={req.user.avatar_url} alt="" className="w-full h-full object-cover" /> : (req.user?.name?.charAt(0).toUpperCase() || '?')}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-gray-800 dark:text-gray-200 truncate">{req.user?.name || 'Someone'}</div>
+                  {label && <div className="text-[11px] text-amber-700 dark:text-amber-300">wants to lead {label}</div>}
+                </div>
+                <button
+                  onClick={() => handleApprove(req)}
+                  disabled={actingOn === req.id}
+                  className="p-1.5 rounded-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                  title="Approve"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDecline(req)}
+                  disabled={actingOn === req.id}
+                  className="p-1.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 hover:text-red-600 disabled:opacity-50"
+                  title="Decline"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <ul className="space-y-2 mb-3">
         {hostId && hostName && (
@@ -424,6 +576,15 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
             <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
               Adding will copy a pre-written invite message to your clipboard — paste it into iMessage or WhatsApp.
             </p>
+            <button
+              type="button"
+              onClick={() => shareRoleLink(selectedRole)}
+              disabled={selectedRole === 'other' && !customLabel.trim()}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-purple-300 dark:border-purple-700 text-xs font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 disabled:opacity-50"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Share a link for this role (anyone can accept)
+            </button>
           </div>
 
           <label className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer">

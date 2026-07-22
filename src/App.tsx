@@ -307,6 +307,14 @@ function App() {
           eventId={activeEventId}
           onBack={handleCloseEvent}
           onViewProfile={handleViewProfile}
+          onRequireAuth={() => { setAuthMode('signup'); setShowAuthModal(true); }}
+        />
+        {/* This branch returns early (before the main layout that hosts the
+            AuthModal), so mount it here too — needed by the team-join flow. */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => { setShowAuthModal(false); setAuthMode('login'); }}
+          initialMode={authMode}
         />
       </Suspense>
     );

@@ -74,6 +74,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   const [items, setItems] = useState<UnifiedHelpItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [attendees, setAttendees] = useState<AttendeeUser[]>([]);
+  const [teamCode, setTeamCode] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<null | 'help' | 'food'>(null);
   const [newHelp, setNewHelp] = useState({
     request_type: 'other' as typeof HELP_REQUEST_TYPES[number],
@@ -85,6 +86,17 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
     notes: '', assigned_to: '',
     open_to_volunteers: true,
   });
+
+  // Team code powers the "join the team" share links (host only can read it).
+  useEffect(() => {
+    if (!isHost) return;
+    supabase
+      .from('events')
+      .select('team_code')
+      .eq('id', eventId)
+      .single()
+      .then(({ data }) => setTeamCode((data as { team_code?: string } | null)?.team_code || null));
+  }, [eventId, isHost]);
 
   const fetchAttendees = async () => {
     try {
@@ -192,10 +204,16 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
     const shareOrigin = origin.startsWith('http://localhost') || origin.startsWith('capacitor://')
       ? 'https://www.worshipnyaps.com'
       : origin;
-    const url = `${shareOrigin}/event/${eventId}`;
+    // Point at the team board and pre-select this exact role/item so the
+    // recipient (even without an account) lands, signs up, and claims it.
+    const realId = item.source === 'food_item' ? item.id.replace('food_', '') : item.id;
+    const pick = item.source === 'food_item' ? `food:${realId}` : `help:${realId}`;
+    const url = teamCode
+      ? `${shareOrigin}/event/${eventId}?team=${teamCode}&pick=${pick}`
+      : `${shareOrigin}/event/${eventId}`;
     const message = item.source === 'food_item'
-      ? `Can you bring "${item.title}" for our event? Tap to RSVP and sign up: ${url}`
-      : `Can you help with "${item.title}" at our event? Tap to RSVP and sign up: ${url}`;
+      ? `Can you bring "${item.title}" for our event? Tap to join the team and claim it: ${url}`
+      : `Can you help with "${item.title}" at our event? Tap to join the team and claim it: ${url}`;
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share({ title: item.title, text: message, url });
