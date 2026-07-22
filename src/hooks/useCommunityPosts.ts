@@ -38,6 +38,17 @@ export const useCommunityPosts = () => {
     }
   }, [user?.id]);
 
+  // Instantly drop a blocked author's posts from the feed when a block happens
+  // anywhere in the app (App Store 1.2: block removes content instantly).
+  useEffect(() => {
+    const onBlocked = (e: Event) => {
+      const uid = (e as CustomEvent).detail?.userId as string | undefined;
+      if (uid) setPosts(prev => prev.filter(p => p.author_id !== uid));
+    };
+    window.addEventListener('wny:user-blocked', onBlocked);
+    return () => window.removeEventListener('wny:user-blocked', onBlocked);
+  }, []);
+
   const createPost = useCallback(async (postData: {
     title: string;
     content?: string;

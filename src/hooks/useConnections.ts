@@ -255,8 +255,12 @@ export const useConnections = () => {
     }
   };
 
-  // Block user
-  const blockUser = async (userId: string) => {
+  // Block user. Optionally pass context about the content that prompted the
+  // block so the auto-filed report references it.
+  const blockUser = async (
+    userId: string,
+    context?: { reason?: string; snapshot?: Record<string, unknown> }
+  ) => {
     if (!user) return false;
 
     try {
@@ -272,13 +276,36 @@ export const useConnections = () => {
         .insert({
           user_id: user.id,
           blocked_user_id: userId,
-          reason: 'Blocked by user'
+          reason: context?.reason || 'Blocked by user'
         });
 
       if (error) throw error;
 
+      // App Store 1.2: blocking must ALSO notify the developer of the
+      // inappropriate content. We file a report to the moderation queue so a
+      // moderator reviews/ejects within 24h. Best-effort — a report failure
+      // must never stop the block from taking effect.
+      try {
+        await supabase.from('reports').insert({
+          reporter_id: user.id,
+          reported_user_id: userId,
+          report_type: 'user',
+          category: 'harassment',
+          severity: 'high',
+          description: context?.reason
+            ? `User blocked by a member. ${context.reason}`
+            : 'User blocked by a member — auto-filed for moderator review.',
+          ...(context?.snapshot ? { content_snapshot: context.snapshot } : {}),
+        });
+      } catch (reportErr) {
+        console.error('Auto-report on block failed (block still applied):', reportErr);
+      }
+
       setBlockedUserIds(prev => new Set(prev).add(userId));
-      toast.success('User blocked. You will no longer see their content.');
+      // Broadcast so any mounted feed drops this author's content immediately
+      // (App Store 1.2: blocking must remove content from the feed instantly).
+      try { window.dispatchEvent(new CustomEvent('wny:user-blocked', { detail: { userId } })); } catch { /* noop */ }
+      toast.success('User blocked. Their content is hidden and our team has been notified.');
       await fetchConnections();
       return true;
     } catch (error: any) {
