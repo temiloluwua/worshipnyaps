@@ -3,7 +3,7 @@ import {
   Camera, Calendar, MessageCircle,
   UserPlus, UserMinus, ArrowLeft, Heart, Bookmark,
   Sparkles, Settings, LayoutGrid, LayoutList, Link as LinkIcon, Edit2,
-  PenSquare, HeartHandshake, Cake
+  PenSquare, HeartHandshake, Cake, Ban
 } from 'lucide-react';
 import { CreateTopicModal } from '../topics/CreateTopicModal';
 import { SettingsModal } from '../SettingsModal';
@@ -53,7 +53,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const { user, profile: currentUserProfile } = useAuth();
   const isStaff = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'moderator';
   const { viewingProfile, loading, fetchProfile, fetchUserPosts, fetchUserLikedPosts } = useProfile();
-  const { isConnected, hasPendingRequest, sendConnectionRequest, removeConnection } = useConnections();
+  const { isConnected, hasPendingRequest, sendConnectionRequest, removeConnection, blockUser, unblockUser, isBlocked } = useConnections();
   const { isFollowing, follow, unfollow } = useFollows();
   const { bookmarkedTopics, fetchBookmarkedTopics, isBookmarked, toggleBookmark } = useBookmarks();
   const { isLiked, toggleLike, getLikeCount, fetchLikeCounts } = useLikes();
@@ -133,6 +133,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const handleConnect = async () => {
     if (connected) await removeConnection(userId);
     else await sendConnectionRequest(userId);
+  };
+
+  const blocked = isBlocked(userId);
+  const handleBlockToggle = async () => {
+    if (blocked) {
+      await unblockUser(userId);
+      return;
+    }
+    if (!window.confirm(
+      `Block ${viewingProfile?.name || 'this user'}? You won't see their posts, comments, or messages, and they won't be able to message you.`
+    )) return;
+    await blockUser(userId);
   };
 
   const getTopicsForTab = (): Topic[] => {
@@ -336,6 +348,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     }}
                     className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded-full text-gray-400 hover:text-red-600 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   />
+                  <button
+                    onClick={handleBlockToggle}
+                    className={`w-9 h-9 flex items-center justify-center border rounded-full transition-colors ${
+                      blocked
+                        ? 'border-red-300 dark:border-red-700 text-red-600 bg-red-50 dark:bg-red-900/20'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-600 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20'
+                    }`}
+                    title={blocked ? 'Unblock user' : 'Block user'}
+                    aria-label={blocked ? 'Unblock user' : 'Block user'}
+                  >
+                    <Ban className="w-4 h-4" />
+                  </button>
                 </>
               )}
             </div>

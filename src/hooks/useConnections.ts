@@ -9,6 +9,7 @@ export const useConnections = () => {
   const { createNotification } = useNotifications();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([]);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
 
   // Fetch user's connections
@@ -83,6 +84,24 @@ export const useConnections = () => {
       setConnectionRequests([...(incoming || []), ...(outgoing || [])]);
     } catch (error) {
       console.error('Error fetching connection requests:', error);
+    }
+  };
+
+  // Fetch the set of users the current user has blocked. RLS lets a user
+  // read only their own blocked_users rows.
+  const fetchBlockedUsers = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_user_id')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setBlockedUserIds(new Set((data || []).map((b: { blocked_user_id: string }) => b.blocked_user_id)));
+    } catch (error) {
+      console.error('Error fetching blocked users:', error);
     }
   };
 
@@ -258,7 +277,8 @@ export const useConnections = () => {
 
       if (error) throw error;
 
-      toast.success('User blocked');
+      setBlockedUserIds(prev => new Set(prev).add(userId));
+      toast.success('User blocked. You will no longer see their content.');
       await fetchConnections();
       return true;
     } catch (error: any) {
@@ -266,6 +286,34 @@ export const useConnections = () => {
       return false;
     }
   };
+
+  // Unblock a previously blocked user
+  const unblockUser = async (userId: string) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('blocked_user_id', userId);
+
+      if (error) throw error;
+
+      setBlockedUserIds(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+      toast.success('User unblocked');
+      return true;
+    } catch (error: any) {
+      toast.error(error.message);
+      return false;
+    }
+  };
+
+  const isBlocked = (userId: string): boolean => blockedUserIds.has(userId);
 
   const isConnected = (userId: string): boolean => {
     return connections.some(c => c.connected_user_id === userId);
@@ -282,20 +330,25 @@ export const useConnections = () => {
     if (user) {
       fetchConnections();
       fetchConnectionRequests();
+      fetchBlockedUsers();
     }
   }, [user]);
 
   return {
     connections,
     connectionRequests,
+    blockedUserIds,
     loading,
     fetchConnections,
     fetchConnectionRequests,
+    fetchBlockedUsers,
     sendConnectionRequest,
     acceptConnectionRequest,
     declineConnectionRequest,
     removeConnection,
     blockUser,
+    unblockUser,
+    isBlocked,
     isConnected,
     hasPendingRequest
   };

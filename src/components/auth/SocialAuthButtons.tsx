@@ -12,9 +12,13 @@ import { AppleLogo, GoogleLogo } from './BrandLogos';
 interface SocialAuthButtonsProps {
   onSuccess?: () => void;
   mode?: 'login' | 'signup';
+  // Runs before any social/phone auth begins. Return false to abort — used at
+  // signup to require the Terms/EULA agreement checkbox before an account is
+  // created on any path.
+  beforeAuth?: () => boolean;
 }
 
-export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButtonsProps) {
+export function SocialAuthButtons({ onSuccess, mode = 'login', beforeAuth }: SocialAuthButtonsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -28,6 +32,7 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
 
   // Web OAuth (Google + Apple) — used only in the browser build.
   const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
+    if (beforeAuth && !beforeAuth()) return;
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -52,6 +57,7 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
   // Native Google sign-in via in-app Safari sheet (iOS app only). The redirect
   // back into the app is handled by useOAuthDeepLink in App.tsx.
   const handleNativeGoogle = async () => {
+    if (beforeAuth && !beforeAuth()) return;
     setIsLoading(true);
     try {
       await signInWithGoogleInApp();
@@ -67,6 +73,7 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
 
   // Native Apple sign-in sheet (iOS app only) — no browser.
   const handleNativeApple = async () => {
+    if (beforeAuth && !beforeAuth()) return;
     setIsLoading(true);
     try {
       await signInWithAppleNative();
@@ -83,6 +90,8 @@ export function SocialAuthButtons({ onSuccess, mode = 'login' }: SocialAuthButto
 
   const handlePhoneSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (beforeAuth && !beforeAuth()) return;
 
     if (!phoneNumber.trim()) {
       toast.error('Please enter a phone number');

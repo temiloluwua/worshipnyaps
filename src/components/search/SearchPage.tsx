@@ -78,7 +78,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   const showInitialState = !searchInput.trim() && !loading;
 
   const popularPosts = topics
-    .sort((a, b) => (b.like_count || 0) - (a.like_count || 0))
+    .sort((a, b) => ((b as any).like_count || 0) - ((a as any).like_count || 0))
     .slice(0, 5);
 
   return (

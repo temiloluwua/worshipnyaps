@@ -75,7 +75,8 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost, isR
         .in('status', ['registered', 'attended']);
 
       if (error) throw error;
-      setAttendees((data || []) as Attendee[]);
+      // Supabase types the embedded relation as an array; cast through unknown.
+      setAttendees((data || []) as unknown as Attendee[]);
     } catch (err) {
       console.error('Error fetching attendees:', err);
     } finally {

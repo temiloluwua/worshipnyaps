@@ -202,4 +202,68 @@ Your app is configured as:
 
 ---
 
+## App Store Guideline 1.2 — User Generated Content Safety
+
+If App Review flags **Guideline 1.2 (Safety – User Generated Content)**, the app
+already implements the required precautions. Complete the one manual step below,
+then send the reply to App Review.
+
+### Manual step: set the age rating to 17+/18+
+
+1. App Store Connect → your app → **General → Age Rating → Edit**.
+2. In the questionnaire, answer so the rating resolves to the highest tier:
+   - **Unrestricted Web Access** and **User-Generated Content / social features**
+     → set to indicate frequent/intense, which produces a 17+ (18+) rating.
+3. Save. The higher rating reflects that the app includes community features.
+
+### Precautions in the app (for reference)
+
+- **Pre-moderation** — user-suggested discussion topics are submitted as
+  *topic requests* and are not published until an admin approves them
+  (`AdminTopicReviewPanel`). Nothing user-suggested goes live unreviewed.
+- **No anonymous posting** — every account requires a real name + username, and
+  all posts/comments/messages are attributed to their author.
+- **EULA with zero tolerance** — an affirmative agreement checkbox at signup
+  (all paths, including Apple/Google) requires users to accept the Terms /
+  Community Guidelines and acknowledge zero tolerance for objectionable content
+  or abusive behavior before an account is created.
+- **Report / flag** — every piece of user content and every profile has an
+  in-app Report action.
+- **Automatic filtering** — content flagged by two or more distinct users is
+  automatically hidden pending review.
+- **Blocking** — users can block others; blocked users' content is hidden and
+  they cannot send messages (enforced server-side).
+- **Remove own content** — users can delete their own posts and comments.
+- **In-app contact** — Settings → "Support & report abuse" (`support.html`).
+- **24-hour SLA** — reports are reviewed and actioned (content removed and the
+  offending user ejected) within 24 hours via the in-app Admin Console.
+
+### Suggested reply to App Review
+
+> Thank you for the review. Worship and Yapps includes the following safety
+> precautions for user-generated content:
+>
+> 1. User-suggested discussion topics are pre-moderated — they are submitted as
+>    requests and reviewed/approved by an administrator before they are
+>    published. Nothing user-suggested appears publicly without review.
+> 2. There is no anonymous posting. Every account requires a real name and
+>    username, and all content is attributed to its author.
+> 3. At sign-up, users must affirmatively agree (checkbox) to our Terms of
+>    Service / EULA and Community Guidelines, which state a zero-tolerance
+>    policy for objectionable content and abusive users, and confirm they are
+>    18 or older.
+> 4. Every post, comment, message, and profile has an in-app Report control.
+>    Content reported by multiple users is automatically hidden pending review.
+> 5. Users can block abusive users; blocked users' content is hidden and they
+>    can no longer message the user.
+> 6. Users can delete their own posts at any time.
+> 7. In-app Support / "report abuse" contact is available in Settings.
+> 8. We review and act on reports within 24 hours, removing offending content
+>    and ejecting the responsible user.
+>
+> We have also set the app's age rating to 17+. Please let us know if any
+> additional information would help.
+
+---
+
 **Your app is ready for iOS!** The Capacitor integration is complete and all native features (status bar, keyboard, OAuth) are configured.

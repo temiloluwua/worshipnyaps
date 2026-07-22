@@ -330,7 +330,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                 disabled={!onViewProfile || !authorId}
                 className="font-semibold text-gray-900 dark:text-white hover:underline truncate focus:outline-none disabled:no-underline"
               >
-                {topic.authorName || topic.users?.name || 'Anonymous'}
+                {topic.authorName || topic.users?.name || 'Worship & Yapps'}
               </button>
               {(topic.authorUsername || topic.users?.username) && (
                 <span className="text-gray-500 dark:text-gray-400 truncate">@{topic.authorUsername || topic.users?.username}</span>

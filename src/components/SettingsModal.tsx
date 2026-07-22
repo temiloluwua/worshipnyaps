@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp, BookOpen, Type, Palette } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp, BookOpen, Type, Palette, Ban } from 'lucide-react';
 import { usePreferences, FontFamily, AccentColor } from '../hooks/usePreferences';
 import { BIBLE_VERSIONS } from '../lib/bibleLink';
 import { AdminConsole } from './admin/AdminConsole';
@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
+import { useConnections } from '../hooks/useConnections';
+import { supabase } from '../lib/supabase';
 import { Modal, ModalBody } from './ui/Modal';
 import { openExternal } from '../lib/openExternal';
 
@@ -294,6 +296,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             </div>
           </div>
 
+          {user && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Ban size={18} className="text-gray-600 dark:text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Blocked users</h3>
+              </div>
+              <BlockedUsersSection isOpen={isOpen} />
+            </div>
+          )}
+
           {import.meta.env.DEV && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <button
@@ -381,5 +393,89 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       </ModalBody>
     </Modal>
     </>
+  );
+};
+
+interface BlockedUser {
+  blocked_user_id: string;
+  name: string;
+  avatar_url?: string;
+}
+
+// Lists the users the current user has blocked, with an unblock action.
+// Reloads whenever the Settings modal opens so the list stays fresh.
+const BlockedUsersSection: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
+  const { user } = useAuth();
+  const { unblockUser } = useConnections();
+  const [blocked, setBlocked] = useState<BlockedUser[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_user_id, blocked:users!blocked_users_blocked_user_id_fkey(name, avatar_url)')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setBlocked((data || []).map((row: any) => ({
+        blocked_user_id: row.blocked_user_id,
+        name: row.blocked?.name || 'Unknown',
+        avatar_url: row.blocked?.avatar_url,
+      })));
+    } catch (err) {
+      console.error('Failed to load blocked users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user]);
+
+  const handleUnblock = async (id: string) => {
+    const ok = await unblockUser(id);
+    if (ok) setBlocked(prev => prev.filter(b => b.blocked_user_id !== id));
+  };
+
+  if (loading) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>;
+  }
+
+  if (blocked.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        You haven't blocked anyone. Blocked users can't see your content or message you.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {blocked.map((b) => (
+        <div
+          key={b.blocked_user_id}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800"
+        >
+          <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0 flex items-center justify-center text-white font-bold">
+            {b.avatar_url ? (
+              <img src={b.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              (b.name?.charAt(0) || '?')
+            )}
+          </div>
+          <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">{b.name}</span>
+          <button
+            onClick={() => handleUnblock(b.blocked_user_id)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition-colors"
+          >
+            Unblock
+          </button>
+        </div>
+      ))}
+    </div>
   );
 };

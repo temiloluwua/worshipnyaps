@@ -49,7 +49,7 @@ export const PostEventFriendSuggestions: React.FC<PostEventFriendSuggestionsProp
       const connectedIds = new Set((connections || []).map((c: any) => c.connected_user_id));
 
       const filtered = (attendees || [])
-        .filter((a: any) => a.user_id !== user.id && !connectedIds.has(a.user_id)) as Attendee[];
+        .filter((a: any) => a.user_id !== user.id && !connectedIds.has(a.user_id)) as unknown as Attendee[];
 
       setSuggestions(filtered);
     } catch (err) {

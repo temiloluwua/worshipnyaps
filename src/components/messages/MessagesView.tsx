@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Search, Plus, Send, Image, Smile,
-  MoreHorizontal, Check, CheckCheck, X, Users as UsersIcon
+  MoreHorizontal, Check, CheckCheck, X, Users as UsersIcon, Ban
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useDirectMessages, Conversation, DirectMessage } from '../../hooks/useDirectMessages';
@@ -34,13 +34,14 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     startConversation,
     createGroupConversation
   } = useDirectMessages();
-  const { connections } = useConnections();
+  const { connections, blockUser, unblockUser, isBlocked } = useConnections();
 
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showConvMenu, setShowConvMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -91,6 +92,11 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   };
 
   const filteredConversations = conversations.filter(conv => {
+    // Hide 1:1 conversations with blocked users from the list.
+    if (!conv.is_group) {
+      const other = getOtherParticipant(conv);
+      if (other?.id && isBlocked(other.id)) return false;
+    }
     if (!searchQuery) return true;
     const otherUser = getOtherParticipant(conv);
     return otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -98,6 +104,22 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   if (activeConversation) {
     const otherUser = getOtherParticipant(activeConversation);
+    const otherUserId = otherUser?.id;
+    const otherBlocked = otherUserId ? isBlocked(otherUserId) : false;
+
+    const handleBlockToggle = async () => {
+      if (!otherUserId) return;
+      setShowConvMenu(false);
+      if (otherBlocked) {
+        await unblockUser(otherUserId);
+        return;
+      }
+      if (!window.confirm(
+        `Block ${otherUser?.name || 'this user'}? You won't see their messages and they won't be able to message you.`
+      )) return;
+      await blockUser(otherUserId);
+      setActiveConversation(null);
+    };
 
     return (
       <div className="flex flex-col h-full bg-white dark:bg-gray-900">
@@ -130,9 +152,31 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               </h2>
             </div>
           </div>
-          <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
-            <MoreHorizontal className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-          </button>
+          {!activeConversation.is_group && otherUserId && (
+            <div className="relative">
+              <button
+                onClick={() => setShowConvMenu((v) => !v)}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Conversation options"
+              >
+                <MoreHorizontal className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              </button>
+              {showConvMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowConvMenu(false)} />
+                  <div className="absolute right-0 mt-1 z-20 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                    <button
+                      onClick={handleBlockToggle}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
+                    >
+                      <Ban className="w-4 h-4" />
+                      {otherBlocked ? 'Unblock user' : 'Block user'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

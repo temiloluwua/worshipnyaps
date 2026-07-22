@@ -57,7 +57,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // Deep-link / custom-scheme URLs opened while the app is already running.
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         for context in URLContexts {
-            ApplicationDelegateProxy.shared.application(
+            _ = ApplicationDelegateProxy.shared.application(
                 UIApplication.shared,
                 open: context.url,
                 options: [:]
@@ -67,7 +67,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // Universal Links / NSUserActivity continuation while the app is running.
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        ApplicationDelegateProxy.shared.application(
+        _ = ApplicationDelegateProxy.shared.application(
             UIApplication.shared,
             continue: userActivity,
             restorationHandler: { _ in }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, CommunityPost } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { fetchBlockedIds } from '../lib/blocking';
 import toast from 'react-hot-toast';
 
 export const useCommunityPosts = () => {
@@ -26,14 +27,16 @@ export const useCommunityPosts = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPosts((data || []) as CommunityPost[]);
+      const blocked = await fetchBlockedIds(user?.id);
+      const visible = ((data || []) as CommunityPost[]).filter(p => !blocked.has(p.author_id));
+      setPosts(visible);
     } catch (error) {
       console.error('Error fetching community posts:', error);
       toast.error('Failed to load community posts');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const createPost = useCallback(async (postData: {
     title: string;

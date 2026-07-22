@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, Topic, Comment } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { fetchBlockedIds } from '../lib/blocking';
 import toast from 'react-hot-toast';
 
 export const useTopics = () => {
@@ -25,14 +26,15 @@ export const useTopics = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTopics(data || []);
+      const blocked = await fetchBlockedIds(user?.id);
+      setTopics((data || []).filter(t => !blocked.has(t.author_id)));
     } catch (error) {
       console.error('Error fetching topics:', error);
       toast.error('Failed to load topics');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   // Create new topic
   const createTopic = useCallback(async (topicData: {
@@ -96,12 +98,13 @@ export const useTopics = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      const blocked = await fetchBlockedIds(user?.id);
+      return (data || []).filter((c: Comment) => !blocked.has(c.author_id));
     } catch (error) {
       console.error('Error fetching comments:', error);
       return [];
     }
-  }, []);
+  }, [user?.id]);
 
   // Add comment to topic
   const addComment = useCallback(async (topicId: string, content: string, parentId?: string) => {

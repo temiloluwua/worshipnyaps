@@ -125,7 +125,7 @@ export const useSearch = () => {
 
       const userInterests = currentProfile?.interests || [];
 
-      let query = supabase
+      const query = supabase
         .from('users')
         .select('*')
         .not('id', 'in', `(${connectedIds.join(',')})`)

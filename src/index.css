@@ -94,17 +94,22 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
+  /* Use overflow-x: clip (not hidden) to stop horizontal drift. `hidden`
+     forces the other axis to compute to `auto`, turning html/body/#root into
+     vertical scroll containers — which iOS tolerates but Android Chrome/Samsung
+     honor strictly, breaking page scroll (esp. with the sticky headers on
+     detail views). `clip` clips the same way without creating a scroller. */
   html, body {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
   }
   #root {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* iOS auto-zooms the viewport whenever a focused input has a font smaller

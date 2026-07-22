@@ -15,7 +15,7 @@ function waitForRecaptcha(timeout = 10000): Promise<void> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const check = () => {
-      if (window.grecaptcha?.enterprise?.ready) {
+      if (typeof window.grecaptcha?.enterprise?.ready === 'function') {
         resolve();
       } else if (Date.now() - start > timeout) {
         reject(new Error('reCAPTCHA failed to load'));

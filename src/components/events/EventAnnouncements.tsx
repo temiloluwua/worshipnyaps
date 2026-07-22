@@ -43,7 +43,8 @@ export const EventAnnouncements: React.FC<EventAnnouncementsProps> = ({ eventId,
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAnnouncements((data || []) as Announcement[]);
+      // Supabase types the embedded relation as an array; cast through unknown.
+      setAnnouncements((data || []) as unknown as Announcement[]);
     } catch (err) {
       console.error('Error fetching announcements:', err);
     }

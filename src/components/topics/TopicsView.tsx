@@ -87,7 +87,7 @@ const sanitizeTopic = (topic: any) => {
           ? topic.views
           : 0,
     commentCount,
-    authorName: topic.authorName || topic.users?.name || 'Anonymous',
+    authorName: topic.authorName || topic.users?.name || 'Worship & Yapps',
   };
 };
 
@@ -411,7 +411,7 @@ export function TopicsView({
     setHighlightedTopicId(focusTopicId);
 
     const scrollTimeout = window.setTimeout(() => {
-      const element = document.querySelector<HTMLElement>(`[data-topic-card=\"${focusTopicId}\"]`);
+      const element = document.querySelector<HTMLElement>(`[data-topic-card="${focusTopicId}"]`);
       element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 350);
 

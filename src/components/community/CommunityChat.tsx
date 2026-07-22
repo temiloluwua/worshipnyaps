@@ -86,7 +86,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ channel = 'communi
                     <div>
                       {!isOwn && (
                         <p className="text-xs text-gray-500 mb-1 ml-1">
-                          {message.sender?.name || 'Anonymous'}
+                          {message.sender?.name || 'Worship & Yapps'}
                         </p>
                       )}
                       <div

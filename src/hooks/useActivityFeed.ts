@@ -154,7 +154,7 @@ export const useActivityFeed = () => {
       .filter(a => a.target_type === 'topic' && a.target_id)
       .map(a => a.target_id);
 
-    let topics: Record<string, { id: string; title: string }> = {};
+    const topics: Record<string, { id: string; title: string }> = {};
 
     if (topicIds.length > 0) {
       const { data: topicData } = await supabase
@@ -216,9 +216,10 @@ export const useActivityFeed = () => {
         return `${userName} reposted ${activity.topic?.title ? `"${activity.topic.title}"` : 'a post'}`;
       case 'follow':
         return `${userName} started following you`;
-      case 'reaction':
+      case 'reaction': {
         const emoji = activity.metadata?.reaction_type || '';
         return `${userName} reacted ${emoji} to ${activity.topic?.title ? `"${activity.topic.title}"` : 'a post'}`;
+      }
       case 'mention':
         return `${userName} mentioned you in a post`;
       case 'post':

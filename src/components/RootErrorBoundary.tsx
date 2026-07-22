@@ -19,7 +19,6 @@ export class RootErrorBoundary extends React.Component<React.PropsWithChildren, 
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // eslint-disable-next-line no-console
     console.error('[RootErrorBoundary]', error, info.componentStack);
   }
 

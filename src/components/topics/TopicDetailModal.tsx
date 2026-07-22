@@ -214,7 +214,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                       disabled={!canOpen}
                       className="font-medium text-gray-900 dark:text-white text-sm hover:underline disabled:no-underline focus:outline-none touch-manipulation"
                     >
-                      {topic.authorName || topic.users?.name || 'Anonymous'}
+                      {topic.authorName || topic.users?.name || 'Worship & Yapps'}
                     </button>
                   </div>
                 </div>

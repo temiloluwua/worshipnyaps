@@ -25,6 +25,17 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Shared gate for every signup path (email + social). Apple 1.2 requires an
+  // affirmative agreement to the Terms/EULA before an account is created.
+  const ensureAgreed = (): boolean => {
+    if (!agreedToTerms) {
+      toast.error('Please agree to the Terms and Community Guidelines to continue.');
+      return false;
+    }
+    return true;
+  };
   // Two-step flow: credentials first, profile second. Reduces the
   // perceived weight of the form and lets us validate email/password
   // before asking for name + username.
@@ -85,6 +96,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       toast.error('Please select your city.');
       return;
     }
+    if (!ensureAgreed()) return;
     setIsLoading(true);
 
     try {
@@ -323,7 +335,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !agreedToTerms}
                   className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors text-sm"
                 >
                   {isLoading ? (
@@ -336,20 +348,27 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
             </>
           )}
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center leading-relaxed">
-            By creating an account, you agree to our{' '}
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Terms of Service</a>
-            {' '}and{' '}
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Privacy Policy</a>.
-            Harassment and objectionable content are not tolerated — see our community guidelines for details.
-          </p>
+          <label className="flex items-start gap-2.5 text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span>
+              I am 18 or older and agree to the{' '}
+              <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Terms of Service</a>,{' '}
+              <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Privacy Policy</a>, and Community Guidelines.
+              I understand there is <span className="font-semibold">zero tolerance for objectionable content or abusive behavior</span>.
+            </span>
+          </label>
         </form>
 
         {/* Social auth is always visible so users always have a path that
             doesn't require typing a password — picking Google/Apple/Phone
             bypasses the profile-collection step too. */}
         <div className="mt-6">
-          <SocialAuthButtons onSuccess={onSuccess} mode="signup" />
+          <SocialAuthButtons onSuccess={onSuccess} mode="signup" beforeAuth={ensureAgreed} />
         </div>
 
         <div className="mt-5 text-center">
