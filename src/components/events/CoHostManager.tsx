@@ -184,10 +184,15 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
     }
   }, [eventId, isHost]);
 
+  // Inside the native app window.location.origin is capacitor://localhost,
+  // which is not a shareable URL. Fall back to the real site for the native
+  // app AND local dev so shared links always resolve for the recipient.
   const teamOrigin = (() => {
     try {
-      const h = window.location.hostname;
-      return h === 'localhost' || h === '127.0.0.1' ? window.location.origin : 'https://www.worshipnyaps.com';
+      const origin = window.location.origin;
+      return origin.startsWith('capacitor://') || origin.startsWith('http://localhost') || origin.startsWith('https://localhost')
+        ? 'https://www.worshipnyaps.com'
+        : origin;
     } catch {
       return 'https://www.worshipnyaps.com';
     }
