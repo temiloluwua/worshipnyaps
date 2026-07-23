@@ -34,6 +34,8 @@ interface EventHelpRequestsProps {
   // roles via get_team_board and let them volunteer (via claim_team_role)
   // before they RSVP.
   teamCode?: string | null;
+  // Opens the auth sheet when a logged-out link visitor tries to volunteer.
+  onRequireAuth?: () => void;
 }
 
 const HELP_REQUEST_TYPES = [
@@ -73,7 +75,7 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   beverage: 'Drinks — coffee, tea, juice, water.',
 };
 
-export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost, teamCode: linkTeamCode }) => {
+export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost, teamCode: linkTeamCode, onRequireAuth }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [items, setItems] = useState<UnifiedHelpItem[]>([]);
@@ -289,7 +291,11 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   };
 
   const handleVolunteer = async (item: UnifiedHelpItem) => {
-    if (!user) { toast.error('Please sign in'); return; }
+    if (!user) {
+      if (onRequireAuth) onRequireAuth();
+      else toast.error('Please sign in');
+      return;
+    }
 
     // Guest (via team link, not yet a participant): claim through the RPC,
     // which validates the link, registers them, and assigns the role past RLS.
@@ -607,7 +613,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {/* Accept / Decline — not shown inline when isMine+isPending; full-width section below handles it */}
-                  {isOpen && user && !isHost && item.open_to_volunteers && (
+                  {isOpen && (user || guestMode) && !isHost && item.open_to_volunteers && (
                     <button
                       onClick={() => handleVolunteer(item)}
                       className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium touch-manipulation"
