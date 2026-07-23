@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ShieldAlert, FileText, UserCheck, Check, X, Loader2, ArrowLeft, AlertTriangle, UserCog } from 'lucide-react';
+import { ShieldAlert, FileText, UserCheck, Check, X, Loader2, ArrowLeft, AlertTriangle, UserCog, Ban } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -40,6 +40,7 @@ interface StaffRow {
   name: string;
   email: string;
   role: 'member' | 'host' | 'moderator' | 'admin';
+  banned_at?: string | null;
 }
 
 export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
@@ -123,7 +124,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
     const timer = setTimeout(async () => {
       const { data } = await supabase
         .from('users')
-        .select('id, name, email, role')
+        .select('id, name, email, role, banned_at')
         .or(`name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%,username.ilike.%${search.trim()}%`)
         .limit(8);
       setSearchResults((data || []) as StaffRow[]);
@@ -169,6 +170,49 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
       toast.success('Post restored');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to restore');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  // Ban the reported user (ejects them: server-side triggers block all their
+  // future posts and the app shows them a suspended screen) and resolve.
+  const banReportedUser = async (r: ReportRow) => {
+    if (!r.reported_user_id) return;
+    const reason = window.prompt('Reason for suspending this user? (optional)', r.description || '');
+    if (reason === null) return; // cancelled
+    setActingId(r.id);
+    try {
+      const { error } = await supabase.rpc('admin_ban_user', { p_user_id: r.reported_user_id, p_reason: reason || null });
+      if (error) throw error;
+      await supabase.from('reports').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', r.id);
+      setReports(prev => prev.filter(x => x.id !== r.id));
+      toast.success('User suspended');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to suspend user');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  // Ban/unban from the moderator search (admin).
+  const setUserBanned = async (userId: string, banned: boolean) => {
+    let reason: string | null = null;
+    if (banned) {
+      const input = window.prompt('Reason for suspending this user? (optional)', '');
+      if (input === null) return; // cancelled
+      reason = input || null;
+    }
+    setActingId(userId);
+    try {
+      const { error } = banned
+        ? await supabase.rpc('admin_ban_user', { p_user_id: userId, p_reason: reason })
+        : await supabase.rpc('admin_unban_user', { p_user_id: userId });
+      if (error) throw error;
+      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, banned_at: banned ? new Date().toISOString() : null } : u));
+      toast.success(banned ? 'User suspended' : 'User reinstated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update user');
     } finally {
       setActingId(null);
     }
@@ -327,6 +371,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
                       </>
                     )}
                   </div>
+                  {r.reported_user_id && (
+                    <button
+                      onClick={() => banReportedUser(r)}
+                      disabled={actingId === r.id}
+                      className="mt-2 w-full py-1.5 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-semibold rounded hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      <Ban className="w-3.5 h-3.5" /> Suspend this user
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -380,7 +433,12 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
                   {searchResults.map(u => (
                     <div key={u.id} className="flex items-center gap-2 p-2 rounded hover:bg-white dark:hover:bg-gray-700">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{u.name}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-1.5">
+                          {u.name}
+                          {u.banned_at && (
+                            <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">Suspended</span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email} · {u.role}</p>
                       </div>
                       <select
@@ -393,6 +451,25 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
                         <option value="moderator">moderator</option>
                         <option value="admin">admin</option>
                       </select>
+                      {u.role === 'member' && (
+                        u.banned_at ? (
+                          <button
+                            onClick={() => setUserBanned(u.id, false)}
+                            disabled={actingId === u.id}
+                            className="text-xs font-semibold text-green-600 hover:text-green-700 disabled:opacity-50 whitespace-nowrap"
+                          >
+                            Unban
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setUserBanned(u.id, true)}
+                            disabled={actingId === u.id}
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50 whitespace-nowrap"
+                          >
+                            Ban
+                          </button>
+                        )
+                      )}
                     </div>
                   ))}
                 </div>

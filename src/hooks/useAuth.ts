@@ -14,6 +14,8 @@ interface Profile {
   bio?: string;
   city?: string;
   birthdate?: string | null;
+  banned_at?: string | null;
+  banned_reason?: string | null;
   created_at: string;
   updated_at: string;
 }

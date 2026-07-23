@@ -47,7 +47,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   const [ageVerified, setAgeVerified] = useState(false);
-  const { loading, user, profile } = useAuth();
+  const { loading, user, profile, signOut } = useAuth();
   useOAuthDeepLink();
   const { theme } = useTheme();
   const { totalUnread: unreadMessages } = useDirectMessages();
@@ -256,6 +256,37 @@ function App() {
             aria-hidden="true"
           />
           <p className="text-gray-600 dark:text-gray-400">Loading Worship N Yaps...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Suspended (banned) users can't use the app. Server-side triggers already
+  // block them from posting; this shows them why and offers a sign-out.
+  if (user && profile?.banned_at) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
+        <div className="max-w-sm text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">🚫</span>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Account suspended</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+            Your account has been suspended for violating our Community Guidelines.
+          </p>
+          {profile.banned_reason && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Reason: {profile.banned_reason}</p>
+          )}
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+            If you believe this is a mistake, contact{' '}
+            <a href="mailto:worshipnyaps@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">worshipnyaps@gmail.com</a>.
+          </p>
+          <button
+            onClick={() => signOut()}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm"
+          >
+            Sign out
+          </button>
         </div>
       </div>
     );
