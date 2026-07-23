@@ -253,7 +253,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
           {isStaff && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <button
-                onClick={() => setShowAdminConsole(true)}
+                onClick={() => { setShowAdminConsole(true); onClose(); }}
                 className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
               >
                 <ShieldAlert size={16} />
@@ -296,16 +296,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             </div>
           </div>
 
-          {user && (
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Ban size={18} className="text-gray-600 dark:text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Blocked users</h3>
-              </div>
-              <BlockedUsersSection isOpen={isOpen} />
-            </div>
-          )}
-
           {import.meta.env.DEV && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <button
@@ -336,6 +326,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 <span className="flex-1">{t('settings.moreOptions')}</span>
                 {showMore ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
+
+              {showMore && (
+                <div className="mt-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ban size={16} className="text-gray-500 dark:text-gray-400" />
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Blocked users</h4>
+                  </div>
+                  <BlockedUsersSection isOpen={isOpen && showMore} />
+                </div>
+              )}
 
               {showMore && (!showDeleteConfirm ? (
                 <button
