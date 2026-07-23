@@ -29,6 +29,11 @@ interface UnifiedHelpItem {
 interface EventHelpRequestsProps {
   eventId: string;
   isHost: boolean;
+  // When the viewer arrived via a shared team link they may not yet be an
+  // attendee, so RLS hides the rows. With a teamCode we can read the open
+  // roles via get_team_board and let them volunteer (via claim_team_role)
+  // before they RSVP.
+  teamCode?: string | null;
 }
 
 const HELP_REQUEST_TYPES = [
@@ -68,13 +73,16 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   beverage: 'Drinks — coffee, tea, juice, water.',
 };
 
-export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost }) => {
+export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost, teamCode: linkTeamCode }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [items, setItems] = useState<UnifiedHelpItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [attendees, setAttendees] = useState<AttendeeUser[]>([]);
   const [teamCode, setTeamCode] = useState<string | null>(null);
+  // True when the list was populated from the shared-link board (viewer isn't
+  // a participant yet), so volunteering must go through claim_team_role.
+  const [guestMode, setGuestMode] = useState(false);
   const [showForm, setShowForm] = useState<null | 'help' | 'food'>(null);
   const [newHelp, setNewHelp] = useState({
     request_type: 'other' as typeof HELP_REQUEST_TYPES[number],
@@ -184,6 +192,51 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
         assigned_user: f.assigned_user,
       }));
 
+      // Guest arriving via a team link: RLS hides rows until they're a
+      // participant, so the direct read is empty. Fall back to the board RPC
+      // (gated by the link code) to show the OPEN roles they can volunteer for.
+      if (helpItems.length + foodItems.length === 0 && linkTeamCode) {
+        const { data: board, error: boardError } = await supabase.rpc('get_team_board', {
+          p_event_id: eventId,
+          p_team_code: linkTeamCode,
+        });
+        if (!boardError && board) {
+          const b = board as { help?: any[]; food?: any[] };
+          const boardHelp: UnifiedHelpItem[] = (b.help || []).map((h) => ({
+            id: h.id.toString(),
+            event_id: eventId,
+            source: 'help_request' as const,
+            category: 'other',
+            title: h.title,
+            description: h.description ?? null,
+            assigned_user_id: null,
+            status: 'open' as const,
+            is_filled: false,
+            open_to_volunteers: true,
+            created_at: '',
+            assigned_user: null,
+          }));
+          const boardFood: UnifiedHelpItem[] = (b.food || []).map((f) => ({
+            id: `food_${f.id}`,
+            event_id: eventId,
+            source: 'food_item' as const,
+            category: f.category || 'food',
+            title: f.item,
+            description: null,
+            assigned_user_id: null,
+            status: 'open' as const,
+            is_filled: false,
+            open_to_volunteers: true,
+            created_at: '',
+            assigned_user: null,
+          }));
+          setGuestMode(true);
+          setItems([...boardHelp, ...boardFood]);
+          return;
+        }
+      }
+
+      setGuestMode(false);
       setItems([...helpItems, ...foodItems]);
     } catch (err) {
       console.error(err);
@@ -195,7 +248,8 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
   useEffect(() => {
     fetchItems();
     fetchAttendees();
-  }, [eventId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, linkTeamCode]);
 
   const handleShareItem = async (item: UnifiedHelpItem) => {
     // window.location.origin is capacitor://localhost inside the app, which
@@ -236,6 +290,29 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
 
   const handleVolunteer = async (item: UnifiedHelpItem) => {
     if (!user) { toast.error('Please sign in'); return; }
+
+    // Guest (via team link, not yet a participant): claim through the RPC,
+    // which validates the link, registers them, and assigns the role past RLS.
+    if (guestMode && linkTeamCode) {
+      try {
+        const realId = item.source === 'food_item' ? item.id.replace('food_', '') : item.id;
+        const { error } = await supabase.rpc('claim_team_role', {
+          p_event_id: eventId,
+          p_team_code: linkTeamCode,
+          p_kind: item.source === 'food_item' ? 'food' : 'help',
+          p_target_id: realId,
+          p_role: null,
+          p_custom_label: null,
+        });
+        if (error) throw error;
+        await fetchItems();
+        toast.success("You're signed up to help! 🙌");
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to volunteer');
+      }
+      return;
+    }
+
     try {
       if (item.source === 'help_request') {
         const { error } = await supabase

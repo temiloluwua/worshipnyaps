@@ -1675,7 +1675,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           </div>
         ) : activeTab === 'help' ? (
           <>
-            <EventHelpRequests eventId={eventId} isHost={isHost} />
+            <EventHelpRequests eventId={eventId} isHost={isHost} teamCode={teamCode} />
 
             {/* Organizer group chat now lives under Help Needed (below the
                 requests and roles), for hosts and organizers only. */}
