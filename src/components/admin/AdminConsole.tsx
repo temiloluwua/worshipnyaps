@@ -20,6 +20,8 @@ interface ReportRow {
   created_at: string;
   reporter_id: string;
   reported_user_id: string | null;
+  reported_topic_id: string | null;
+  reported_community_post_id: string | null;
   content_snapshot: Record<string, unknown> | null;
 }
 
@@ -146,6 +148,51 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
     }
   };
 
+  // The post referenced by a report, if any (reported topics + community posts
+  // are auto-hidden on report and stay hidden until a moderator acts here).
+  const contentRef = (r: ReportRow): { kind: 'topic' | 'community_post'; id: string } | null => {
+    if (r.reported_topic_id) return { kind: 'topic', id: r.reported_topic_id };
+    if (r.reported_community_post_id) return { kind: 'community_post', id: r.reported_community_post_id };
+    return null;
+  };
+
+  // Approve = the post is fine: unhide it and close the report.
+  const restoreContent = async (r: ReportRow) => {
+    const ref = contentRef(r);
+    if (!ref) return;
+    setActingId(r.id);
+    try {
+      const { error } = await supabase.rpc('moderator_set_content_hidden', { p_kind: ref.kind, p_id: ref.id, p_hidden: false });
+      if (error) throw error;
+      await supabase.from('reports').update({ status: 'dismissed', resolved_at: new Date().toISOString() }).eq('id', r.id);
+      setReports(prev => prev.filter(x => x.id !== r.id));
+      toast.success('Post restored');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to restore');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  // Remove = delete the post and close the report.
+  const removeContent = async (r: ReportRow) => {
+    const ref = contentRef(r);
+    if (!ref) return;
+    if (!window.confirm('Delete this post permanently?')) return;
+    setActingId(r.id);
+    try {
+      const { error } = await supabase.rpc('moderator_delete_content', { p_kind: ref.kind, p_id: ref.id });
+      if (error) throw error;
+      await supabase.from('reports').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', r.id);
+      setReports(prev => prev.filter(x => x.id !== r.id));
+      toast.success('Post removed');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to remove');
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const decideTopicRequest = async (id: string, status: 'approved' | 'rejected') => {
     setActingId(id);
     try {
@@ -238,21 +285,47 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onClose }) => {
                       )}
                     </div>
                   </div>
+                  {contentRef(r) && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2">
+                      This post is hidden from the feed until you approve or remove it.
+                    </p>
+                  )}
                   <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={() => resolveReport(r.id, 'resolved')}
-                      disabled={actingId === r.id}
-                      className="flex-1 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Resolve
-                    </button>
-                    <button
-                      onClick={() => resolveReport(r.id, 'dismissed')}
-                      disabled={actingId === r.id}
-                      className="flex-1 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center gap-1"
-                    >
-                      <X className="w-3.5 h-3.5" /> Dismiss
-                    </button>
+                    {contentRef(r) ? (
+                      <>
+                        <button
+                          onClick={() => restoreContent(r)}
+                          disabled={actingId === r.id}
+                          className="flex-1 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Approve (restore)
+                        </button>
+                        <button
+                          onClick={() => removeContent(r)}
+                          disabled={actingId === r.id}
+                          className="flex-1 py-1.5 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" /> Remove post
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => resolveReport(r.id, 'resolved')}
+                          disabled={actingId === r.id}
+                          className="flex-1 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Resolve
+                        </button>
+                        <button
+                          onClick={() => resolveReport(r.id, 'dismissed')}
+                          disabled={actingId === r.id}
+                          className="flex-1 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" /> Dismiss
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
