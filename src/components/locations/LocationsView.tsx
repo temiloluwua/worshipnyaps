@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress } from '../../lib/geocode';
+import { shareOrigin } from '../../lib/openExternal';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
@@ -162,7 +163,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   };
 
   const buildShareUrl = (event: DbEvent) => {
-    const url = new URL(`/event/${event.id}`, window.location.origin);
+    const url = new URL(`/event/${event.id}`, shareOrigin());
     if (event.invite_code) url.searchParams.set('invite', event.invite_code);
     return url.toString();
   };

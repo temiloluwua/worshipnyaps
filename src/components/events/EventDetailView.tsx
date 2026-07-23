@@ -22,6 +22,7 @@ import { EventAnnouncements } from './EventAnnouncements';
 import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
 import { shareIcs } from '../../lib/icsExport';
 import { mapLinkFor } from '../../lib/mapLink';
+import { shareOrigin } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
 import { ReportButton } from '../moderation/ReportButton';
 
@@ -822,7 +823,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const shareEvent = async () => {
     if (!event) return;
 
-    const shareUrl = new URL(`/event/${event.id}`, window.location.origin);
+    const shareUrl = new URL(`/event/${event.id}`, shareOrigin());
     if (event.invite_code) {
       shareUrl.searchParams.set('invite', event.invite_code);
     }

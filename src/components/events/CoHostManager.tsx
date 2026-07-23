@@ -3,6 +3,7 @@ import { UserPlus, X, Shield, Search, Copy, Music, BookOpen, Heart, Coffee, Wren
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
+import { shareOrigin } from '../../lib/openExternal';
 import toast from 'react-hot-toast';
 
 type RoleKey = 'worship' | 'discussion' | 'prayer' | 'hospitality' | 'tech' | 'other';
@@ -184,19 +185,7 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
     }
   }, [eventId, isHost]);
 
-  // Inside the native app window.location.origin is capacitor://localhost,
-  // which is not a shareable URL. Fall back to the real site for the native
-  // app AND local dev so shared links always resolve for the recipient.
-  const teamOrigin = (() => {
-    try {
-      const origin = window.location.origin;
-      return origin.startsWith('capacitor://') || origin.startsWith('http://localhost') || origin.startsWith('https://localhost')
-        ? 'https://www.worshipnyaps.com'
-        : origin;
-    } catch {
-      return 'https://www.worshipnyaps.com';
-    }
-  })();
+  const teamOrigin = shareOrigin();
 
   const shareTeamLink = async () => {
     if (!teamCode) {
