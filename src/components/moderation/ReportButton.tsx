@@ -8,6 +8,7 @@ export type ReportTargetType =
   | 'user'
   | 'event'
   | 'topic'
+  | 'community_post'
   | 'comment'
   | 'message'
   | 'announcement'
@@ -50,6 +51,7 @@ const ENTITY_COLUMN_BY_TYPE: Record<ReportTargetType, string | null> = {
   user: null, // uses reported_user_id from authorId
   event: 'reported_event_id',
   topic: 'reported_topic_id',
+  community_post: 'reported_community_post_id',
   comment: 'reported_comment_id',
   message: 'reported_message_id',
   announcement: 'reported_announcement_id',

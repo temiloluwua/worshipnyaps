@@ -168,14 +168,14 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
             )}
             <ReportButton
               target={{
-                type: 'topic',
+                // Community posts live in their own table, so report them as
+                // 'community_post' (sets reported_community_post_id) — this lets
+                // the auto-hide-on-report trigger fire for them too.
+                type: topic.topic_type === 'community' ? 'community_post' : 'topic',
                 id: topic.id,
                 authorId: topic.author_id || topic.authorId,
                 preview: (topic.title || topic.content || '').slice(0, 200),
                 contentSnapshot: { title: topic.title, content: topic.content, category: topic.category, source: topic.topic_type === 'community' ? 'community_post' : 'topic' },
-                // community_posts.id isn't a valid FK into topics.id, so skip
-                // the reported_topic_id column and rely on the snapshot instead.
-                skipEntityRef: topic.topic_type === 'community',
               }}
               className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             />
