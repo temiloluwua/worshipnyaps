@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp, BookOpen, Type, Palette, Ban } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Trash2, AlertTriangle, Sparkles, FileText, Shield, ScrollText, ShieldAlert, LogOut, ChevronDown, ChevronUp, BookOpen, Type, Palette, Ban, Bell } from 'lucide-react';
 import { usePreferences, FontFamily, AccentColor } from '../hooks/usePreferences';
 import { BIBLE_VERSIONS } from '../lib/bibleLink';
 import { AdminConsole } from './admin/AdminConsole';
@@ -263,6 +263,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             </div>
           )}
 
+          {user && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Bell size={18} className="text-gray-600 dark:text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
+              </div>
+              <NotificationPrefsSection isOpen={isOpen} />
+            </div>
+          )}
+
           <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
             <div className="flex items-center gap-2 mb-3">
               <ScrollText size={18} className="text-gray-600 dark:text-gray-400" />
@@ -393,6 +403,68 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       </ModalBody>
     </Modal>
     </>
+  );
+};
+
+const PrefToggle: React.FC<{ checked: boolean; onChange: () => void; label: string; hint: string }> = ({ checked, onChange, label, hint }) => (
+  <button
+    type="button"
+    onClick={onChange}
+    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+  >
+    <div className="flex-1 min-w-0">
+      <div className="text-sm text-gray-800 dark:text-gray-200">{label}</div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">{hint}</div>
+    </div>
+    <span className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${checked ? 'left-[1.125rem]' : 'left-0.5'}`} />
+    </span>
+  </button>
+);
+
+// Per-type push preferences. Persisted on the users row (read by the server
+// triggers/cron that decide who to notify).
+const NotificationPrefsSection: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
+  const { user } = useAuth();
+  const [dailyTopic, setDailyTopic] = useState(false);
+  const [followedPosts, setFollowedPosts] = useState(true);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    supabase
+      .from('users')
+      .select('notify_daily_topic, notify_followed_posts')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setDailyTopic(!!(data as any).notify_daily_topic);
+          setFollowedPosts((data as any).notify_followed_posts ?? true);
+        }
+      });
+  }, [isOpen, user]);
+
+  const save = async (patch: Record<string, boolean>) => {
+    if (!user) return;
+    const { error } = await supabase.from('users').update(patch).eq('id', user.id);
+    if (error) toast.error(error.message);
+  };
+
+  return (
+    <div className="space-y-2">
+      <PrefToggle
+        checked={dailyTopic}
+        onChange={() => { const v = !dailyTopic; setDailyTopic(v); save({ notify_daily_topic: v }); }}
+        label="Topic of the Day"
+        hint="A daily verse/topic to reflect on"
+      />
+      <PrefToggle
+        checked={followedPosts}
+        onChange={() => { const v = !followedPosts; setFollowedPosts(v); save({ notify_followed_posts: v }); }}
+        label="Posts from people you follow"
+        hint="Get notified when someone you follow shares a post"
+      />
+    </div>
   );
 };
 

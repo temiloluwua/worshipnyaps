@@ -210,10 +210,13 @@ function App() {
   useDevicePush({
     onNotificationOpened: (data) => {
       const eventId = typeof data?.event_id === 'string' ? data.event_id : null;
+      const topicId = typeof data?.topic_id === 'string' ? data.topic_id : null;
       const conversationId = typeof data?.conversation_id === 'string' ? data.conversation_id : null;
       const userId = typeof data?.user_id === 'string' ? data.user_id : null;
       if (eventId) {
         handleOpenEvent(eventId);
+      } else if (topicId) {
+        focusTopicById(topicId);
       } else if (conversationId) {
         setActiveTab('messages');
       } else if (userId) {
