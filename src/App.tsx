@@ -16,6 +16,8 @@ const LocationsView = lazy(() => import('./components/locations/LocationsView').
 const ShopPage = lazy(() => import('./components/shop/ShopPage').then(m => ({ default: m.ShopPage })));
 const SuccessPage = lazy(() => import('./components/shop/SuccessPage').then(m => ({ default: m.SuccessPage })));
 const EventDetailView = lazy(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })));
+const GroupsView = lazy(() => import('./components/groups/GroupsView').then(m => ({ default: m.GroupsView })));
+const GroupDetailView = lazy(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { AgeGate } from './components/auth/AgeGate';
@@ -28,7 +30,7 @@ import { useOAuthDeepLink } from './hooks/useOAuthDeepLink';
 import { Topic } from './lib/supabase';
 
 interface ViewState {
-  type: 'main' | 'profile' | 'hashtag' | 'network';
+  type: 'main' | 'profile' | 'hashtag' | 'network' | 'groups';
   userId?: string;
   hashtagName?: string;
   initialChatUserId?: string;
@@ -39,6 +41,8 @@ function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('topics');
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [groupJoinCode, setGroupJoinCode] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showSuccessPage, setShowSuccessPage] = useState(false);
@@ -105,7 +109,17 @@ function App() {
         return;
       }
 
+      const groupMatch = path.match(/^\/group\/([^/]+)$/);
+      if (groupMatch) {
+        setShowLanding(false);
+        setShowSuccessPage(false);
+        setActiveGroupId(decodeURIComponent(groupMatch[1]));
+        setGroupJoinCode(new URLSearchParams(window.location.search).get('join'));
+        return;
+      }
+
       setActiveEventId(null);
+      setActiveGroupId(null);
 
       if (path === '/shop/success') {
         setShowLanding(false);
@@ -182,6 +196,29 @@ function App() {
     window.scrollTo(0, 0);
   };
 
+  const handleOpenGroup = (groupId: string) => {
+    setShowLanding(false);
+    setShowSuccessPage(false);
+    setViewState({ type: 'main' });
+    setActiveGroupId(groupId);
+    window.history.pushState({}, '', `/group/${groupId}`);
+    window.scrollTo(0, 0);
+  };
+
+  const handleCloseGroup = () => {
+    setActiveGroupId(null);
+    setGroupJoinCode(null);
+    if (window.location.pathname.startsWith('/group/')) {
+      window.history.pushState({}, '', '/');
+    }
+    setViewState({ type: 'groups' });
+  };
+
+  const handleViewGroups = () => {
+    setActiveGroupId(null);
+    setViewState({ type: 'groups' });
+  };
+
   const handleViewProfile = (userId: string) => {
     const fromEventId = activeEventId;
     setViewState({ type: 'profile', userId, returnEventId: fromEventId ?? undefined });
@@ -210,11 +247,14 @@ function App() {
   useDevicePush({
     onNotificationOpened: (data) => {
       const eventId = typeof data?.event_id === 'string' ? data.event_id : null;
+      const groupId = typeof data?.group_id === 'string' ? data.group_id : null;
       const topicId = typeof data?.topic_id === 'string' ? data.topic_id : null;
       const conversationId = typeof data?.conversation_id === 'string' ? data.conversation_id : null;
       const userId = typeof data?.user_id === 'string' ? data.user_id : null;
       if (eventId) {
         handleOpenEvent(eventId);
+      } else if (groupId) {
+        handleOpenGroup(groupId);
       } else if (topicId) {
         focusTopicById(topicId);
       } else if (conversationId) {
@@ -354,6 +394,33 @@ function App() {
     );
   }
 
+  if (activeGroupId) {
+    return (
+      <Suspense fallback={loadingFallback}>
+        <GroupDetailView
+          groupId={activeGroupId}
+          joinCode={groupJoinCode}
+          onBack={handleCloseGroup}
+          onViewProfile={handleViewProfile}
+          onRequireAuth={() => { setAuthMode('signup'); setShowAuthModal(true); }}
+        />
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => { setShowAuthModal(false); setAuthMode('login'); }}
+          initialMode={authMode}
+        />
+      </Suspense>
+    );
+  }
+
+  if (viewState.type === 'groups') {
+    return (
+      <Suspense fallback={loadingFallback}>
+        <GroupsView onBack={handleBackToMain} onOpenGroup={handleOpenGroup} />
+      </Suspense>
+    );
+  }
+
   if (viewState.type === 'profile' && viewState.userId) {
     return (
       <ProfilePage
@@ -393,6 +460,7 @@ function App() {
           <CommunityView
             onViewProfile={handleViewProfile}
             onStartChat={handleStartChat}
+            onViewGroups={handleViewGroups}
           />
         </main>
         <BottomNavigation

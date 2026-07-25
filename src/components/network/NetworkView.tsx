@@ -15,9 +15,10 @@ type TabType = 'discover' | 'friends' | 'chat' | 'invitations';
 interface CommunityViewProps {
   onViewProfile?: (userId: string) => void;
   onStartChat?: (userId: string) => void;
+  onViewGroups?: () => void;
 }
 
-export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps = {}) {
+export function CommunityView({ onViewProfile, onStartChat, onViewGroups }: CommunityViewProps = {}) {
   const { user, profile } = useAuth();
   const { connections, connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, loading: connectionsLoading } = useConnections();
   const { invitations, sentInvitations, respondToInvitation, cancelInvitation } = useEventInvitations();
@@ -105,9 +106,19 @@ export function CommunityView({ onViewProfile, onStartChat }: CommunityViewProps
         className="max-w-4xl mx-auto p-4 pb-24"
         style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
       >
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Community</h1>
-          <p className="text-gray-600">Connect with fellow believers</p>
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Community</h1>
+            <p className="text-gray-600 dark:text-gray-400">Connect with fellow believers</p>
+          </div>
+          {onViewGroups && (
+            <button
+              onClick={onViewGroups}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold flex-shrink-0"
+            >
+              <Users className="w-4 h-4" /> Groups
+            </button>
+          )}
         </div>
 
         <div className="flex space-x-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto">
