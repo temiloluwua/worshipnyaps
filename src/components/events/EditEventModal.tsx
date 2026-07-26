@@ -6,6 +6,7 @@ import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { EventDescriptionForm } from './EventDescriptionTemplate';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { EventImageUploader } from './EventImageUploader';
+import { TopicPicker } from './TopicPicker';
 
 interface EditEventModalProps {
   event: DbEvent;
@@ -33,6 +34,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     visibility: event.visibility as 'public' | 'private' | 'friends_only',
     addressVisibility: (event.address_visibility || 'public') as 'general_area' | 'attendees_only' | 'public',
   });
+  const [topicId, setTopicId] = useState<string | null>((event as { topic_id?: string | null }).topic_id ?? null);
   const [imageUrl, setImageUrl] = useState<string | null>((event as { image_url?: string | null }).image_url ?? null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -79,6 +81,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         is_private: effectiveVisibility === 'private',
         address_visibility: effectiveAddressVisibility,
         image_url: imageUrl,
+        topic_id: topicId,
         updated_at: new Date().toISOString(),
       };
 
@@ -155,6 +158,12 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <EventImageUploader value={imageUrl} onChange={setImageUrl} />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Discussion topic</label>
+            <TopicPicker value={topicId} onChange={(id) => setTopicId(id)} />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Attach a topic for the group to discuss at this event.</p>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Title</label>

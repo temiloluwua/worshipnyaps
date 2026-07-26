@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useGroups, Group, GroupMember, GroupAnnouncement, Poll } from '../../hooks/useGroups';
 import { shareUrl } from '../../lib/openExternal';
+import { TopicPicker } from '../events/TopicPicker';
 import { linkifyMessage } from '../../lib/linkify';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -48,7 +49,7 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
   const [loading, setLoading] = useState(true);
   const [announceText, setAnnounceText] = useState('');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [evForm, setEvForm] = useState({ title: '', date: '', time: '', description: '', recurrence: '' });
+  const [evForm, setEvForm] = useState({ title: '', date: '', time: '', description: '', recurrence: '', topic_id: '' });
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
@@ -112,6 +113,7 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
         time: evForm.time,
         host_id: user.id,
         group_id: groupId,
+        topic_id: evForm.topic_id || null,
         visibility: 'friends_only',
         status: 'upcoming',
       };
@@ -131,7 +133,7 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
       if (error) throw error;
       toast.success(evForm.recurrence ? 'Recurring event created for the group' : 'Event created for the group');
       setShowCreateEvent(false);
-      setEvForm({ title: '', date: '', time: '', description: '', recurrence: '' });
+      setEvForm({ title: '', date: '', time: '', description: '', recurrence: '', topic_id: '' });
       await fetchGroupEvents();
     } catch (e: any) {
       toast.error(e?.message || 'Failed to create event');
@@ -369,6 +371,8 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
               <option value="biweekly">Every 2 weeks</option>
               <option value="monthly">Monthly</option>
             </select>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mt-2 mb-1">Discussion topic</label>
+            <TopicPicker value={evForm.topic_id || null} onChange={(id) => setEvForm(f => ({ ...f, topic_id: id || '' }))} />
             <p className="text-[11px] text-gray-400 mt-1">{evForm.recurrence ? 'Creates the next 8 occurrences. ' : ''}You can add a location and more details later by opening an event.</p>
             <button onClick={createGroupEvent} disabled={creatingEvent || !evForm.title.trim() || !evForm.date || !evForm.time}
               className="mt-3 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50">

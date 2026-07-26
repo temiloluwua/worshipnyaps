@@ -4,7 +4,7 @@ import { useNotificationSubscription } from '../../hooks/useNotificationSubscrip
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -30,6 +30,7 @@ interface EventDetailViewProps {
   eventId: string;
   onBack: () => void;
   onViewProfile?: (userId: string) => void;
+  onViewTopic?: (topicId: string) => void;
   // Opens the auth modal (used by the team-join flow when a logged-out visitor
   // arrives via a shared "help run this event" link).
   onRequireAuth?: () => void;
@@ -67,8 +68,9 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
   }
 };
 
-export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile, onRequireAuth }) => {
+export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile, onViewTopic, onRequireAuth }) => {
   const { user, profile } = useAuth();
+  const [attachedTopic, setAttachedTopic] = useState<{ id: string; title: string } | null>(null);
   // Team-recruitment link params (e.g. /event/{id}?team={code}&pick=cohost:worship).
   const teamCode = new URLSearchParams(window.location.search).get('team');
   const teamPick = new URLSearchParams(window.location.search).get('pick');
@@ -1057,6 +1059,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     toast.success('Calendar file downloaded!');
   };
 
+  useEffect(() => {
+    const tid = (event as { topic_id?: string | null } | null)?.topic_id;
+    if (!tid) { setAttachedTopic(null); return; }
+    supabase.from('topics').select('id, title').eq('id', tid).maybeSingle()
+      .then(({ data }) => setAttachedTopic(data ? { id: (data as any).id, title: (data as any).title } : null));
+  }, [event]);
+
   const typingLabel = (() => {
     if (typingUserNames.length === 0) return '';
     if (typingUserNames.length === 1) return `${typingUserNames[0]} is typing...`;
@@ -1376,6 +1385,21 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             )}
           </div>
 
+
+          {attachedTopic && (
+            <button
+              onClick={() => onViewTopic?.(attachedTopic.id)}
+              disabled={!onViewTopic}
+              className="w-full mb-6 flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:cursor-default"
+            >
+              <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">Discussion topic</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{attachedTopic.title}</div>
+              </div>
+              {onViewTopic && <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+            </button>
+          )}
 
           {(() => {
             const tmpl = event.description_template as DescriptionTemplate | null | undefined;

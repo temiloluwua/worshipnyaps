@@ -90,6 +90,7 @@ export interface Event {
   area_lat?: number | null;
   area_lng?: number | null;
   event_type?: 'bible_study' | 'yap';
+  topic_id?: string | null;
   study_topic?: string;
   session_purpose?: string;
   location_type?: 'home' | 'church' | 'park' | 'cafe' | 'online';

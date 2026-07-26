@@ -381,6 +381,7 @@ function App() {
           eventId={activeEventId}
           onBack={handleCloseEvent}
           onViewProfile={handleViewProfile}
+          onViewTopic={(topicId) => { setActiveEventId(null); focusTopicById(topicId); }}
           onRequireAuth={() => { setAuthMode('signup'); setShowAuthModal(true); }}
         />
         {/* This branch returns early (before the main layout that hosts the

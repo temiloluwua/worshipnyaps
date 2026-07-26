@@ -320,6 +320,12 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
     }
 
     try {
+      // Volunteering implies attending — register first so a viewer who hasn't
+      // RSVP'd yet still passes the participant RLS on the update below.
+      await supabase
+        .from('event_attendees')
+        .upsert({ event_id: eventId, user_id: user.id, status: 'registered' }, { onConflict: 'event_id,user_id' });
+
       if (item.source === 'help_request') {
         const { error } = await supabase
           .from('event_help_requests')
