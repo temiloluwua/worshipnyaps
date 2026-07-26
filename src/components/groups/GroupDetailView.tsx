@@ -20,7 +20,22 @@ interface GroupDetailViewProps {
 
 type Tab = 'chat' | 'events' | 'announcements' | 'members';
 
-interface GroupEvent { id: string; title: string; date: string; time: string; type: string; locations?: { name?: string; address?: string } | null }
+interface GroupEvent { id: string; title: string; date: string; time: string; type: string; recurrence?: string | null; is_recurrence_child?: boolean; locations?: { name?: string; address?: string } | null }
+
+// Generate up to `count` occurrence dates (YYYY-MM-DD) from a start date.
+function occurrenceDates(startISO: string, recurrence: string, count: number): string[] {
+  const out: string[] = [];
+  const base = new Date(startISO + 'T00:00:00');
+  for (let i = 0; i < count; i++) {
+    const d = new Date(base);
+    if (recurrence === 'weekly') d.setDate(base.getDate() + 7 * i);
+    else if (recurrence === 'biweekly') d.setDate(base.getDate() + 14 * i);
+    else if (recurrence === 'monthly') d.setMonth(base.getMonth() + i);
+    else { out.push(startISO); break; }
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
 
 export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBack, onViewProfile, onOpenEvent, joinCode, onRequireAuth }) => {
   const { user } = useAuth();
@@ -33,13 +48,13 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
   const [loading, setLoading] = useState(true);
   const [announceText, setAnnounceText] = useState('');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [evForm, setEvForm] = useState({ title: '', date: '', time: '', description: '' });
+  const [evForm, setEvForm] = useState({ title: '', date: '', time: '', description: '', recurrence: '' });
   const [creatingEvent, setCreatingEvent] = useState(false);
 
   const fetchGroupEvents = useCallback(async () => {
     const { data } = await supabase
       .from('events')
-      .select('id, title, date, time, type, locations (name, address)')
+      .select('id, title, date, time, type, recurrence, is_recurrence_child, locations (name, address)')
       .eq('group_id', groupId)
       .neq('status', 'cancelled')
       .order('date', { ascending: true });
@@ -51,21 +66,33 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
     if (!evForm.title.trim() || !evForm.date || !evForm.time) { toast.error('Add a title, date, and time'); return; }
     setCreatingEvent(true);
     try {
-      const { error } = await supabase.from('events').insert({
+      const base = {
         title: evForm.title.trim(),
         type: 'bible-study',
         description: evForm.description.trim() || evForm.title.trim(),
-        date: evForm.date,
         time: evForm.time,
         host_id: user.id,
         group_id: groupId,
         visibility: 'friends_only',
         status: 'upcoming',
-      });
+      };
+      let rows: any[];
+      if (evForm.recurrence) {
+        // Materialize up to 8 occurrences; only the seed notifies the group.
+        const seriesId = (crypto as any)?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+        const dates = occurrenceDates(evForm.date, evForm.recurrence, 8);
+        rows = dates.map((date, i) => ({
+          ...base, date, recurrence: evForm.recurrence,
+          recurrence_group_id: seriesId, is_recurrence_child: i > 0,
+        }));
+      } else {
+        rows = [{ ...base, date: evForm.date }];
+      }
+      const { error } = await supabase.from('events').insert(rows);
       if (error) throw error;
-      toast.success('Event created for the group');
+      toast.success(evForm.recurrence ? 'Recurring event created for the group' : 'Event created for the group');
       setShowCreateEvent(false);
-      setEvForm({ title: '', date: '', time: '', description: '' });
+      setEvForm({ title: '', date: '', time: '', description: '', recurrence: '' });
       await fetchGroupEvents();
     } catch (e: any) {
       toast.error(e?.message || 'Failed to create event');
@@ -170,7 +197,10 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
               className="w-full flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0"><Calendar className="w-5 h-5" /></div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">{ev.title}</div>
+                <div className="font-semibold text-sm text-gray-900 dark:text-white truncate flex items-center gap-1.5">
+                  {ev.title}
+                  {ev.recurrence && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">🔁 {ev.recurrence}</span>}
+                </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">{ev.date}{ev.time ? ` · ${ev.time.slice(0, 5)}` : ''}{ev.locations?.name ? ` · ${ev.locations.name}` : ''}</div>
               </div>
             </button>
@@ -249,7 +279,15 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
             </div>
             <textarea value={evForm.description} onChange={e => setEvForm(f => ({ ...f, description: e.target.value }))} rows={2} maxLength={300}
               placeholder="Details (optional)" className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
-            <p className="text-[11px] text-gray-400 mt-1">You can add a location and more details later by opening the event.</p>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mt-2 mb-1">Repeats</label>
+            <select value={evForm.recurrence} onChange={e => setEvForm(f => ({ ...f, recurrence: e.target.value }))}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+              <option value="">Doesn't repeat</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <p className="text-[11px] text-gray-400 mt-1">{evForm.recurrence ? 'Creates the next 8 occurrences. ' : ''}You can add a location and more details later by opening an event.</p>
             <button onClick={createGroupEvent} disabled={creatingEvent || !evForm.title.trim() || !evForm.date || !evForm.time}
               className="mt-3 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50">
               {creatingEvent ? 'Creating…' : 'Create event'}
