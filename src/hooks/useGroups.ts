@@ -32,6 +32,24 @@ export interface GroupAnnouncement {
   author?: { name: string; avatar_url?: string } | null;
 }
 
+export interface PollOption {
+  id: string;
+  proposed_date: string;
+  proposed_time: string;
+  sort_order: number;
+  votes: { user_id: string }[];
+}
+
+export interface Poll {
+  id: string;
+  group_id: string;
+  question: string;
+  status: 'open' | 'closed';
+  created_event_id: string | null;
+  created_at: string;
+  options: PollOption[];
+}
+
 export const useGroups = () => {
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
@@ -151,6 +169,57 @@ export const useGroups = () => {
     }
   }, [user, fetchMyGroups]);
 
+  const fetchPolls = useCallback(async (groupId: string): Promise<Poll[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('event_polls')
+        .select('id, group_id, question, status, created_event_id, created_at, options:poll_options (id, proposed_date, proposed_time, sort_order, votes:poll_votes (user_id))')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const polls = (data || []) as unknown as Poll[];
+      polls.forEach(p => p.options?.sort((a, b) => a.sort_order - b.sort_order));
+      return polls;
+    } catch (err) {
+      console.error('Error fetching polls:', err);
+      return [];
+    }
+  }, []);
+
+  const createPoll = useCallback(async (groupId: string, question: string, options: { date: string; time: string }[]): Promise<boolean> => {
+    try {
+      const { error } = await supabase.rpc('create_schedule_poll', { p_group_id: groupId, p_question: question, p_options: options });
+      if (error) throw error;
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to create poll');
+      return false;
+    }
+  }, []);
+
+  const toggleVote = useCallback(async (optionId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.rpc('toggle_poll_vote', { p_option_id: optionId });
+      if (error) throw error;
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to vote');
+      return false;
+    }
+  }, []);
+
+  const closePoll = useCallback(async (optionId: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.rpc('close_poll_to_event', { p_option_id: optionId });
+      if (error) throw error;
+      toast.success('Event scheduled!');
+      return data as string;
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to finalize poll');
+      return null;
+    }
+  }, []);
+
   const removeMember = useCallback(async (groupId: string, userId: string): Promise<boolean> => {
     try {
       const { error } = await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', userId);
@@ -174,5 +243,9 @@ export const useGroups = () => {
     postAnnouncement,
     leaveGroup,
     removeMember,
+    fetchPolls,
+    createPoll,
+    toggleVote,
+    closePoll,
   };
 };

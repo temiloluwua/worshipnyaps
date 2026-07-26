@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Megaphone, Users, MessageCircle, Share2, LogOut, X, Calendar, Plus } from 'lucide-react';
+import { ArrowLeft, Send, Megaphone, Users, MessageCircle, Share2, LogOut, X, Calendar, Plus, BarChart3, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { useGroups, Group, GroupMember, GroupAnnouncement } from '../../hooks/useGroups';
+import { useGroups, Group, GroupMember, GroupAnnouncement, Poll } from '../../hooks/useGroups';
 import { shareUrl } from '../../lib/openExternal';
 import { linkifyMessage } from '../../lib/linkify';
 import { format } from 'date-fns';
@@ -39,7 +39,7 @@ function occurrenceDates(startISO: string, recurrence: string, count: number): s
 
 export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBack, onViewProfile, onOpenEvent, joinCode, onRequireAuth }) => {
   const { user } = useAuth();
-  const { fetchGroup, fetchMembers, fetchAnnouncements, postAnnouncement, leaveGroup, removeMember, joinGroup } = useGroups();
+  const { fetchGroup, fetchMembers, fetchAnnouncements, postAnnouncement, leaveGroup, removeMember, joinGroup, fetchPolls, createPoll, toggleVote, closePoll } = useGroups();
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [announcements, setAnnouncements] = useState<GroupAnnouncement[]>([]);
@@ -50,6 +50,45 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [evForm, setEvForm] = useState({ title: '', date: '', time: '', description: '', recurrence: '' });
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [pollQ, setPollQ] = useState('');
+  const [pollOpts, setPollOpts] = useState<{ date: string; time: string }[]>([{ date: '', time: '' }, { date: '', time: '' }]);
+  const [pollBusy, setPollBusy] = useState(false);
+
+  const loadPolls = useCallback(async () => { setPolls(await fetchPolls(groupId)); }, [fetchPolls, groupId]);
+
+  const vote = async (optionId: string) => {
+    // Optimistic toggle for snappy UX, then reconcile.
+    setPolls(prev => prev.map(p => ({
+      ...p,
+      options: p.options.map(o => o.id === optionId
+        ? { ...o, votes: o.votes.some(v => v.user_id === user?.id) ? o.votes.filter(v => v.user_id !== user?.id) : [...o.votes, { user_id: user!.id }] }
+        : o),
+    })));
+    await toggleVote(optionId);
+    loadPolls();
+  };
+
+  const pickWinner = async (optionId: string) => {
+    if (!window.confirm('Schedule the event at this time and close the poll?')) return;
+    const eventId = await closePoll(optionId);
+    if (eventId) { await loadPolls(); await fetchGroupEvents(); }
+  };
+
+  const submitPoll = async () => {
+    const opts = pollOpts.filter(o => o.date && o.time);
+    if (!pollQ.trim()) { toast.error('Add a question'); return; }
+    if (opts.length < 2) { toast.error('Add at least two time options'); return; }
+    setPollBusy(true);
+    const ok = await createPoll(groupId, pollQ.trim(), opts);
+    setPollBusy(false);
+    if (ok) {
+      setShowCreatePoll(false); setPollQ(''); setPollOpts([{ date: '', time: '' }, { date: '', time: '' }]);
+      loadPolls();
+      toast.success('Poll posted');
+    }
+  };
 
   const fetchGroupEvents = useCallback(async () => {
     const { data } = await supabase
@@ -113,9 +152,9 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
     }
     const [m, a] = g ? await Promise.all([fetchMembers(groupId), fetchAnnouncements(groupId)]) : [[], []];
     setGroup(g); setMembers(m); setAnnouncements(a);
-    if (g) fetchGroupEvents();
+    if (g) { fetchGroupEvents(); loadPolls(); }
     setLoading(false);
-  }, [groupId, joinCode, user, fetchGroup, fetchMembers, fetchAnnouncements, joinGroup, fetchGroupEvents]);
+  }, [groupId, joinCode, user, fetchGroup, fetchMembers, fetchAnnouncements, joinGroup, fetchGroupEvents, loadPolls]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -186,10 +225,53 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
 
       {tab === 'events' && (
         <div className="flex-1 overflow-y-auto max-w-2xl w-full mx-auto p-4 space-y-3">
-          <button onClick={() => setShowCreateEvent(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20">
-            <Plus className="w-4 h-4" /> New event for this group
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowCreateEvent(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20">
+              <Plus className="w-4 h-4" /> New event
+            </button>
+            <button onClick={() => setShowCreatePoll(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-teal-300 dark:border-teal-700 text-teal-600 dark:text-teal-400 text-sm font-semibold hover:bg-teal-50 dark:hover:bg-teal-900/20">
+              <BarChart3 className="w-4 h-4" /> Schedule poll
+            </button>
+          </div>
+
+          {/* Open scheduling polls */}
+          {polls.filter(p => p.status === 'open').map(p => {
+            const maxVotes = Math.max(1, ...p.options.map(o => o.votes.length));
+            return (
+              <div key={p.id} className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-teal-200 dark:border-teal-800">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <BarChart3 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{p.question}</span>
+                </div>
+                <div className="space-y-1.5">
+                  {p.options.map(o => {
+                    const mine = o.votes.some(v => v.user_id === user?.id);
+                    const label = new Date(o.proposed_date + 'T' + o.proposed_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + o.proposed_time.slice(0, 5);
+                    return (
+                      <div key={o.id} className="flex items-center gap-2">
+                        <button onClick={() => vote(o.id)}
+                          className={`relative flex-1 text-left px-3 py-2 rounded-lg text-sm overflow-hidden border ${mine ? 'border-teal-500 text-teal-800 dark:text-teal-200' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>
+                          <span className="absolute inset-y-0 left-0 bg-teal-100/70 dark:bg-teal-900/30" style={{ width: `${(o.votes.length / maxVotes) * 100}%` }} />
+                          <span className="relative flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">{mine && <Check className="w-3.5 h-3.5 text-teal-600" />}{label}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{o.votes.length}</span>
+                          </span>
+                        </button>
+                        {isLeader && (
+                          <button onClick={() => pickWinner(o.id)} title="Pick this time"
+                            className="px-2.5 py-2 rounded-lg bg-teal-600 text-white text-xs font-semibold hover:bg-teal-700 whitespace-nowrap">Pick</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">Tap every time you can make it. {isLeader ? 'Tap "Pick" to schedule the winner.' : ''}</p>
+              </div>
+            );
+          })}
+
           {events.length === 0 ? (
             <p className="text-center text-sm text-gray-400 py-8">No upcoming events yet.</p>
           ) : events.map(ev => (
@@ -291,6 +373,43 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
             <button onClick={createGroupEvent} disabled={creatingEvent || !evForm.title.trim() || !evForm.date || !evForm.time}
               className="mt-3 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50">
               {creatingEvent ? 'Creating…' : 'Create event'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCreatePoll && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCreatePoll(false); }}>
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 dark:text-white">Schedule a poll</h3>
+              <button onClick={() => setShowCreatePoll(false)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><X className="w-4 h-4" /></button>
+            </div>
+            <input value={pollQ} onChange={e => setPollQ(e.target.value)} placeholder="Question (e.g. When should we meet?)" maxLength={120}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm mb-3" autoFocus />
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Time options</label>
+            <div className="space-y-2">
+              {pollOpts.map((o, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input type="date" value={o.date} onChange={e => setPollOpts(p => p.map((x, j) => j === i ? { ...x, date: e.target.value } : x))}
+                    className="flex-1 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+                  <input type="time" value={o.time} onChange={e => setPollOpts(p => p.map((x, j) => j === i ? { ...x, time: e.target.value } : x))}
+                    className="w-28 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+                  {pollOpts.length > 2 && (
+                    <button onClick={() => setPollOpts(p => p.filter((_, j) => j !== i))} className="p-1 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {pollOpts.length < 5 && (
+              <button onClick={() => setPollOpts(p => [...p, { date: '', time: '' }])} className="mt-2 text-xs font-semibold text-teal-600 dark:text-teal-400 flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Add option
+              </button>
+            )}
+            <button onClick={submitPoll} disabled={pollBusy}
+              className="mt-4 w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50">
+              {pollBusy ? 'Posting…' : 'Post poll'}
             </button>
           </div>
         </div>
