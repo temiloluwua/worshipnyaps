@@ -131,18 +131,36 @@
          After a grace period, turn the still-visible branded splash into a
          Reload prompt so users never see a dead blank page. -->
     <script>
-      window.setTimeout(function () {
-        var splash = document.getElementById('app-splash');
-        // Only offer Reload if React never committed any DOM — i.e. the bundle
-        // failed to execute. If React mounted but is still loading, leave the
-        // branded splash spinning rather than a false error.
-        if (splash && !window.__reactMounted) {
+      // Cold-start self-heal. If React hasn't committed any DOM after a grace
+      // period, do ONE silent reload (a Capacitor cold start can occasionally
+      // fail its first script eval). Only if it still hasn't mounted after the
+      // reload do we show a neutral, non-alarming reload prompt — never a
+      // "network/connection error", which mischaracterizes a local-bundle issue.
+      (function () {
+        var RETRY_KEY = 'wny_boot_retry';
+        window.setTimeout(function () {
+          if (window.__reactMounted) return;
+          var splash = document.getElementById('app-splash');
+          if (!splash) return;
+          var retried = false;
+          try { retried = sessionStorage.getItem(RETRY_KEY) === '1'; } catch (e) {}
+          if (!retried) {
+            try { sessionStorage.setItem(RETRY_KEY, '1'); } catch (e) {}
+            window.location.reload();
+            return;
+          }
           splash.innerHTML =
             '<div class="app-splash__name">Worship N Yaps</div>' +
-            '<div class="app-splash__msg">Couldn\'t finish loading. Please check your connection and try again.</div>' +
-            '<button class="app-splash__btn" onclick="window.location.reload()">Reload</button>';
-        }
-      }, 12000);
+            '<div class="app-splash__msg">Almost there — tap reload to finish opening the app.</div>' +
+            '<button class="app-splash__btn" onclick="try{sessionStorage.removeItem(\'wny_boot_retry\')}catch(e){};window.location.reload()">Reload</button>';
+        }, 10000);
+        // Clear the retry flag once React actually mounts, so a future genuine
+        // hiccup still gets its one free retry.
+        var iv = window.setInterval(function () {
+          if (window.__reactMounted) { try { sessionStorage.removeItem(RETRY_KEY); } catch (e) {} clearInterval(iv); }
+        }, 500);
+        window.setTimeout(function () { clearInterval(iv); }, 20000);
+      })();
     </script>
 
     <script type="module" src="/src/main.tsx"></script>
