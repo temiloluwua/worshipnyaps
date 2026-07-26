@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Megaphone, Users, MessageCircle, Share2, LogOut, X } from 'lucide-react';
+import { ArrowLeft, Send, Megaphone, Users, MessageCircle, Share2, LogOut, X, Calendar, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useGroups, Group, GroupMember, GroupAnnouncement } from '../../hooks/useGroups';
@@ -12,22 +12,67 @@ interface GroupDetailViewProps {
   groupId: string;
   onBack: () => void;
   onViewProfile?: (userId: string) => void;
+  onOpenEvent?: (eventId: string) => void;
   // When arriving via an invite link (/group/{id}?join={code}).
   joinCode?: string | null;
   onRequireAuth?: () => void;
 }
 
-type Tab = 'chat' | 'announcements' | 'members';
+type Tab = 'chat' | 'events' | 'announcements' | 'members';
 
-export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBack, onViewProfile, joinCode, onRequireAuth }) => {
+interface GroupEvent { id: string; title: string; date: string; time: string; type: string; locations?: { name?: string; address?: string } | null }
+
+export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBack, onViewProfile, onOpenEvent, joinCode, onRequireAuth }) => {
   const { user } = useAuth();
   const { fetchGroup, fetchMembers, fetchAnnouncements, postAnnouncement, leaveGroup, removeMember, joinGroup } = useGroups();
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [announcements, setAnnouncements] = useState<GroupAnnouncement[]>([]);
+  const [events, setEvents] = useState<GroupEvent[]>([]);
   const [tab, setTab] = useState<Tab>('chat');
   const [loading, setLoading] = useState(true);
   const [announceText, setAnnounceText] = useState('');
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [evForm, setEvForm] = useState({ title: '', date: '', time: '', description: '' });
+  const [creatingEvent, setCreatingEvent] = useState(false);
+
+  const fetchGroupEvents = useCallback(async () => {
+    const { data } = await supabase
+      .from('events')
+      .select('id, title, date, time, type, locations (name, address)')
+      .eq('group_id', groupId)
+      .neq('status', 'cancelled')
+      .order('date', { ascending: true });
+    setEvents((data || []) as unknown as GroupEvent[]);
+  }, [groupId]);
+
+  const createGroupEvent = async () => {
+    if (!user) return;
+    if (!evForm.title.trim() || !evForm.date || !evForm.time) { toast.error('Add a title, date, and time'); return; }
+    setCreatingEvent(true);
+    try {
+      const { error } = await supabase.from('events').insert({
+        title: evForm.title.trim(),
+        type: 'bible-study',
+        description: evForm.description.trim() || evForm.title.trim(),
+        date: evForm.date,
+        time: evForm.time,
+        host_id: user.id,
+        group_id: groupId,
+        visibility: 'friends_only',
+        status: 'upcoming',
+      });
+      if (error) throw error;
+      toast.success('Event created for the group');
+      setShowCreateEvent(false);
+      setEvForm({ title: '', date: '', time: '', description: '' });
+      await fetchGroupEvents();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create event');
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
 
   const isLeader = members.some(m => m.user_id === user?.id && m.role === 'leader') || group?.created_by === user?.id;
 
@@ -41,8 +86,9 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
     }
     const [m, a] = g ? await Promise.all([fetchMembers(groupId), fetchAnnouncements(groupId)]) : [[], []];
     setGroup(g); setMembers(m); setAnnouncements(a);
+    if (g) fetchGroupEvents();
     setLoading(false);
-  }, [groupId, joinCode, user, fetchGroup, fetchMembers, fetchAnnouncements, joinGroup]);
+  }, [groupId, joinCode, user, fetchGroup, fetchMembers, fetchAnnouncements, joinGroup, fetchGroupEvents]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -99,7 +145,8 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
         </div>
         <div className="flex px-2">
           <TabBtn active={tab === 'chat'} onClick={() => setTab('chat')} icon={<MessageCircle className="w-4 h-4" />} label="Chat" />
-          <TabBtn active={tab === 'announcements'} onClick={() => setTab('announcements')} icon={<Megaphone className="w-4 h-4" />} label="Announcements" />
+          <TabBtn active={tab === 'events'} onClick={() => setTab('events')} icon={<Calendar className="w-4 h-4" />} label="Events" />
+          <TabBtn active={tab === 'announcements'} onClick={() => setTab('announcements')} icon={<Megaphone className="w-4 h-4" />} label="News" />
           <TabBtn active={tab === 'members'} onClick={() => setTab('members')} icon={<Users className="w-4 h-4" />} label="Members" />
         </div>
       </div>
@@ -108,6 +155,27 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
         group.conversation_id
           ? <GroupChat conversationId={group.conversation_id} />
           : <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Chat unavailable.</div>
+      )}
+
+      {tab === 'events' && (
+        <div className="flex-1 overflow-y-auto max-w-2xl w-full mx-auto p-4 space-y-3">
+          <button onClick={() => setShowCreateEvent(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20">
+            <Plus className="w-4 h-4" /> New event for this group
+          </button>
+          {events.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-8">No upcoming events yet.</p>
+          ) : events.map(ev => (
+            <button key={ev.id} onClick={() => onOpenEvent?.(ev.id)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0"><Calendar className="w-5 h-5" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">{ev.title}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{ev.date}{ev.time ? ` · ${ev.time.slice(0, 5)}` : ''}{ev.locations?.name ? ` · ${ev.locations.name}` : ''}</div>
+              </div>
+            </button>
+          ))}
+        </div>
       )}
 
       {tab === 'announcements' && (
@@ -160,6 +228,33 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
             className="mt-4 w-full py-2.5 border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20">
             <LogOut className="w-4 h-4" /> Leave group
           </button>
+        </div>
+      )}
+
+      {showCreateEvent && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCreateEvent(false); }}>
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 dark:text-white">New group event</h3>
+              <button onClick={() => setShowCreateEvent(false)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><X className="w-4 h-4" /></button>
+            </div>
+            <input value={evForm.title} onChange={e => setEvForm(f => ({ ...f, title: e.target.value }))} placeholder="Event title" maxLength={80}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm mb-2" autoFocus />
+            <div className="flex gap-2 mb-2">
+              <input type="date" value={evForm.date} onChange={e => setEvForm(f => ({ ...f, date: e.target.value }))}
+                className="flex-1 px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              <input type="time" value={evForm.time} onChange={e => setEvForm(f => ({ ...f, time: e.target.value }))}
+                className="w-32 px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+            </div>
+            <textarea value={evForm.description} onChange={e => setEvForm(f => ({ ...f, description: e.target.value }))} rows={2} maxLength={300}
+              placeholder="Details (optional)" className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
+            <p className="text-[11px] text-gray-400 mt-1">You can add a location and more details later by opening the event.</p>
+            <button onClick={createGroupEvent} disabled={creatingEvent || !evForm.title.trim() || !evForm.date || !evForm.time}
+              className="mt-3 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50">
+              {creatingEvent ? 'Creating…' : 'Create event'}
+            </button>
+          </div>
         </div>
       )}
     </div>

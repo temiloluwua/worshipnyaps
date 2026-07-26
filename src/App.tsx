@@ -402,6 +402,7 @@ function App() {
           joinCode={groupJoinCode}
           onBack={handleCloseGroup}
           onViewProfile={handleViewProfile}
+          onOpenEvent={handleOpenEvent}
           onRequireAuth={() => { setAuthMode('signup'); setShowAuthModal(true); }}
         />
         <AuthModal
