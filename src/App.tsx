@@ -370,6 +370,11 @@ function App() {
           setShowLanding(false);
           setShowAuthModal(true);
         }}
+        onLogin={() => {
+          setAuthMode('login');
+          setShowLanding(false);
+          setShowAuthModal(true);
+        }}
       />
     );
   }

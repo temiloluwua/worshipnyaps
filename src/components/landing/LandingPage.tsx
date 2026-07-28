@@ -18,6 +18,7 @@ interface LandingPageProps {
   onViewTopics?: () => void;
   onViewTopicOfDay?: (topicId: string) => void;
   onCreateAccount?: () => void;
+  onLogin?: () => void;
 }
 
 interface Topic {
@@ -35,7 +36,7 @@ interface Topic {
 const YAPS_CARDS = [
   { question: 'What does your faith look like on a Tuesday afternoon?', verse: 'Colossians 3:17' },
   { question: "What's something God has been teaching you through an ordinary moment?", verse: 'Psalm 46:10' },
-  { question: 'When did community last surprise you with kindness?', verse: 'Hebrews 10:24–25' },
+  { question: 'When did community last surprise you with kindness?', verse: 'Hebrews 10:24 to 25' },
   { question: "What's a question about the Bible you've been afraid to ask out loud?", verse: 'James 1:5' },
 ];
 
@@ -46,9 +47,9 @@ const FEATURES = [
     label: 'Topics',
     title: 'A global conversation about faith and life',
     description:
-      "Join real discussions about scripture, doubt, and everyday faith. Share what God is teaching you. Comment, like, and discover what others are studying — across every timezone.",
+      "Join real discussions about scripture, doubt, and everyday faith. Share what God is teaching you. Comment, like, and discover what others are studying, across every timezone.",
     pills: ['Scripture Q&A', 'Share reflections', 'Comment & like', 'Discover believers'],
-    gradient: 'from-amber-100 to-orange-200',
+    gradient: 'from-gray-100 to-gray-200',
   },
   {
     key: 'events',
@@ -56,19 +57,19 @@ const FEATURES = [
     label: 'Events',
     title: 'Find or host any kind of gathering',
     description:
-      'Bible studies, worship nights, church hangouts, sports yaps, food yaps, and casual meetups — all in one place.',
+      'Bible studies, worship nights, church hangouts, sports yaps, food yaps, and casual meetups, all in one place.',
     pills: ['Bible study', 'Worship night', 'Sports yap', 'Food yap', 'Prayer group'],
-    gradient: 'from-rose-100 to-pink-200',
+    gradient: 'from-gray-100 to-gray-200',
   },
   {
     key: 'cohost',
     emoji: '🤝',
-    label: 'Co-host',
+    label: 'Cohost',
     title: 'Hosting alone is hard. We fixed that.',
     description:
-      'Invite co-hosts and assign roles — worship, discussion, prayer, hospitality, tech. The app writes the invite message for you.',
-    pills: ['Assign roles', 'Pre-written invites', 'Worship lead', 'Prayer lead'],
-    gradient: 'from-violet-100 to-purple-200',
+      'Invite cohosts and assign roles, worship, discussion, prayer, hospitality, tech. The app writes the invite message for you.',
+    pills: ['Assign roles', 'Prewritten invites', 'Worship lead', 'Prayer lead'],
+    gradient: 'from-gray-100 to-gray-200',
   },
   {
     key: 'messages',
@@ -77,8 +78,8 @@ const FEATURES = [
     title: 'Everyone in one chat, automatically',
     description:
       "RSVP to an event and you're instantly added to the event group chat. Direct messages and group threads keep conversation going.",
-    pills: ['Auto-added on RSVP', 'Event group chats', 'Direct messages', 'No extra apps'],
-    gradient: 'from-sky-100 to-blue-200',
+    pills: ['Auto added on RSVP', 'Event group chats', 'Direct messages', 'No extra apps'],
+    gradient: 'from-gray-100 to-gray-200',
   },
   {
     key: 'privacy',
@@ -86,9 +87,9 @@ const FEATURES = [
     label: 'Privacy',
     title: 'Show up without oversharing',
     description:
-      'Friends-only events stay invisible to strangers. Share your general area without revealing your exact address. RSVP first to see who\'s attending.',
-    pills: ['Friends-only events', 'Fuzzy location', 'RSVP-gated attendees'],
-    gradient: 'from-emerald-100 to-teal-200',
+      'Friends only events stay invisible to strangers. Share your general area without revealing your exact address. RSVP first to see who\'s attending.',
+    pills: ['Friends only events', 'Fuzzy location', 'RSVP gated attendees'],
+    gradient: 'from-gray-100 to-gray-200',
   },
 ];
 
@@ -101,7 +102,7 @@ const WHO_FOR = [
 
 // ---------- Component ----------
 
-export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewTopicOfDay, onCreateAccount }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
@@ -133,7 +134,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   // empty or hasn't loaded yet.
   const yapsCards = useMemo(() => {
     // Same source + same hash as TopicsView.getTopicOfTheDay so both pages
-    // pick the same row for "today". No bible_verse filter — TopicsView
+    // pick the same row for "today". No bible_verse filter, TopicsView
     // doesn't apply one either, and filtering would skew the modulo.
     if (allTopics.length === 0) return YAPS_CARDS;
 
@@ -151,7 +152,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
   const isNativeApp = Capacitor.isNativePlatform();
   // In the native app, the primary CTA drops the user straight into the feed
-  // (no forced login) — sign-in is prompted later only when they take an
+  // (no forced login) , sign-in is prompted later only when they take an
   // action that needs an account. On the website the CTA still routes to
   // account creation. This avoids an App Store 5.1.1 login-wall rejection and
   // lets people see value before committing.
@@ -159,12 +160,14 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     ? (onViewTopics ?? onEnter)
     : (onCreateAccount ?? onEnter);
   const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
-  const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Get the App';
+  const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Login';
+  // On the website the top-right nav button is a Login entry point.
+  const navCtaAction = isNativeApp ? goToApp : (onLogin ?? onCreateAccount ?? onEnter);
   const scrollToZone = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
   const seeHowToYap = () => scrollToZone('how-to-play');
-  // Direct Stripe checkout for the card game — bypasses the in-app Shop page
+  // Direct Stripe checkout for the card game, bypasses the in-app Shop page
   // entirely. Stays in sync with ProductCard's SHOP_CHECKOUT_URL.
   const CARD_GAME_CHECKOUT_URL = 'https://buy.stripe.com/bJeaEX7a38rZ1jv9ao0oM00';
   const openCardGameCheckout = () => {
@@ -173,13 +176,13 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] text-[#0F172A] dark:text-[#F8FAFC] transition-colors font-sans">
-      {/* Theme toggle floats — keeps existing behavior */}
+      {/* Theme toggle floats, keeps existing behavior */}
       <button
         onClick={toggleTheme}
         aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
         className="fixed bottom-6 right-6 p-3 rounded-full bg-white/90 dark:bg-[#1E293B]/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all z-30 border border-black/10"
       >
-        {isDark ? <Sun className="w-5 h-5 text-teal-500" /> : <Moon className="w-5 h-5 text-[#64748B]" />}
+        {isDark ? <Sun className="w-5 h-5 text-blue-500" /> : <Moon className="w-5 h-5 text-[#64748B]" />}
       </button>
 
       {/* 1. Nav bar */}
@@ -218,7 +221,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           </div>
 
           <button
-            onClick={goToApp}
+            onClick={navCtaAction}
             className="px-5 py-2.5 rounded-full bg-[#2563eb] text-white text-sm font-semibold shadow-sm hover:bg-[#1d4ed8] transition-colors"
           >
             {primaryCtaShortLabel}
@@ -228,7 +231,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
       {/* 2. Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-16 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#14b8a6]/15 text-[#14b8a6] dark:bg-[#14b8a6]/25 dark:text-teal-300 text-xs font-semibold tracking-wide mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2563eb]/15 text-[#2563eb] dark:bg-[#2563eb]/25 dark:text-blue-300 text-xs font-semibold tracking-wide mb-8">
           <Globe className="w-3.5 h-3.5" />
           <span>Join the conversation</span>
         </div>
@@ -242,7 +245,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
         <p className="text-lg md:text-xl text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto leading-relaxed mb-10">
           Worship N Yaps helps you organize Bible studies, worship nights, casual hangouts, and faith
-          conversations — and connects you with believers asking the same questions you are, anywhere in the world.
+          conversations, and connects you with believers asking the same questions you are, anywhere in the world.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-5">
@@ -255,7 +258,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           </button>
           <button
             onClick={openCardGameCheckout}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#14b8a6] text-white font-semibold shadow-md hover:bg-[#0d9488] transition-all hover:translate-y-[-1px]"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#0F172A] text-white dark:bg-white dark:text-[#0F172A] font-semibold shadow-md hover:bg-black dark:hover:bg-white/90 transition-all hover:translate-y-[-1px]"
           >
             <Spade className="w-5 h-5" />
             <span>Buy the card game</span>
@@ -274,34 +277,34 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </p>
       </section>
 
-      {/* Yaps explainer — dark */}
+      {/* Yaps explainer, dark */}
       <section id="the-app" className="bg-[#0F172A] text-[#F8FAFC] scroll-mt-16">
         <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#14b8a6] mb-4">The Signature Feature</p>
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-4">The Signature Feature</p>
             <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-6">
-              Yaps — a card game for real conversations.
+              Yaps, a card game for real conversations.
             </h2>
             <p className="text-[#CBD5E1] mb-8 leading-relaxed">
-              Not every gathering needs a lesson plan. Yaps are casual — a potluck, a game night, a sports
+              Not every gathering needs a lesson plan. Yaps are casual, a potluck, a game night, a sports
               afternoon. Shuffle the cards, draw a question, and let the Bible guide the conversation.
             </p>
             <ul className="space-y-3">
               {[
                 'Questions designed to spark honest, grounded conversation',
                 'Each card ties back to a scripture for deeper reflection',
-                'Works for any size group — 3 people or 30',
+                'Works for any size group, 3 people or 30',
                 'No prep required. Just show up and yap.',
               ].map((bullet) => (
                 <li key={bullet} className="flex items-start gap-3">
-                  <Star className="w-4 h-4 mt-1 text-[#14b8a6] fill-[#14b8a6] flex-shrink-0" />
+                  <Star className="w-4 h-4 mt-1 text-[#2563eb] fill-[#2563eb] flex-shrink-0" />
                   <span className="text-sm text-[#F8FAFC]/90">{bullet}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Topic of the Day — yapsCards is already date-hash-rotated so
+          {/* Topic of the Day, yapsCards is already date-hash-rotated so
               index 0 is today's featured prompt. */}
           {(() => {
             const today = yapsCards[0];
@@ -322,7 +325,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
                   className="w-full max-w-md rounded-3xl bg-white text-[#0F172A] p-7 sm:p-8 shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all text-left focus:outline-none focus:ring-4 focus:ring-white/30"
                 >
                   {today.verse && (
-                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#14b8a6]/15 text-[#14b8a6] text-[11px] font-semibold mb-4">
+                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#2563eb]/15 text-[#2563eb] text-[11px] font-semibold mb-4">
                       {today.verse}
                     </span>
                   )}
@@ -345,7 +348,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 5. Features — tab switcher */}
+      {/* 5. Features, tab switcher */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">Everything you need</p>
         <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight text-center mb-12">
@@ -389,7 +392,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 6. Topics — real DB data */}
+      {/* 6. Topics, real DB data */}
       <section className="bg-[#EFF6FF] dark:bg-[#1E293B]">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3">Global Groupchat</p>
@@ -399,11 +402,11 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           <p className="text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mb-4 leading-relaxed">
             We're all searching for the same truth. None of us sees the whole picture from where we're standing.
             A believer in Lagos sees what someone in Calgary can't. A new Christian asks the question the
-            ten-year-veteran forgot to ask. The fuller view comes from <em>each other</em>.
+            ten year veteran forgot to ask. The fuller view comes from <em>each other</em>.
           </p>
           <p className="text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mb-12 leading-relaxed">
             No algorithm. No engagement bait. Just real questions and reflections from believers wrestling
-            with the same things you are — anywhere on the map.
+            with the same things you are, anywhere on the map.
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -419,8 +422,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
                 onClick={() => {
                   // Persist the chosen community sub-tab so TopicsView's
                   // mount effect can pick it up. Use onViewTopics (not raw
-                  // onEnter) so the bottom-nav tab is forced to 'topics' —
-                  // otherwise an existing active tab like Messages stops
+                  // onEnter) so the bottom-nav tab is forced to 'topics' ,                   // otherwise an existing active tab like Messages stops
                   // TopicsView from mounting and the signal is lost.
                   try { sessionStorage.setItem('wny_initial_community_sub', cat.key); } catch { /* ignore */ }
                   (onViewTopics ?? onEnter)();
@@ -450,7 +452,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 6.5 How to Play — pulled from the WnY card-game instruction sheets */}
+      {/* 6.5 How to Play, pulled from the WnY card-game instruction sheets */}
       <section id="how-to-play" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center">How to Play</p>
         <h2 className="font-logo font-bold text-2xl sm:text-4xl md:text-5xl leading-tight text-center mb-4">
@@ -461,18 +463,18 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           or just keep this page open while you host.
         </p>
 
-        {/* Create a vibe — vertical timeline */}
+        {/* Create a vibe, vertical timeline */}
         <div className="rounded-3xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 p-7 md:p-10 mb-8 shadow-sm">
           <h3 className="font-logo font-bold text-2xl md:text-3xl mb-8">How to create a vibe</h3>
           <div className="relative pl-6">
             <div className="absolute left-[11px] top-2 bottom-2 w-px bg-[#E2E8F0] dark:bg-white/15" aria-hidden="true" />
             {[
-              { dot: '#F59E0B', title: 'Fellowship',        body: 'Open time to connect and build relationships.' },
-              { dot: '#10B981', title: 'Communion',         body: 'Share and eat food to build energy.' },
-              { dot: '#EF4444', title: 'Worship',           body: 'Focus on God, which unites us.' },
-              { dot: '#EC4899', title: 'Prayer',            body: 'Acknowledging God and conversing with Him.' },
-              { dot: '#0EA5E9', title: 'Yap',               body: 'Conversation between people — not a sermon in one direction.' },
-              { dot: '#A78BFA', title: 'Order and Freedom', body: 'Have a plan but be sensitive to the Holy Spirit and the people in the room.' },
+              { dot: '#2563eb', title: 'Fellowship',        body: 'Open time to connect and build relationships.' },
+              { dot: '#2563eb', title: 'Communion',         body: 'Share and eat food to build energy.' },
+              { dot: '#2563eb', title: 'Worship',           body: 'Focus on God, which unites us.' },
+              { dot: '#2563eb', title: 'Prayer',            body: 'Acknowledging God and conversing with Him.' },
+              { dot: '#2563eb', title: 'Yap',               body: 'Conversation between people, not a sermon in one direction.' },
+              { dot: '#2563eb', title: 'Order and Freedom', body: 'Have a plan but be sensitive to the Holy Spirit and the people in the room.' },
             ].map((step) => (
               <div key={step.title} className="relative pl-6 pb-6 last:pb-0">
                 <span
@@ -496,7 +498,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             {[
               {
                 label: 'Host',
-                pill: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+                pill: 'bg-gray-100 text-gray-800 dark:bg-white/10 dark:text-gray-200',
                 points: [
                   'Welcome everyone and create a good atmosphere',
                   'Help coordinate food',
@@ -505,7 +507,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               },
               {
                 label: 'Guest',
-                pill: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
+                pill: 'bg-gray-100 text-gray-800 dark:bg-white/10 dark:text-gray-200',
                 points: [
                   'Arrive on time',
                   'Bring food if possible',
@@ -514,19 +516,19 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               },
               {
                 label: 'Worship Leader',
-                pill: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200',
+                pill: 'bg-gray-100 text-gray-800 dark:bg-white/10 dark:text-gray-200',
                 points: [
                   'Come early to practice',
-                  'Pick 2–3 God-focused songs',
+                  'Pick 2 to 3 God focused songs',
                   'Keep it simple',
                   'After worship, share a short word or Bible verse',
                 ],
               },
               {
                 label: 'Discussion Leader',
-                pill: 'bg-stone-200 text-stone-800 dark:bg-stone-700/50 dark:text-stone-200',
+                pill: 'bg-gray-100 text-gray-800 dark:bg-white/10 dark:text-gray-200',
                 points: [
-                  'Get the conversation going — maybe an icebreaker to start',
+                  'Get the conversation going, maybe an icebreaker to start',
                   'Help the group stay on topic',
                   'Use hand-raising to avoid interruptions',
                 ],
@@ -560,7 +562,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               {[
                 'Consider what challenges we face and what choices we can make.',
                 'Try to find a relevant scripture and apply the principle.',
-                "Don't expose sin — expose heart, intentions, and positions.",
+                "Don't expose sin, expose heart, intentions, and positions.",
                 'Invite stories (e.g. "Tell me about a time when…").',
                 'Flip it on its head and see the other side.',
                 'Follow up with "Can you unpack that more?" or "What makes you say that?"',
@@ -599,10 +601,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 8. Who it's for — dark */}
+      {/* 8. Who it's for, dark */}
       <section className="bg-[#0F172A] text-[#F8FAFC]">
         <div className="max-w-6xl mx-auto px-6 py-20">
-          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#14b8a6] mb-3">Who It's For</p>
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3">Who It's For</p>
           <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-12 max-w-3xl">
             Built for people who show up
           </h2>
@@ -610,7 +612,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           <div className="grid sm:grid-cols-2 gap-5">
             {WHO_FOR.map(({ icon: Icon, title, body }) => (
               <div key={title} className="rounded-2xl bg-white/5 border border-white/10 p-7">
-                <div className="w-11 h-11 rounded-xl bg-[#14b8a6]/20 text-[#14b8a6] flex items-center justify-center mb-4">
+                <div className="w-11 h-11 rounded-xl bg-[#2563eb]/20 text-[#2563eb] flex items-center justify-center mb-4">
                   <Icon className="w-5 h-5" />
                 </div>
                 <h3 className="font-logo font-bold text-xl mb-2">{title}</h3>
@@ -621,7 +623,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* 9. Final CTA — "Get the Deck" zone */}
+      {/* 9. Final CTA, "Get the Deck" zone */}
       <section id="get-the-deck" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <div className="rounded-3xl bg-[#2563eb] text-white p-10 md:p-16 text-center shadow-xl">
           <div className="text-5xl mb-5">🃏</div>
@@ -683,7 +685,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       />
 
       {(onViewEvents) && (
-        // Hidden helper — keeps the prop interface stable for callers that pass it.
+        // Hidden helper, keeps the prop interface stable for callers that pass it.
         <span hidden onClick={onViewEvents} />
       )}
     </div>
