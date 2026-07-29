@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
 
 // Supabase configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Inside the native app the launch URL is `capacitor://localhost`. Letting
+// supabase-js parse that URL for a PKCE session on every cold start is both
+// pointless (the OAuth callback arrives via the custom-scheme deep link, which
+// useOAuthDeepLink exchanges explicitly) and a known source of native launch
+// fragility. Only detect-session-in-URL on the web build, where the OAuth
+// redirect really does come back in window.location.
+const isNative = Capacitor.isNativePlatform();
 
 // Validate configuration
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -13,7 +22,7 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: !isNative,
     flowType: 'pkce',
   },
   realtime: {

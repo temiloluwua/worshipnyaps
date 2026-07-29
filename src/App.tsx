@@ -12,12 +12,25 @@ import { MessagesView } from './components/messages/MessagesView';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import { HashtagPage } from './components/hashtags/HashtagPage';
 
-const LocationsView = lazy(() => import('./components/locations/LocationsView').then(m => ({ default: m.LocationsView })));
-const ShopPage = lazy(() => import('./components/shop/ShopPage').then(m => ({ default: m.ShopPage })));
-const SuccessPage = lazy(() => import('./components/shop/SuccessPage').then(m => ({ default: m.SuccessPage })));
-const EventDetailView = lazy(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })));
-const GroupsView = lazy(() => import('./components/groups/GroupsView').then(m => ({ default: m.GroupsView })));
-const GroupDetailView = lazy(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
+// Retry a dynamic import once before giving up. A first chunk fetch can fail
+// transiently in a WKWebView cold start; without a retry that surfaces as the
+// RootErrorBoundary "Something went wrong" screen the moment a lazy view loads.
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    factory().catch(() => new Promise<{ default: T }>((resolve, reject) => {
+      setTimeout(() => factory().then(resolve).catch(reject), 400);
+    })),
+  );
+}
+
+const LocationsView = lazyWithRetry(() => import('./components/locations/LocationsView').then(m => ({ default: m.LocationsView })));
+const ShopPage = lazyWithRetry(() => import('./components/shop/ShopPage').then(m => ({ default: m.ShopPage })));
+const SuccessPage = lazyWithRetry(() => import('./components/shop/SuccessPage').then(m => ({ default: m.SuccessPage })));
+const EventDetailView = lazyWithRetry(() => import('./components/events/EventDetailView').then(m => ({ default: m.EventDetailView })));
+const GroupsView = lazyWithRetry(() => import('./components/groups/GroupsView').then(m => ({ default: m.GroupsView })));
+const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { AgeGate } from './components/auth/AgeGate';

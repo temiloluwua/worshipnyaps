@@ -4,6 +4,9 @@ interface State {
   error: Error | null;
 }
 
+// Session-scoped flag so the self-heal reload happens at most once per launch.
+const RETRY_KEY = 'wny_root_error_retry';
+
 // Last-resort error boundary. Sits above the Sentry boundary (or in its
 // place when Sentry isn't configured) so that a runtime error in the app
 // tree never renders as a blank screen — which is what App Store review
@@ -20,6 +23,17 @@ export class RootErrorBoundary extends React.Component<React.PropsWithChildren, 
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[RootErrorBoundary]', error, info.componentStack);
+    // Self-heal: a first render error on cold start is often transient (a
+    // dynamic-import/chunk hiccup or a race during session restore). Do ONE
+    // silent reload before ever showing an error screen — App Store review
+    // flagged "an error message on launch", and a single retry clears the
+    // common transient causes without the user ever seeing a scary message.
+    let retried = false;
+    try { retried = sessionStorage.getItem(RETRY_KEY) === '1'; } catch { /* storage blocked */ }
+    if (!retried) {
+      try { sessionStorage.setItem(RETRY_KEY, '1'); } catch { /* storage blocked */ }
+      try { window.location.reload(); } catch { /* no-op */ }
+    }
   }
 
   handleReload = () => {
@@ -29,6 +43,15 @@ export class RootErrorBoundary extends React.Component<React.PropsWithChildren, 
       // no-op
     }
   };
+
+  componentDidMount() {
+    // Reached mount without an error — clear the retry flag so a genuine error
+    // later in the session still gets its own one free reload. Guard on
+    // !error because this also fires when the fallback UI mounts.
+    if (!this.state.error) {
+      try { sessionStorage.removeItem(RETRY_KEY); } catch { /* storage blocked */ }
+    }
+  }
 
   render() {
     if (this.state.error) {
