@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  ArrowRight, Sun, Moon, Bell,
+  ArrowRight, Sun, Moon,
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
   BookOpen, Users, MessageSquare, ShieldCheck,
-  User as UserIcon, Search, Spade, ClipboardList, Sparkles,
+  User as UserIcon, Search, Spade, ClipboardList, Sparkles, ShoppingBag,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
-import { WaitlistModal } from './WaitlistModal';
 import { Logo } from '../ui/Logo';
 import { supabase } from '../../lib/supabase';
 import { Capacitor } from '@capacitor/core';
@@ -104,7 +103,6 @@ const WHO_FOR = [
 
 export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
-  const [showWaitlist, setShowWaitlist] = useState(false);
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [activeFeature, setActiveFeature] = useState(0);
 
@@ -642,23 +640,17 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               onClick={goToApp}
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#2563eb] font-semibold shadow-md hover:bg-white/90 transition-colors"
             >
-              {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
-              <span>{primaryCtaLabel}</span>
+              <Spade className="w-5 h-5" />
+              <span>Play online</span>
             </button>
             <button
-              onClick={() => setShowWaitlist(true)}
+              onClick={openCardGameCheckout}
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full border border-white/40 text-white font-semibold hover:bg-white/10 transition-colors"
             >
-              <Bell className="w-4 h-4" />
-              <span>Join the waitlist</span>
+              <ShoppingBag className="w-5 h-5" />
+              <span>Buy the deck</span>
             </button>
           </div>
-          <button
-            onClick={openCardGameCheckout}
-            className="mt-6 text-white/85 underline underline-offset-4 text-sm hover:text-white"
-          >
-            Or buy the card game →
-          </button>
         </div>
       </section>
 
@@ -679,12 +671,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           </div>
         </div>
       </footer>
-
-      <WaitlistModal
-        isOpen={showWaitlist}
-        onClose={() => setShowWaitlist(false)}
-        productType="card_game"
-      />
 
       {(onViewEvents) && (
         // Hidden helper, keeps the prop interface stable for callers that pass it.
