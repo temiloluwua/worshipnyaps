@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, ShoppingBag } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, ShoppingBag, Spade } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
@@ -524,8 +524,8 @@ export function TopicsView({
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
                 {activeTab === 'topics' ? (
                   <>
-                    <Sparkles className="w-6 h-6 mr-2 text-yellow-500" />
-                    Discussion Cards
+                    <Spade className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
+                    The Deck
                   </>
                 ) : (
                   <>
@@ -536,41 +536,21 @@ export function TopicsView({
               </h1>
               <p className="text-gray-600 dark:text-gray-400 text-sm">
                 {activeTab === 'topics'
-                  ? 'Bible study discussions for our community'
+                  ? 'Draw a card and start a real conversation'
                   : 'Share your thoughts and questions with the community'}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              {activeTab === 'topics' && (
-                <>
-                  <button
-                    onClick={handleRequestTopic}
-                    className="bg-gradient-to-r from-teal-500 to-green-500 text-white p-2 rounded-full hover:from-teal-600 hover:to-green-600 transition-all shadow-lg"
-                    aria-label={t('topicRequest.submitRequest')}
-                    title={t('topicRequest.submitRequest')}
-                  >
-                    <Lightbulb className="w-5 h-5" />
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setShowAdminReview(true)}
-                      className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
-                      aria-label={t('adminReview.title')}
-                      title={t('adminReview.title')}
-                    >
-                      <ClipboardList className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={pickRandomTopic}
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
-                    aria-label="Pick random topic"
-                    title="Pick a random topic"
-                  >
-                    <Shuffle className="w-5 h-5" />
-                  </button>
-                </>
+              {activeTab === 'topics' && isAdmin && (
+                <button
+                  onClick={() => setShowAdminReview(true)}
+                  className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
+                  aria-label={t('adminReview.title')}
+                  title={t('adminReview.title')}
+                >
+                  <ClipboardList className="w-5 h-5" />
+                </button>
               )}
               {activeTab === 'community' && (
                 <button
@@ -597,8 +577,8 @@ export function TopicsView({
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <Sparkles className="w-4 h-4 inline mr-1" />
-              Topics
+              <Spade className="w-4 h-4 inline mr-1" />
+              Deck
             </button>
             <button
               onClick={() => {
@@ -627,6 +607,27 @@ export function TopicsView({
               className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm text-gray-900 dark:text-white"
             />
           </div>
+
+          {/* Deck controls — the two signature card-game actions, made
+              unmissable: draw a random card, or ask us to add a new one. */}
+          {activeTab === 'topics' && (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={pickRandomTopic}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-lg hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all"
+              >
+                <Shuffle className="w-5 h-5" />
+                Shuffle deck
+              </button>
+              <button
+                onClick={handleRequestTopic}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 font-bold shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700 active:scale-[0.98] transition-all"
+              >
+                <Lightbulb className="w-5 h-5" />
+                Request a card
+              </button>
+            </div>
+          )}
 
           {activeTab === 'community' && (
             <div className="space-y-3">

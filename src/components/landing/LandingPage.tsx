@@ -160,9 +160,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     ? (onViewTopics ?? onEnter)
     : (onCreateAccount ?? onEnter);
   const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
-  const primaryCtaShortLabel = isNativeApp ? 'Join community' : 'Login';
-  // On the website the top-right nav button is a Login entry point.
-  const navCtaAction = isNativeApp ? goToApp : (onLogin ?? onCreateAccount ?? onEnter);
+  // The top-right nav CTA frames the whole app as opening the digital deck:
+  // it drops the visitor straight into the card feed (the Topics "deck"),
+  // where sign-in is only prompted when they take an action that needs it.
+  const navCtaAction = onViewTopics ?? onLogin ?? onCreateAccount ?? onEnter;
   const scrollToZone = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -222,9 +223,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
           <button
             onClick={navCtaAction}
-            className="px-5 py-2.5 rounded-full bg-[#2563eb] text-white text-sm font-semibold shadow-sm hover:bg-[#1d4ed8] transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2563eb] text-white text-sm font-semibold shadow-sm hover:bg-[#1d4ed8] transition-colors"
           >
-            {primaryCtaShortLabel}
+            <Spade className="w-4 h-4" />
+            Play Deck
           </button>
         </div>
       </nav>
