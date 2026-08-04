@@ -12,7 +12,7 @@ import { EventImageUploader } from '../events/EventImageUploader';
 import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
-import { geocodeAddress } from '../../lib/geocode';
+import { geocodeAddress, reverseGeocodeArea } from '../../lib/geocode';
 import { shareOrigin } from '../../lib/openExternal';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
@@ -737,8 +737,8 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     // Drafts skip the heavier required-field checks — title is enough to
     // identify them in the Drafts list. The host can fill in the rest later.
     if (!asDraft) {
-      if (!formData.eventLocationName.trim() || !formData.eventAddress.trim()) {
-        toast.error('Please enter a location name and address');
+      if (!formData.eventAddress.trim()) {
+        toast.error('Please enter an address');
         setSubmitting(false);
         return;
       }
@@ -763,14 +763,23 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     // map just won't show a pin until someone refines the address.
     // Drafts can skip the locations row entirely if no address was entered yet.
     let locationId: string | null = null;
-    const hasAddress = formData.eventLocationName.trim() && formData.eventAddress.trim();
+    const hasAddress = Boolean(formData.eventAddress.trim());
     if (hasAddress) {
       try {
         const geo = pickedCoords ?? (await geocodeAddress(formData.eventAddress));
+        // The public location name is a general area only ("North side of
+        // Calgary"). If the host didn't type one, derive it from the coords so
+        // the exact street address never doubles as the public label.
+        let locationName = formData.eventLocationName.trim();
+        if (!locationName) {
+          locationName =
+            (geo ? await reverseGeocodeArea(geo.latitude, geo.longitude) : null) ||
+            'Area shared after you RSVP';
+        }
         const { data: locData, error: locError } = await supabase
           .from('locations')
           .insert({
-            name: formData.eventLocationName.trim(),
+            name: locationName,
             address: formData.eventAddress.trim(),
             latitude: geo?.latitude ?? 0,
             longitude: geo?.longitude ?? 0,
@@ -805,7 +814,9 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
       image_url: imageUrl,
       visibility: formData.visibility,
       is_private: formData.visibility === 'private',
-      address_visibility: formData.addressVisibility,
+      // Address is always gated behind RSVP now — the public only ever sees the
+      // general area name. No per-event address-privacy choice.
+      address_visibility: 'attendees_only',
       location_id: locationId,
       location_type: formData.location_type || null,
       study_topic: formData.event_type === 'bible_study' ? (formData.study_topic.trim() || null) : null,
@@ -1072,16 +1083,20 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">General location name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              General location name <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
             <input
               type="text"
               name="eventLocationName"
               value={formData.eventLocationName}
               onChange={handleInputChange}
-              placeholder="e.g. Hillhurst Community Hall"
+              placeholder="Leave blank — we'll use the area, e.g. North side of Calgary"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              required
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              If you leave this blank, we'll name the general area for you from the address. The exact address is only shown after someone RSVPs.
+            </p>
           </div>
 
           <div>
@@ -1102,7 +1117,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
               required
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Pick a suggestion to confirm the location on the map. Visibility is set by the "Address privacy" option below.
+              Pick a suggestion to confirm the location on the map. The full address is only shared with people after they RSVP — everyone else just sees the general area.
             </p>
           </div>
 
@@ -1186,48 +1201,11 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Address privacy
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Choose who can see the exact street address. The general area is always visible.
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40">
+            <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              Your exact address stays private. Only people who RSVP can see it — everyone else just sees the general area.
             </p>
-            <div className="space-y-2">
-              {[
-                { value: 'general_area', label: 'General area only', description: "Show neighborhood/city. Exact address is never revealed." },
-                { value: 'attendees_only', label: 'Visible to RSVPs only', description: 'Public sees the area. Full address unlocks after RSVP.' },
-                { value: 'public', label: 'Public address', description: 'Anyone can see the full address.' },
-              ].map((option) => {
-                const lockedPublicForHome = formData.location_type === 'home' && option.value === 'public';
-                return (
-                  <label
-                    key={option.value}
-                    className={`flex items-start p-3 border rounded-lg transition-all ${
-                      lockedPublicForHome
-                        ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 opacity-50 cursor-not-allowed'
-                        : formData.addressVisibility === option.value
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 cursor-pointer'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="addressVisibility"
-                      value={option.value}
-                      checked={formData.addressVisibility === option.value}
-                      onChange={handleInputChange}
-                      disabled={lockedPublicForHome}
-                      className="mt-1 mr-3"
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">{option.label}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{option.description}</div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

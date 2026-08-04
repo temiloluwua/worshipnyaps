@@ -78,6 +78,70 @@ export async function geocodeAddress(
   }
 }
 
+const NOMINATIM_REVERSE = 'https://nominatim.openstreetmap.org/reverse';
+
+// Turn coordinates into a friendly, non-revealing general area label such as
+// "North side of Calgary" or "Southeast side of Toronto". Used so hosts don't
+// have to name the location themselves — the public sees only the area, and the
+// exact address stays gated behind RSVP.
+export async function reverseGeocodeArea(
+  latitude: number,
+  longitude: number,
+): Promise<string | null> {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude === 0 && longitude === 0) return null;
+  try {
+    const url = new URL(NOMINATIM_REVERSE);
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('lat', String(latitude));
+    url.searchParams.set('lon', String(longitude));
+    url.searchParams.set('zoom', '10'); // city-level
+    url.searchParams.set('addressdetails', '1');
+
+    const res = await fetch(url.toString(), {
+      headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const addr = data?.address ?? {};
+    const city: string | undefined =
+      addr.city || addr.town || addr.village || addr.municipality || addr.county;
+
+    // Direction of the point within the city's own bounding box, so this works
+    // for any city, not just Calgary.
+    const bbox = Array.isArray(data?.boundingbox) ? data.boundingbox.map(Number) : null;
+    let direction = '';
+    if (bbox && bbox.length === 4 && bbox.every((n: number) => Number.isFinite(n))) {
+      const [minLat, maxLat, minLon, maxLon] = bbox;
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLon = (minLon + maxLon) / 2;
+      const halfLat = Math.max((maxLat - minLat) / 2, 1e-6);
+      const halfLon = Math.max((maxLon - minLon) / 2, 1e-6);
+      const latMag = Math.abs(latitude - centerLat) / halfLat;
+      const lonMag = Math.abs(longitude - centerLon) / halfLon;
+      const ns = latitude >= centerLat ? 'North' : 'South';
+      const ew = longitude >= centerLon ? 'East' : 'West';
+      // Only include an axis that's clearly off-center; near the middle, skip it.
+      const nsSig = latMag > 0.2;
+      const ewSig = lonMag > 0.2;
+      if (nsSig && ewSig) {
+        // Combine into a quadrant unless one axis dominates the other.
+        if (latMag > lonMag * 1.6) direction = ns;
+        else if (lonMag > latMag * 1.6) direction = ew;
+        else direction = ns + ew.toLowerCase();
+      } else if (nsSig) direction = ns;
+      else if (ewSig) direction = ew;
+    }
+
+    if (city && direction) return `${direction} side of ${city}`;
+    if (city) return `Central ${city}`;
+    const fallback = addr.suburb || addr.neighbourhood || addr.state;
+    return fallback ? String(fallback) : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface AddressSuggestion {
   displayName: string;
   latitude: number;
