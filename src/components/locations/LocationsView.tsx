@@ -893,7 +893,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
     >
       <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
         {showCloseConfirm && (
-          <div className="absolute inset-0 z-30 bg-black/30 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-5">
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
                 Save as draft?
