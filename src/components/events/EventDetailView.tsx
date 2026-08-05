@@ -1028,37 +1028,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     window.open(url, '_blank');
   };
 
-  const downloadIcal = () => {
-    if (!event) return;
-    const dateStr = event.date.replace(/-/g, '');
-    const timeStr = (event.time || '00:00').replace(':', '') + '00';
-    const start = `${dateStr}T${timeStr}`;
-    const endHour = String(parseInt(timeStr.slice(0, 2)) + 2).padStart(2, '0');
-    const end = `${dateStr}T${endHour}${timeStr.slice(2)}`;
-    const ical = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//Worship & Yapps//EN',
-      'BEGIN:VEVENT',
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
-      `SUMMARY:${event.title}`,
-      `DESCRIPTION:${(event.description || '').replace(/\n/g, '\\n')}`,
-      `LOCATION:${event.locations?.address || event.locations?.name || ''}`,
-      `UID:${event.id}@worshipandyapps`,
-      'END:VEVENT',
-      'END:VCALENDAR'
-    ].join('\r\n');
-    const blob = new Blob([ical], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${event.title.replace(/\s+/g, '-')}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Calendar file downloaded!');
-  };
-
   useEffect(() => {
     const tid = (event as { topic_id?: string | null } | null)?.topic_id;
     if (!tid) { setAttachedTopic(null); return; }
@@ -1165,13 +1134,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                       >
                         <CalendarPlus className="w-4 h-4" />
                         Add to Calendar
-                      </button>
-                      <button
-                        onClick={() => { downloadIcal(); setShowHostActions(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <CalendarPlus className="w-4 h-4" />
-                        Download .ics
                       </button>
                       <button
                         onClick={() => {
@@ -1577,13 +1539,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               >
                 <CalendarPlus className="w-4 h-4 text-blue-500" />
                 Google Calendar
-              </button>
-              <button
-                onClick={downloadIcal}
-                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <CalendarPlus className="w-4 h-4 text-green-500" />
-                Download .ics
               </button>
               <button
                 onClick={() => setShowInviteModal(true)}
