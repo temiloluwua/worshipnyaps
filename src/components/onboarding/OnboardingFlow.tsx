@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
-import { Camera, Check, ChevronRight, Sparkles, Plus, MapPin, X } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Camera, Check, ChevronRight, Sparkles, Plus, MapPin, X, AtSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile } from '../../hooks/useProfile';
+import { supabase } from '../../lib/supabase';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -15,6 +16,8 @@ const SPIRITUAL_GIFTS = [
   'Service', 'Encouragement', 'Leadership', 'Mercy', 'Giving', 'Faith',
 ];
 
+const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
+
 type Step = 1 | 2 | 3;
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
@@ -25,13 +28,35 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const { user, profile } = useAuth();
   const { updateProfile, uploadAvatar } = useProfile();
 
+  const initialUsername = ((profile as { username?: string })?.username || '').toLowerCase();
   const [step, setStep] = useState<Step>(1);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url || null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bio, setBio] = useState(profile?.bio || '');
   const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [username, setUsername] = useState(initialUsername);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Live username availability check (skipped when unchanged from the
+  // auto-derived default so a user who just keeps it isn't blocked).
+  useEffect(() => {
+    if (username === initialUsername) { setUsernameStatus('idle'); return; }
+    if (!username) { setUsernameStatus('idle'); return; }
+    if (!USERNAME_PATTERN.test(username)) { setUsernameStatus('invalid'); return; }
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_username_available', { p_username: username });
+        if (error) { setUsernameStatus('idle'); return; }
+        setUsernameStatus(data ? 'available' : 'taken');
+      } catch {
+        setUsernameStatus('idle');
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [username, initialUsername]);
 
   if (!user) return null;
 
@@ -62,16 +87,32 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   };
 
   const handleNextFromStep1 = async () => {
-    if (avatarFile) {
-      setSaving(true);
-      try {
+    const usernameChanged = username !== initialUsername && username.length > 0;
+    // Block only on a genuinely bad/taken username; keeping the derived
+    // default (idle) or a confirmed-available one both pass.
+    if (usernameChanged) {
+      if (!USERNAME_PATTERN.test(username)) {
+        toast.error('Username must be 3–20 characters: letters, numbers, or _');
+        return;
+      }
+      if (usernameStatus === 'taken') {
+        toast.error('That username is taken — try another.');
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      if (usernameChanged) {
+        await updateProfile({ username } as Record<string, unknown>);
+      }
+      if (avatarFile) {
         const url = await uploadAvatar(avatarFile);
         if (url) {
           await updateProfile({ avatar_url: url });
         }
-      } finally {
-        setSaving(false);
       }
+    } finally {
+      setSaving(false);
     }
     setStep(2);
   };
@@ -142,9 +183,37 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Welcome, {profile?.name?.split(' ')[0] || 'friend'}!
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-8">
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
               Let's set up your profile so the community can get to know you.
             </p>
+
+            <div className="w-full text-left mb-8">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Pick a username
+              </label>
+              <div className="relative">
+                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
+                  placeholder="yourname"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full pl-9 pr-24 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium">
+                  {usernameStatus === 'checking' && <span className="text-gray-400">checking…</span>}
+                  {usernameStatus === 'available' && <span className="text-green-600 dark:text-green-400">available</span>}
+                  {usernameStatus === 'taken' && <span className="text-red-500">taken</span>}
+                  {usernameStatus === 'invalid' && <span className="text-red-500">3–20 chars</span>}
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+                This is how people find and @mention you. You can change it later.
+              </p>
+            </div>
 
             <button
               type="button"
@@ -181,7 +250,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             <div className="mt-auto w-full space-y-2">
               <button
                 onClick={handleNextFromStep1}
-                disabled={saving}
+                disabled={saving || usernameStatus === 'checking' || usernameStatus === 'taken' || usernameStatus === 'invalid'}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
                 {saving ? 'Saving...' : 'Continue'}
