@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { BottomNavigation, TabType } from './components/BottomNavigation';
 import { TopicsView } from './components/topics/TopicsView';
@@ -88,6 +88,26 @@ function App() {
       // via the OAuth deep-link handler, which doesn't call the modal's
       // onSuccess, so close it here as a catch-all.
       setShowAuthModal(false);
+    }
+  }, [loading, user]);
+
+  // On sign-out (was signed in → now null), send the user back to the welcome
+  // page and reset navigation, rather than leaving them on a now-empty logged-in
+  // screen. Guard on the transition so guest browsing (never signed in) is
+  // unaffected.
+  const wasSignedIn = useRef(false);
+  useEffect(() => {
+    if (loading) return;
+    if (user) {
+      wasSignedIn.current = true;
+    } else if (wasSignedIn.current) {
+      wasSignedIn.current = false;
+      setShowLanding(true);
+      setActiveTab('topics');
+      setActiveEventId(null);
+      setActiveGroupId(null);
+      setViewState({ type: 'main' });
+      setShowSuccessPage(false);
     }
   }, [loading, user]);
 
