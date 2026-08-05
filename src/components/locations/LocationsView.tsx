@@ -822,7 +822,6 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
       study_topic: formData.event_type === 'bible_study' ? (formData.study_topic.trim() || null) : null,
       session_purpose: formData.event_type === 'bible_study' ? (formData.session_purpose.trim() || null) : null,
       yap_vibe: formData.event_type === 'yap' ? (formData.yap_vibe || null) : null,
-      bring_note: formData.event_type === 'yap' ? (formData.bring_note.trim() || null) : null,
       is_draft: asDraft,
     };
 
@@ -1068,19 +1067,6 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
             </>
           )}
 
-          {/* Yap only — extra "bring something" prompt */}
-          {formData.event_type === 'yap' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Anything to bring? (optional)</label>
-              <input
-                type="text"
-                value={formData.bring_note}
-                onChange={(e) => setFormData(p => ({ ...p, bring_note: e.target.value }))}
-                placeholder="e.g. A dish to share, your guitar, nothing at all"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
