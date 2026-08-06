@@ -48,7 +48,11 @@ export function useAuth() {
       // No row yet — wait and retry (250ms, 500ms, 750ms).
       await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
     }
-    setProfile(null);
+    // Still nothing after retries. Don't blow away a profile we already have
+    // for this same user — a transient empty read on a token refresh was
+    // making the header avatar flip from the real initial to a default "U".
+    // Only clear if the loaded profile belongs to a different (or no) user.
+    setProfile((prev) => (prev && prev.id === userId ? prev : null));
   };
 
   useEffect(() => {

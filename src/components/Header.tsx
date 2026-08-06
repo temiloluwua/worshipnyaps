@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-white font-medium text-sm">
-                        {profile?.name?.charAt(0) || 'U'}
+                        {(profile?.name?.charAt(0) || user?.email?.charAt(0) || '?').toUpperCase()}
                       </span>
                     )}
                   </div>
