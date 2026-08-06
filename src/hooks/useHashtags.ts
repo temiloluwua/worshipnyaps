@@ -142,32 +142,13 @@ export const useHashtags = () => {
   }, []);
 
   const getOrCreateHashtag = useCallback(async (name: string): Promise<Hashtag | null> => {
-    const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
     try {
-      const { data: existing } = await supabase
-        .from('hashtags')
-        .select('*')
-        .eq('name', normalizedName)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from('hashtags')
-          .update({ usage_count: existing.usage_count + 1 })
-          .eq('id', existing.id);
-
-        return { ...existing, usage_count: existing.usage_count + 1 };
-      }
-
-      const { data: newHashtag, error } = await supabase
-        .from('hashtags')
-        .insert({ name: normalizedName, usage_count: 1 })
-        .select()
-        .single();
-
+      // Atomic upsert + increment via a SECURITY DEFINER RPC. Replaces the old
+      // client-side read-then-update, which required an insecure
+      // "any user can update any hashtag" policy.
+      const { data, error } = await supabase.rpc('get_or_create_hashtag', { p_name: name });
       if (error) throw error;
-      return newHashtag;
+      return (data as Hashtag) ?? null;
     } catch (error) {
       console.error('Error creating hashtag:', error);
       return null;
