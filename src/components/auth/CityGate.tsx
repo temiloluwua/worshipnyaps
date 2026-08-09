@@ -17,7 +17,12 @@ interface CityGateProps {
 export const CityGate: React.FC<CityGateProps> = ({ onSaved }) => {
   const { user } = useAuth();
   const [city, setCity] = useState('');
+  const [customCity, setCustomCity] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // When "Other" is chosen we save the typed town, not the literal "Other",
+  // so the Local radius can still place them on the map.
+  const resolvedCity = city === 'Other' ? customCity.trim() : city;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,10 +30,14 @@ export const CityGate: React.FC<CityGateProps> = ({ onSaved }) => {
       toast.error('Please select your city.');
       return;
     }
+    if (city === 'Other' && !customCity.trim()) {
+      toast.error('Please type your city or town.');
+      return;
+    }
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('users').update({ city }).eq('id', user.id);
+      const { error } = await supabase.from('users').update({ city: resolvedCity }).eq('id', user.id);
       if (error) throw error;
       onSaved();
     } catch (err: any) {
@@ -62,14 +71,26 @@ export const CityGate: React.FC<CityGateProps> = ({ onSaved }) => {
             >
               <option value="" disabled>Select your city</option>
               {SUPPORTED_CITIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{c === 'Other' ? 'Other (type it)' : c}</option>
               ))}
             </select>
           </div>
 
+          {city === 'Other' && (
+            <input
+              type="text"
+              value={customCity}
+              onChange={(e) => setCustomCity(e.target.value)}
+              required
+              autoFocus
+              placeholder="Type your city or town"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          )}
+
           <button
             type="submit"
-            disabled={saving || !city}
+            disabled={saving || !city || (city === 'Other' && !customCity.trim())}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-sm"
           >
             {saving ? 'Saving…' : 'Continue'}

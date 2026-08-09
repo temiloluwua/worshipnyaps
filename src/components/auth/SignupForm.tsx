@@ -21,6 +21,9 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [city, setCity] = useState('');
+  const [customCity, setCustomCity] = useState('');
+  // "Other" saves the typed town, not the literal "Other", so Local matching works.
+  const resolvedCity = city === 'Other' ? customCity.trim() : city;
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +99,10 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       toast.error('Please select your city.');
       return;
     }
+    if (city === 'Other' && !customCity.trim()) {
+      toast.error('Please type your city or town.');
+      return;
+    }
     if (!ensureAgreed()) return;
     setIsLoading(true);
 
@@ -105,7 +112,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         email,
         password,
         options: {
-          data: { name, username: trimmedUsername, city },
+          data: { name, username: trimmedUsername, city: resolvedCity },
           ...(captchaToken ? { captchaToken } : {}),
         },
       });
@@ -124,7 +131,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         // handle_new_user() trigger doesn't map raw_user_meta_data.city.
         if (authData.session) {
           try {
-            await supabase.from('users').update({ city }).eq('id', authData.user.id);
+            await supabase.from('users').update({ city: resolvedCity }).eq('id', authData.user.id);
           } catch { /* non-fatal — profile edit can set it later */ }
           toast.success('Account created successfully!');
           onSuccess?.();
@@ -314,10 +321,20 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
                   >
                     <option value="" disabled>Select your city</option>
                     {SUPPORTED_CITIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>{c === 'Other' ? 'Other (type it)' : c}</option>
                     ))}
                   </select>
                 </div>
+                {city === 'Other' && (
+                  <input
+                    type="text"
+                    value={customCity}
+                    onChange={(e) => setCustomCity(e.target.value)}
+                    required
+                    placeholder="Type your city or town"
+                    className="mt-2 w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  />
+                )}
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Helps us show events and connections near you
                 </p>
