@@ -29,6 +29,17 @@ type CommunitySub = 'all' | CommunityCategory;
 const DEFAULT_VISIBLE_TOPICS = 6;
 const TOPIC_REFRESH_TICK_MS = 1000;
 
+// City is a free-text field, so "Calgary", "calgary ", and "Calgary, AB" must
+// all be treated as the same place. Normalize to the part before the first
+// comma, lowercased with collapsed whitespace, so the Local feed actually
+// matches people in the same city.
+const normalizeCity = (city?: string | null): string =>
+  (city || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
 const formatTimeUntilNextTopic = () => {
   const now = new Date();
   const nextRefresh = new Date(now);
@@ -147,7 +158,7 @@ export function TopicsView({
   const { followingIds } = useFollows();
   const isAdmin = profile?.role === 'admin';
   const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
-  const myCity = profile?.city?.trim().toLowerCase();
+  const myCity = normalizeCity(profile?.city);
   const friendIds = new Set((connections || []).map((c: any) => c.connected_user_id));
 
   const sanitizedSupabaseTopics = topics
@@ -245,10 +256,11 @@ export function TopicsView({
     if (audienceFilter === 'friends') {
       return friendIds.has(authorId) || followingIds.has(authorId);
     }
-    // 'local' — if the user hasn't set a city, fall back to showing all posts
-    // instead of filtering everything out (better than an empty feed)
+    // 'local' — show public posts from anyone whose city matches yours (not
+    // just friends). If you haven't set a city we can't match, so fall back to
+    // showing all rather than an empty feed.
     if (!myCity) return true;
-    const authorCity = (t.users?.city || t.authorCity || '').trim().toLowerCase();
+    const authorCity = normalizeCity(t.users?.city || t.authorCity);
     return authorCity === myCity;
   }) : communityFiltered;
 
