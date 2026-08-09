@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { geocodeCity, distanceKm, Coords } from '../../lib/cityGeo';
 import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, ShoppingBag, Spade } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
@@ -28,6 +29,10 @@ type CommunitySub = 'all' | CommunityCategory;
 
 const DEFAULT_VISIBLE_TOPICS = 6;
 const TOPIC_REFRESH_TICK_MS = 1000;
+
+// How far "Local" reaches — includes nearby cities and towns, not just an
+// exact city-name match.
+const LOCAL_RADIUS_KM = 100;
 
 // City is a free-text field, so "Calgary", "calgary ", and "Calgary, AB" must
 // all be treated as the same place. Normalize to the part before the first
@@ -149,6 +154,7 @@ export function TopicsView({
   const [highlightedTopicId, setHighlightedTopicId] = useState<string | null>(null);
   const [topicRefreshCountdown, setTopicRefreshCountdown] = useState(formatTimeUntilNextTopic);
   const [communitySub, setCommunitySub] = useState<CommunitySub>('all');
+  const [cityCoords, setCityCoords] = useState<Record<string, Coords>>({});
   const [viewingTopic, setViewingTopic] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -186,6 +192,36 @@ export function TopicsView({
       bibleReference: p.bible_verse,
     }))
     .filter(isValidTopic);
+
+  // Distinct set of cities in play (mine + every post author's), as a stable
+  // string so the geocode effect only re-runs when the set actually changes.
+  const localCitiesKey = useMemo(() => {
+    const set = new Set<string>();
+    if (myCity) set.add(myCity);
+    for (const t of communityTopics) {
+      const c = normalizeCity((t as any).users?.city);
+      if (c) set.add(c);
+    }
+    return [...set].sort().join('|');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [communityTopics.length, myCity]);
+
+  // Geocode those cities (cached) so the Local filter can measure distance and
+  // include nearby towns. Only runs while the Local chip is active.
+  useEffect(() => {
+    if (activeTab !== 'community' || audienceFilter !== 'local') return;
+    const cities = localCitiesKey ? localCitiesKey.split('|') : [];
+    if (cities.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const c of cities) {
+        const coords = await geocodeCity(c);
+        if (cancelled) return;
+        if (coords) setCityCoords((prev) => (prev[c] ? prev : { ...prev, [c]: coords }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab, audienceFilter, localCitiesKey]);
 
   const topicOfDaySource =
     topics.length > 0
@@ -256,12 +292,19 @@ export function TopicsView({
     if (audienceFilter === 'friends') {
       return friendIds.has(authorId) || followingIds.has(authorId);
     }
-    // 'local' — show public posts from anyone whose city matches yours (not
-    // just friends). If you haven't set a city we can't match, so fall back to
-    // showing all rather than an empty feed.
+    // 'local' — show public posts from anyone in your city OR a nearby city/
+    // town (within LOCAL_RADIUS_KM). If you haven't set a city we can't match,
+    // so fall back to showing all rather than an empty feed.
     if (!myCity) return true;
     const authorCity = normalizeCity(t.users?.city || t.authorCity);
-    return authorCity === myCity;
+    if (!authorCity) return false;
+    if (authorCity === myCity) return true;
+    const me = cityCoords[myCity];
+    const them = cityCoords[authorCity];
+    if (me && them) return distanceKm(me, them) <= LOCAL_RADIUS_KM;
+    // Coordinates not resolved yet — show same-city now; nearby towns appear
+    // as geocoding fills in.
+    return false;
   }) : communityFiltered;
 
   const currentFeedTopics = activeTab === 'topics' ? primaryTopics : friendsOnlyFiltered;
