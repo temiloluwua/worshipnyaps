@@ -34,6 +34,7 @@ const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDet
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { AgeGate } from './components/auth/AgeGate';
+import { CityGate } from './components/auth/CityGate';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
@@ -64,6 +65,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   const [ageVerified, setAgeVerified] = useState(false);
+  const [citySaved, setCitySaved] = useState(false);
   const { loading, user, profile, signOut } = useAuth();
   useOAuthDeepLink();
   const { theme } = useTheme();
@@ -377,6 +379,14 @@ function App() {
         onUnderage={() => { setAgeVerified(false); setShowLanding(true); }}
       />
     );
+  }
+
+  // Location gate: city is mandatory for every account. Email signup collects
+  // it, but social sign-in skips the profile step, so require it here for any
+  // signed-in user still missing a city. `citySaved` lets the just-saved
+  // session proceed before the profile row is refetched.
+  if (user && profile && !profile.city && !citySaved) {
+    return <CityGate onSaved={() => setCitySaved(true)} />;
   }
 
   if (showSuccessPage) {
