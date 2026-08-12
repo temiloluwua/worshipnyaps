@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile } from '../../hooks/useProfile';
 import { supabase } from '../../lib/supabase';
+import { EVENT_GIFTS } from '../../lib/giftMatching';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -11,10 +12,7 @@ interface OnboardingFlowProps {
   onBrowseEvents: () => void;
 }
 
-const SPIRITUAL_GIFTS = [
-  'Worship', 'Teaching', 'Prayer', 'Hospitality', 'Discernment',
-  'Service', 'Encouragement', 'Leadership', 'Mercy', 'Giving', 'Faith',
-];
+const SPIRITUAL_GIFTS = EVENT_GIFTS;
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 
@@ -294,12 +292,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             </label>
             <div className="flex flex-wrap gap-2 mb-8">
               {SPIRITUAL_GIFTS.map(gift => {
-                const selected = selectedGifts.includes(gift);
+                const selected = selectedGifts.includes(gift.id);
                 return (
                   <button
-                    key={gift}
+                    key={gift.id}
                     type="button"
-                    onClick={() => toggleGift(gift)}
+                    onClick={() => toggleGift(gift.id)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                       selected
                         ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
@@ -307,7 +305,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     }`}
                   >
                     {selected && <Check className="w-3 h-3 inline mr-1" />}
-                    {gift}
+                    {gift.emoji} {gift.label}
                   </button>
                 );
               })}

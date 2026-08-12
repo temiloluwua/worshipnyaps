@@ -26,6 +26,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    // Always start from an empty dist so stale hashed chunks from previous
+    // builds never linger and get synced into the iOS bundle (a partial/stale
+    // bundle is a classic Capacitor white-screen). Multiple leftover
+    // index-*.js/web-*.js chunks were accumulating before this.
+    emptyOutDir: true,
     sourcemap: false,
     minify: 'terser',
     target: ['es2015', 'chrome63', 'firefox67', 'safari12', 'edge79'],

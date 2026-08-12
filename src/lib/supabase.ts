@@ -98,7 +98,7 @@ export interface Event {
   address_visibility?: 'general_area' | 'attendees_only' | 'public';
   area_lat?: number | null;
   area_lng?: number | null;
-  event_type?: 'bible_study' | 'yap';
+  event_type?: 'bible_study' | 'yap' | 'church' | 'evangelism';
   topic_id?: string | null;
   study_topic?: string;
   session_purpose?: string;

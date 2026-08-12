@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2 } from 'lucide-react';
+import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,17 +15,18 @@ import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress, reverseGeocodeArea } from '../../lib/geocode';
 import { shareOrigin } from '../../lib/openExternal';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import { ServeWithGiftsFeed } from './ServeWithGiftsFeed';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
 interface LocationsViewProps {
   onOpenEvent?: (eventId: string) => void;
 }
 
-type CombinedFilter = 'all' | 'today' | 'bible_study_yaps' | 'church' | 'other';
+type CombinedFilter = 'all' | 'today' | 'bible_study_yaps' | 'evangelism' | 'church' | 'other';
 type EventTab = 'discover' | 'my-events';
 
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useTranslation();
   const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts, pastEvents } = useEvents();
   const [combinedFilter, setCombinedFilter] = useState<CombinedFilter>('all');
@@ -36,12 +37,25 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHostModal, setShowHostModal] = useState(false);
+  const [duplicateSource, setDuplicateSource] = useState<DbEvent | null>(null);
   const [activeTab, setActiveTab] = useState<EventTab>('discover');
+
+  // Open the host modal pre-filled from an existing event (date/time cleared)
+  // so a host can re-post a gathering they run regularly.
+  const handleDuplicate = (event: DbEvent) => {
+    setDuplicateSource(event);
+    setShowHostModal(true);
+  };
+  const closeHostModal = () => {
+    setShowHostModal(false);
+    setDuplicateSource(null);
+  };
 
   const combinedOptions: { value: CombinedFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'today', label: 'Today' },
     { value: 'bible_study_yaps', label: '📖 Bible Study / Yaps' },
+    { value: 'evangelism', label: '📣 Evangelism' },
     { value: 'church', label: '✨ Yap' },
     { value: 'other', label: 'Other' },
   ];
@@ -62,11 +76,14 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       if (evType === 'bible_study' || evType === 'yap') return true;
       return ['bible-study', 'basketball-yap', 'hiking-yap'].includes(event.type || '');
     }
+    if (filter === 'evangelism') {
+      return evType === 'evangelism';
+    }
     if (filter === 'church') {
       return evType === 'church';
     }
     if (filter === 'other') {
-      const known = evType === 'bible_study' || evType === 'yap' || evType === 'church';
+      const known = evType === 'bible_study' || evType === 'yap' || evType === 'church' || evType === 'evangelism';
       return !known && !['bible-study', 'basketball-yap', 'hiking-yap'].includes(event.type || '');
     }
     return true;
@@ -85,8 +102,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
     }
 
     return result.sort((a, b) => {
-      const aDate = new Date(`${a.date} ${a.time}`);
-      const bDate = new Date(`${b.date} ${b.time}`);
+      // Use `T` (not a space) between date and time: WebKit/iOS returns
+      // Invalid Date for the space-separated form, which silently breaks sort.
+      const aDate = new Date(`${a.date}T${a.time}`);
+      const bDate = new Date(`${b.date}T${b.time}`);
       return aDate.getTime() - bDate.getTime();
     });
   }, [events, combinedFilter, searchQuery]);
@@ -100,8 +119,8 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       .map(id => events.find(e => e.id === id))
       .filter((e): e is DbEvent => e !== undefined)
       .sort((a, b) => {
-        const aDate = new Date(`${a.date} ${a.time}`);
-        const bDate = new Date(`${b.date} ${b.time}`);
+        const aDate = new Date(`${a.date}T${a.time}`);
+        const bDate = new Date(`${b.date}T${b.time}`);
         return aDate.getTime() - bDate.getTime();
       });
   }, [events, rsvpEventIds, user]);
@@ -331,6 +350,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       )}
 
       <div className="p-4 space-y-4">
+        {activeTab === 'discover' && (
+          <ServeWithGiftsFeed
+            gifts={(profile as { spiritual_gifts?: string[] } | null)?.spiritual_gifts}
+            onOpenEvent={onOpenEvent}
+          />
+        )}
         {activeTab === 'my-events' && drafts.length > 0 && (
           <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -429,10 +454,11 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                 {(() => {
                   const imageUrl = (event as { image_url?: string | null }).image_url;
                   const evType = (event as { event_type?: string }).event_type || '';
-                  const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨' };
+                  const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣' };
                   const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[evType] || '✨';
                   const fallbackGradient =
                     evType === 'bible_study' ? 'from-indigo-400 via-purple-400 to-blue-500'
+                    : evType === 'evangelism' ? 'from-emerald-400 via-teal-400 to-cyan-500'
                     : evType === 'church'    ? 'from-violet-400 via-fuchsia-400 to-rose-500'
                     : 'from-amber-400 via-orange-400 to-rose-500';
                   return (
@@ -549,6 +575,16 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                       <Share2 className="w-3.5 h-3.5" />
                       Share
                     </button>
+                    {isHosting && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDuplicate(event); }}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs font-medium transition-colors"
+                        title="Create a new event from this one"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Duplicate
+                      </button>
+                    )}
                   </div>
 
                   {isRsvped ? (
@@ -622,9 +658,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
       {showHostModal && (
         <HostEventModal
-          onClose={() => setShowHostModal(false)}
+          onClose={closeHostModal}
           onEventCreated={(eventId) => onOpenEvent?.(eventId)}
           onRequireAuth={() => setShowAuthModal(true)}
+          initialDraft={duplicateSource ? eventToHostDraft(duplicateSource) : undefined}
         />
       )}
     </div>
@@ -635,12 +672,47 @@ interface HostEventModalProps {
   onClose: () => void;
   onEventCreated?: (eventId: string) => void;
   onRequireAuth?: () => void;
+  // When present, the form starts pre-filled from an existing event (used by
+  // "Duplicate"). Date/time are intentionally left blank so the host picks new ones.
+  initialDraft?: HostEventDraft;
+}
+
+// Build a host-form draft from an existing event so it can be duplicated.
+// Date and time are cleared — everything else (title, kind, location, capacity,
+// visibility, description/template, image) carries over.
+function eventToHostDraft(event: DbEvent): HostEventDraft {
+  const e = event as any;
+  return {
+    formData: {
+      ...DEFAULT_HOST_FORM,
+      eventTitle: e.title || '',
+      eventType: e.type || 'other',
+      event_type: e.event_type || 'bible_study',
+      eventDate: '',
+      eventTime: '',
+      eventLocationName: e.locations?.name || '',
+      eventAddress: e.locations?.address || '',
+      capacity: e.capacity ?? DEFAULT_HOST_FORM.capacity,
+      description: e.description || '',
+      visibility: e.visibility || 'public',
+      study_topic: e.study_topic || '',
+      session_purpose: e.session_purpose || '',
+      location_type: e.location_type || '',
+      yap_vibe: e.yap_vibe || '',
+      bring_note: e.bring_note || '',
+    },
+    descriptionTemplate: e.description_template
+      ? { ...DEFAULT_TEMPLATE, ...e.description_template }
+      : { ...DEFAULT_TEMPLATE },
+    useTemplate: !!e.description_template,
+    imageUrl: e.image_url || null,
+  };
 }
 
 const DEFAULT_HOST_FORM = {
   eventTitle: '',
   eventType: 'bible-study',
-  event_type: 'bible_study' as 'bible_study' | 'yap' | 'church',
+  event_type: 'bible_study' as 'bible_study' | 'yap' | 'church' | 'evangelism',
   eventDate: '',
   eventTime: '',
   eventLocationName: '',
@@ -684,16 +756,20 @@ function hostDraftHasContent(d: HostEventDraft): boolean {
   return false;
 }
 
-function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventModalProps) {
+function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }: HostEventModalProps) {
   const { t } = useTranslation();
   const { createEvent } = useEvents();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
-  const [useTemplate, setUseTemplate] = useState(false);
-  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>({ ...DEFAULT_TEMPLATE });
-  const [formData, setFormData] = useState({ ...DEFAULT_HOST_FORM });
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [useTemplate, setUseTemplate] = useState(initialDraft?.useTemplate ?? false);
+  const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>(
+    initialDraft ? { ...initialDraft.descriptionTemplate } : { ...DEFAULT_TEMPLATE }
+  );
+  const [formData, setFormData] = useState(
+    initialDraft ? { ...initialDraft.formData } : { ...DEFAULT_HOST_FORM }
+  );
+  const [imageUrl, setImageUrl] = useState<string | null>(initialDraft?.imageUrl ?? null);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   // Cached coordinates from the address autocomplete pick, so we can skip
   // a redundant Nominatim round-trip at submit time.
@@ -953,13 +1029,14 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
             <div className="flex flex-wrap gap-2">
               {([
                 { value: 'bible_study', label: '📖 Bible Study / Yaps', eventType: 'bible_study', vibe: '', tone: 'blue' },
+                { value: 'evangelism',  label: '📣 Evangelism',  eventType: 'evangelism',  vibe: '', tone: 'emerald' },
                 { value: 'church',      label: '✨ Yap',         eventType: 'church',      vibe: '', tone: 'violet' },
                 { value: 'games',       label: '🎲 Games',       eventType: 'yap',         vibe: 'games', tone: 'amber' },
                 { value: 'food',        label: '🍽️ Food / Potluck', eventType: 'yap',     vibe: 'food', tone: 'amber' },
                 { value: 'sports',      label: '🏅 Sports',      eventType: 'yap',         vibe: 'sports', tone: 'amber' },
                 { value: 'music',       label: '🎶 Music / Worship', eventType: 'yap',     vibe: 'music', tone: 'amber' },
                 { value: 'hanging',     label: '🗣️ Just hanging', eventType: 'yap',        vibe: 'hanging', tone: 'amber' },
-              ] as Array<{ value: string; label: string; eventType: 'bible_study' | 'yap' | 'church'; vibe: string; tone: 'blue' | 'violet' | 'amber' }>).map(opt => {
+              ] as Array<{ value: string; label: string; eventType: 'bible_study' | 'yap' | 'church' | 'evangelism'; vibe: string; tone: 'blue' | 'violet' | 'amber' | 'emerald' }>).map(opt => {
                 const selected = opt.eventType === 'yap'
                   ? formData.event_type === 'yap' && formData.yap_vibe === opt.vibe
                   : formData.event_type === opt.eventType;
@@ -967,6 +1044,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth }: HostEventMod
                   blue:   'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700',
                   violet: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700',
                   amber:  'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700',
+                  emerald:'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700',
                 };
                 return (
                   <button

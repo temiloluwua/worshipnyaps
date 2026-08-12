@@ -3,6 +3,7 @@ import { HeartHandshake, Plus, X, Check, Utensils, Share2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { SuggestedHelpers } from './SuggestedHelpers';
 import toast from 'react-hot-toast';
 
 interface AttendeeUser {
@@ -28,6 +29,7 @@ interface UnifiedHelpItem {
 
 interface EventHelpRequestsProps {
   eventId: string;
+  eventTitle?: string;
   isHost: boolean;
   // When the viewer arrived via a shared team link they may not yet be an
   // attendee, so RLS hides the rows. With a teamCode we can read the open
@@ -75,7 +77,7 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   beverage: 'Drinks — coffee, tea, juice, water.',
 };
 
-export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, isHost, teamCode: linkTeamCode, onRequireAuth }) => {
+export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, eventTitle, isHost, teamCode: linkTeamCode, onRequireAuth }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [items, setItems] = useState<UnifiedHelpItem[]>([]);
@@ -657,6 +659,16 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, i
                   )}
                 </div>
               </div>
+
+              {/* Host-facing: people whose gifts fit this open role, one-tap invite. */}
+              {isHost && isOpen && item.source === 'help_request' && (
+                <SuggestedHelpers
+                  eventId={eventId}
+                  eventTitle={eventTitle || 'this event'}
+                  helpType={item.category}
+                  roleLabel={categoryLabel[item.category] || item.category}
+                />
+              )}
 
               {/* Prominent accept/decline section — only for the assigned user before they respond */}
               {isMine && isPending && (

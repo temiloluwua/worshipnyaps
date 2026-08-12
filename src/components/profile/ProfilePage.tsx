@@ -363,6 +363,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 </>
               )}
             </div>
+            {!isOwnProfile && (
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 leading-snug max-w-xs">
+                <span className="font-semibold text-gray-600 dark:text-gray-300">Follow</span> to see their public posts.{' '}
+                <span className="font-semibold text-gray-600 dark:text-gray-300">Connect</span> for mutual fellowship — message each other and see their private &amp; friends-only events.
+              </p>
+            )}
           </div>
 
           <div className="mb-3">

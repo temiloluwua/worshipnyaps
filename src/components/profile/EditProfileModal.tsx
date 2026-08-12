@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { X, Camera, Plus, Check, Sparkles, User, FileText, Image, ChevronRight, Loader2, ArrowLeft, AtSign } from 'lucide-react';
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
 import { supabase } from '../../lib/supabase';
+import { EVENT_GIFTS } from '../../lib/giftMatching';
 import toast from 'react-hot-toast';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
@@ -18,14 +19,7 @@ const SUGGESTED_INTERESTS = [
   'Basketball', 'Hiking', 'Reading', 'Cooking', 'Art'
 ];
 
-const SPIRITUAL_GIFTS = [
-  { id: 'Connection', label: 'Connection', emoji: '🤝' },
-  { id: 'Hosting', label: 'Hosting', emoji: '🏠' },
-  { id: 'Worship', label: 'Worship', emoji: '🎵' },
-  { id: 'Teaching', label: 'Teaching', emoji: '📖' },
-  { id: 'Evangelism', label: 'Evangelism', emoji: '📣' },
-  { id: 'Creative', label: 'Creative', emoji: '🎨' },
-];
+const SPIRITUAL_GIFTS = EVENT_GIFTS;
 
 type Section = 'photos' | 'basics' | 'bio' | 'interests' | 'gifts';
 

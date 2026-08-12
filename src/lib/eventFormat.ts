@@ -46,6 +46,7 @@ export function formatLocationType(locationType?: string | null): string {
 export function formatEventTypeLabel(event: { event_type?: string | null; yap_vibe?: string | null; type?: string | null }): string {
   const evType = event.event_type;
   if (evType === 'bible_study') return '📖 Bible Study';
+  if (evType === 'evangelism') return '📣 Evangelism';
   if (evType === 'church') return '✨ Yap';
   if (evType === 'yap') {
     return YAP_VIBE_LABELS[event.yap_vibe || ''] || '🎉 Yap';
