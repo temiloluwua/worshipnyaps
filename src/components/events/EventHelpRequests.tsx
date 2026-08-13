@@ -621,7 +621,10 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, e
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {/* Accept / Decline — not shown inline when isMine+isPending; full-width section below handles it */}
-                  {isOpen && (user || guestMode) && !isHost && item.open_to_volunteers && (
+                  {/* Shown to everyone (incl. logged-out team-link visitors) so
+                      roles are claimable inline. handleVolunteer prompts for an
+                      account only on click, never up front. */}
+                  {isOpen && !isHost && item.open_to_volunteers && (
                     <button
                       onClick={() => handleVolunteer(item)}
                       className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium touch-manipulation"

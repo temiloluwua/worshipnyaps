@@ -74,9 +74,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   // Team-recruitment link params (e.g. /event/{id}?team={code}&pick=cohost:worship).
   const teamCode = new URLSearchParams(window.location.search).get('team');
   const teamPick = new URLSearchParams(window.location.search).get('pick');
-  const [showTeamBoard, setShowTeamBoard] = useState<boolean>(() =>
-    !!new URLSearchParams(window.location.search).get('team')
-  );
+  // Only auto-open the TeamBoard modal for a TARGETED link (?team=..&pick=..).
+  // A generic team link lands on the Help tab instead (see tab default below),
+  // so visitors browse the open roles inline rather than through a popup.
+  const [showTeamBoard, setShowTeamBoard] = useState<boolean>(() => {
+    const q = new URLSearchParams(window.location.search);
+    return !!(q.get('team') && q.get('pick'));
+  });
   const { t } = useTranslation();
   // Events notify by default; attendees can mute a specific event.
   const { subscribed: notifOn, toggle: toggleNotif, saving: notifSaving } =
@@ -200,7 +204,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     } catch {
       // ignore
     }
-    setActiveTab(justCreated ? 'help' : 'details');
+    // A team link (?team=) is a "come help" invite — open the Help tab so the
+    // visitor sees the available roles right away, before any account prompt.
+    setActiveTab(justCreated || teamCode ? 'help' : 'details');
     fetchEvent();
     if (user) {
       checkRsvpStatus();
