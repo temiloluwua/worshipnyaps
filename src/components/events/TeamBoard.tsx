@@ -41,8 +41,10 @@ export const TeamBoard: React.FC<TeamBoardProps> = ({ eventId, teamCode, pick, o
 
   const [pickKind, pickValue] = (pick || '').split(':');
 
+  // No user gate: a logged-out visitor with the team link can view the open
+  // roles (get_team_board is gated by the secret team_code). Claiming still
+  // requires an account — see `claim` below, which routes to onRequireAuth.
   const load = useCallback(async () => {
-    if (!user) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_team_board', { p_event_id: eventId, p_team_code: teamCode });
@@ -53,7 +55,7 @@ export const TeamBoard: React.FC<TeamBoardProps> = ({ eventId, teamCode, pick, o
     } finally {
       setLoading(false);
     }
-  }, [user, eventId, teamCode]);
+  }, [eventId, teamCode]);
 
   useEffect(() => { load(); }, [load]);
 

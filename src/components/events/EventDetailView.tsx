@@ -1054,6 +1054,22 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   }
 
   if (accessDenied) {
+    // A team link should still work even when the event itself is hidden from
+    // this viewer (private/friends-only, or signed out). The team board reads
+    // via get_team_board (gated by the secret team_code) so they can see the
+    // open roles and sign up to claim — no account/RSVP needed to view.
+    if (teamCode) {
+      return (
+        <TeamBoard
+          eventId={eventId}
+          teamCode={teamCode}
+          pick={teamPick}
+          onClose={onBack}
+          onRequireAuth={() => onRequireAuth?.()}
+          onClaimed={() => window.location.reload()}
+        />
+      );
+    }
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
