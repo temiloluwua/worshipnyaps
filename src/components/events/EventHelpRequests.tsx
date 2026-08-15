@@ -98,6 +98,11 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, e
     notes: '', assigned_to: '',
     open_to_volunteers: true,
   });
+  // Attendee-facing "I'm bringing…" potluck form (distinct from the host form).
+  const [showBringForm, setShowBringForm] = useState(false);
+  const [newBring, setNewBring] = useState({
+    item: '', category: 'main' as typeof FOOD_CATEGORIES[number],
+  });
 
   // Team code powers the "join the team" share links (host only can read it).
   useEffect(() => {
@@ -516,6 +521,52 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, e
     }
   };
 
+  // Attendee self-add: "I'm bringing ___". Requires an account (RLS ties the
+  // item to auth.uid()); a logged-out team-link visitor is sent to sign up.
+  const openBringForm = () => {
+    if (!user) {
+      if (onRequireAuth) onRequireAuth();
+      else toast.error('Please sign in');
+      return;
+    }
+    setShowBringForm(true);
+  };
+
+  const handleAddBring = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) { onRequireAuth?.(); return; }
+    const itemValue = newBring.item.trim();
+    if (!itemValue) { toast.error('What are you bringing?'); return; }
+    try {
+      const { error } = await supabase.from('food_items').insert({
+        event_id: eventId,
+        item: itemValue,
+        category: newBring.category,
+        assigned_to: user.id,
+        completed: false,
+        open_to_volunteers: false,
+      });
+      if (error) throw error;
+      setNewBring({ item: '', category: 'main' });
+      setShowBringForm(false);
+      await fetchItems();
+      toast.success("Added — thanks for bringing something! 🙌");
+    } catch (err: any) {
+      toast.error(err.message || 'Could not add your item');
+    }
+  };
+
+  const handleRemoveOwnFood = async (item: UnifiedHelpItem) => {
+    const realId = item.id.startsWith('food_') ? item.id.replace('food_', '') : item.id;
+    try {
+      const { error } = await supabase.from('food_items').delete().eq('id', realId);
+      if (error) throw error;
+      await fetchItems();
+    } catch (err: any) {
+      toast.error(err.message || 'Could not remove your item');
+    }
+  };
+
   const openCount = items.filter(i => !i.is_filled).length;
   const filledCount = items.filter(i => i.is_filled).length;
 
@@ -642,6 +693,16 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, e
                       <Check className="w-3 h-3" /> You
                     </span>
                   )}
+                  {/* Let a non-host remove a food item they added themselves. */}
+                  {!isHost && isMine && item.source === 'food_item' && (
+                    <button
+                      onClick={() => handleRemoveOwnFood(item)}
+                      className="p-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
+                      title="Remove what I'm bringing"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                   {isHost && !item.is_filled && (
                     <button
                       onClick={() => handleShareItem(item)}
@@ -719,6 +780,51 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, e
             <Utensils className="w-4 h-4" /> Add Food Item
           </button>
         </div>
+      )}
+
+      {/* Attendee potluck self-add — anyone (incl. logged-out team-link
+          visitors) can say what they're bringing; account prompt on click. */}
+      {!isHost && !showBringForm && (
+        <button
+          onClick={openBringForm}
+          className="w-full py-2.5 border-2 border-dashed border-orange-400 dark:border-orange-600 rounded-xl text-orange-600 dark:text-orange-400 hover:border-orange-500 hover:text-orange-700 dark:hover:text-orange-300 transition-colors text-sm font-medium flex items-center justify-center gap-1.5"
+        >
+          <Utensils className="w-4 h-4" /> I'm bringing something
+        </button>
+      )}
+
+      {!isHost && showBringForm && (
+        <form onSubmit={handleAddBring} className="border border-orange-200 dark:border-orange-800 rounded-xl p-4 bg-orange-50 dark:bg-orange-900/10 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-2">
+              <Utensils size={15} /> What are you bringing?
+            </h4>
+            <button type="button" onClick={() => setShowBringForm(false)}>
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+          <input
+            type="text"
+            value={newBring.item}
+            onChange={(e) => setNewBring(p => ({ ...p, item: e.target.value }))}
+            placeholder="e.g. Jollof rice, brownies, drinks"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            autoFocus
+            required
+          />
+          <select
+            value={newBring.category}
+            onChange={(e) => setNewBring(p => ({ ...p, category: e.target.value as typeof FOOD_CATEGORIES[number] }))}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          >
+            {FOOD_CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{typeIcons[cat] || '🍽️'} {categoryLabel[cat] || cat}</option>
+            ))}
+          </select>
+          <button type="submit" className="w-full py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium">
+            Add to the list
+          </button>
+        </form>
       )}
 
       {/* Help Request Form */}

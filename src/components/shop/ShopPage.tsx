@@ -34,6 +34,18 @@ export function ShopPage() {
           </p>
         </div>
       )}
+
+      <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 text-center max-w-xl mx-auto">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Money goes towards supporting missionaries and ministries.
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          If you want support, email us at{' '}
+          <a href="mailto:worshipnyaps@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+            worshipnyaps@gmail.com
+          </a>.
+        </p>
+      </div>
     </div>
   );
 }
