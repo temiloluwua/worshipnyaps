@@ -105,6 +105,9 @@ export interface Event {
   location_type?: 'home' | 'church' | 'park' | 'cafe' | 'online';
   yap_vibe?: string;
   bring_note?: string;
+  recurrence?: 'weekly' | 'biweekly' | 'monthly' | null;
+  recurrence_group_id?: string | null;
+  is_recurrence_child?: boolean;
   invite_code?: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   is_draft?: boolean;
