@@ -329,13 +329,13 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, community
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                   {(profile?.name || 'Y').charAt(0)}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex space-x-2">
                     <textarea
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder={`Reply to ${comment.author.name}...`}
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="flex-1 min-w-0 px-3 py-2 text-base border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={2}
                     />
                     <button
@@ -403,13 +403,13 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, community
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
             {(profile?.name || 'Y').charAt(0)}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex space-x-2">
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Share your thoughts on this topic..."
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 min-w-0 px-4 py-3 text-base border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={3}
               />
               <button
