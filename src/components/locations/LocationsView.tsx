@@ -726,8 +726,6 @@ const DEFAULT_HOST_FORM = {
   location_type: '' as '' | 'home' | 'church' | 'park' | 'cafe' | 'online',
   yap_vibe: '',
   bring_note: '',
-  recurrence: '' as '' | 'weekly' | 'biweekly' | 'monthly',
-  recurrence_until: '',
 };
 
 const DEFAULT_TEMPLATE: DescriptionTemplate = {
@@ -760,7 +758,7 @@ function hostDraftHasContent(d: HostEventDraft): boolean {
 
 function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }: HostEventModalProps) {
   const { t } = useTranslation();
-  const { createEvent, createRecurringEvents } = useEvents();
+  const { createEvent } = useEvents();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
@@ -934,12 +932,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
       eventData.description = formData.description;
     }
 
-    // Recurring series only on publish (not drafts) when a repeat + end date
-    // are set. Otherwise a single event.
-    const isRecurring = !asDraft && !!formData.recurrence && !!formData.recurrence_until;
-    const result = isRecurring
-      ? await createRecurringEvents(eventData, formData.recurrence as 'weekly' | 'biweekly' | 'monthly', formData.recurrence_until)
-      : await createEvent(eventData);
+    const result = await createEvent(eventData);
     setSubmitting(false);
 
     if (result) {
@@ -1205,41 +1198,6 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
               />
             </div>
           </div>
-
-          {/* Recurrence — repeat this gathering until an end date. */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Repeat</label>
-              <select
-                value={formData.recurrence}
-                onChange={(e) => setFormData(p => ({ ...p, recurrence: e.target.value as typeof p.recurrence }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Does not repeat</option>
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Every 2 weeks</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            {formData.recurrence && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Repeat until</label>
-                <input
-                  type="date"
-                  value={formData.recurrence_until}
-                  min={formData.eventDate || undefined}
-                  onChange={(e) => setFormData(p => ({ ...p, recurrence_until: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            )}
-          </div>
-          {formData.recurrence && formData.recurrence_until && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-              Creates a separate event for each occurrence (up to 26), each with its own RSVPs, chat, and roles.
-            </p>
-          )}
 
           <div>
             <div className="flex items-center gap-2 mb-3">

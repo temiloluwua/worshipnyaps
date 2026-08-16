@@ -4,10 +4,11 @@ import { useNotificationSubscription } from '../../hooks/useNotificationSubscrip
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
+import { recurrenceDatesUntil, type Recurrence } from '../../hooks/useEvents';
 import { EventRecapPhotos } from './EventRecapPhotos';
 import { EventDescriptionDisplay } from './EventDescriptionTemplate';
 import { CheckInButton } from './CheckInButton';
@@ -112,6 +113,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
   const [postponing, setPostponing] = useState(false);
+  const [showRepeatModal, setShowRepeatModal] = useState(false);
+  const [repeatFreq, setRepeatFreq] = useState<Recurrence>('weekly');
+  const [repeatUntil, setRepeatUntil] = useState('');
+  const [repeating, setRepeating] = useState(false);
   const [showRsvpDisclaimer, setShowRsvpDisclaimer] = useState(false);
   const [showAdminDeleteConfirm, setShowAdminDeleteConfirm] = useState(false);
   const [adminDeleting, setAdminDeleting] = useState(false);
@@ -1020,6 +1025,67 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     }
   };
 
+  // Turn this (already-created) event into a repeating series: this event
+  // becomes the seed, and one clone is created per future occurrence up to the
+  // end date. Each occurrence is its own event (own RSVPs/chat/roles).
+  const repeatEvent = async () => {
+    if (!event || !(isHost || canEditEvent) || !repeatUntil) return;
+    const dates = recurrenceDatesUntil(event.date, repeatFreq, repeatUntil);
+    const childDates = dates.slice(1); // dates[0] is this event
+    if (childDates.length === 0) {
+      toast.error('Pick an end date after this event');
+      return;
+    }
+    setRepeating(true);
+    try {
+      const seriesId = event.recurrence_group_id
+        || (crypto as { randomUUID?: () => string })?.randomUUID?.()
+        || `${Date.now()}-${Math.random()}`;
+
+      // This event heads the series.
+      const { error: seedErr } = await supabase
+        .from('events')
+        .update({ recurrence: repeatFreq, recurrence_group_id: seriesId, is_recurrence_child: false })
+        .eq('id', event.id);
+      if (seedErr) throw seedErr;
+
+      // Clone the seed's own fields (explicit list — never copy id, team_code,
+      // invite_code, or the joined locations/users objects).
+      const e = event as unknown as Record<string, unknown>;
+      const needsInviteCode = event.visibility === 'private' || (event as { is_private?: boolean }).is_private;
+      const genCode = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let c = '';
+        for (let i = 0; i < 8; i += 1) c += chars[Math.floor(Math.random() * chars.length)];
+        return c;
+      };
+      const rows = childDates.map((date) => ({
+        title: e.title, type: e.type, event_type: e.event_type,
+        date, time: e.time, capacity: e.capacity,
+        description: e.description, description_template: e.description_template,
+        image_url: e.image_url,
+        visibility: e.visibility, is_private: e.is_private, address_visibility: e.address_visibility,
+        location_id: e.location_id, location_type: e.location_type,
+        study_topic: e.study_topic, session_purpose: e.session_purpose,
+        yap_vibe: e.yap_vibe, bring_note: e.bring_note,
+        group_id: e.group_id, topic_id: e.topic_id,
+        host_id: event.host_id, status: 'upcoming', is_draft: false,
+        recurrence: repeatFreq, recurrence_group_id: seriesId, is_recurrence_child: true,
+        invite_code: needsInviteCode ? genCode() : null,
+      }));
+      const { error: insErr } = await supabase.from('events').insert(rows);
+      if (insErr) throw insErr;
+
+      setEvent({ ...event, recurrence: repeatFreq, recurrence_group_id: seriesId, is_recurrence_child: false });
+      setShowRepeatModal(false);
+      toast.success(`Repeat set — ${childDates.length} more ${childDates.length === 1 ? 'date' : 'dates'} added 🔁`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not set up the repeat');
+    } finally {
+      setRepeating(false);
+    }
+  };
+
   const addToGoogleCalendar = () => {
     if (!event) return;
     const title = encodeURIComponent(event.title);
@@ -1169,6 +1235,20 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                         <CalendarClock className="w-4 h-4" />
                         Postpone Event
                       </button>
+                      {!event?.recurrence && (
+                        <button
+                          onClick={() => {
+                            setShowHostActions(false);
+                            setRepeatFreq('weekly');
+                            setRepeatUntil('');
+                            setShowRepeatModal(true);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <Repeat className="w-4 h-4" />
+                          Repeat Event
+                        </button>
+                      )}
                       <div className="border-t border-gray-100 dark:border-gray-700" />
                       <button
                         onClick={() => { setShowHostActions(false); setShowCancelConfirm(true); }}
@@ -2002,6 +2082,64 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50"
               >
                 {postponing ? 'Saving...' : 'Reschedule & notify'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRepeatModal && event && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !repeating && setShowRepeatModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+                <Repeat className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Repeat this event</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  Creates a copy for each date up to your end date (up to 26). Each one is its own event with its own RSVPs, chat, and roles.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">How often</label>
+                <select
+                  value={repeatFreq}
+                  onChange={e => setRepeatFreq(e.target.value as Recurrence)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repeat until</label>
+                <input
+                  type="date"
+                  value={repeatUntil}
+                  min={event.date}
+                  onChange={e => setRepeatUntil(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowRepeatModal(false)}
+                disabled={repeating}
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={repeatEvent}
+                disabled={repeating || !repeatUntil}
+                className="flex-1 px-4 py-2.5 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50"
+              >
+                {repeating ? 'Creating…' : 'Create repeats'}
               </button>
             </div>
           </div>

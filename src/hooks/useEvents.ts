@@ -43,7 +43,7 @@ const toISODate = (d: Date): string => {
 
 // Every occurrence date from the seed date up to (and including) untilISO.
 // `T` in the parsed date string — WebKit returns Invalid Date for a space.
-const recurrenceDatesUntil = (startISO: string, recurrence: Recurrence, untilISO: string): string[] => {
+export const recurrenceDatesUntil = (startISO: string, recurrence: Recurrence, untilISO: string): string[] => {
   const start = new Date(`${startISO}T00:00:00`);
   const until = new Date(`${untilISO}T23:59:59`);
   if (isNaN(start.getTime()) || isNaN(until.getTime())) return startISO ? [startISO] : [];
@@ -419,51 +419,6 @@ export const useEvents = () => {
     }
   };
 
-  // Materialize a recurring series as individual event rows sharing a
-  // recurrence_group_id (each occurrence keeps its own RSVPs, chat, help/food).
-  // Generates every occurrence from the seed date up to untilDate (capped).
-  const createRecurringEvents = async (
-    eventData: Partial<Event>,
-    recurrence: Recurrence,
-    untilDate: string,
-  ) => {
-    if (!user) return null;
-    const startISO = (eventData.date as string) || new Date().toISOString().slice(0, 10);
-    const dates = recurrenceDatesUntil(startISO, recurrence, untilDate);
-    // End date is on/before the first occurrence — nothing to repeat.
-    if (dates.length <= 1) {
-      return createEvent({ ...eventData, recurrence });
-    }
-    try {
-      const needsInviteCode = eventData.visibility === 'private' || eventData.is_private;
-      const seriesId = (crypto as { randomUUID?: () => string })?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-      const rows = dates.map((date, i) => ({
-        ...eventData,
-        date,
-        host_id: user.id,
-        status: 'upcoming',
-        recurrence,
-        recurrence_group_id: seriesId,
-        is_recurrence_child: i > 0,
-        // Each occurrence gets its own invite code so a leaked code can't unlock
-        // the whole series.
-        invite_code: needsInviteCode ? generateInviteCode() : null,
-      }));
-      const { data, error } = await supabase.from('events').insert(rows).select();
-      if (error) throw error;
-      const seed = (data || []).find((e: Event) => !e.is_recurrence_child) || (data || [])[0] || null;
-      if (seed?.id && seed?.capacity) setCachedCapacity(seed.id, seed.capacity);
-      toast.success(`Created ${dates.length} occurrences!`);
-      await fetchEvents();
-      await fetchMyEvents();
-      await fetchDrafts();
-      return seed;
-    } catch (error: any) {
-      toast.error(error.message);
-      return null;
-    }
-  };
-
   // RSVP to event
   const rsvpToEvent = async (eventId: string, volunteerRoles: string[] = [], foodItems: string[] = [], customFoodDetails?: { item: string; category: string; servingSize?: string; notes?: string }) => {
     if (!user) return false;
@@ -692,7 +647,6 @@ export const useEvents = () => {
     fetchDrafts,
     fetchRsvpEventIds,
     createEvent,
-    createRecurringEvents,
     isEventRsvped,
     rsvpToEvent,
     cancelRsvp,
