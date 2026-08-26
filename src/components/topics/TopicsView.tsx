@@ -569,12 +569,12 @@ export function TopicsView({
                 {activeTab === 'topics' ? (
                   <>
                     <Spade className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
-                    The Deck
+                    {t('topics.theDeck')}
                   </>
                 ) : (
                   <>
                     <Users className="w-6 h-6 mr-2 text-blue-500" />
-                    Community Feed
+                    {t('topics.communityFeed')}
                   </>
                 )}
               </h1>
@@ -622,7 +622,7 @@ export function TopicsView({
               }`}
             >
               <Spade className="w-4 h-4 inline mr-1" />
-              Deck
+              {t('topics.deck')}
             </button>
             {!readOnly && (
               <button
@@ -638,7 +638,7 @@ export function TopicsView({
                 }`}
               >
                 <Users className="w-4 h-4 inline mr-1" />
-                Community
+                {t('topics.community')}
               </button>
             )}
           </div>
@@ -647,7 +647,7 @@ export function TopicsView({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search topics, questions, or tags..."
+              placeholder={t('topics.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm text-gray-900 dark:text-white"
@@ -663,7 +663,7 @@ export function TopicsView({
                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-lg hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all"
               >
                 <Shuffle className="w-5 h-5" />
-                Shuffle deck
+                {t('topics.shuffleDeck')}
               </button>
               {!readOnly && (
                 <button
@@ -671,7 +671,7 @@ export function TopicsView({
                   className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 font-bold shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700 active:scale-[0.98] transition-all whitespace-nowrap"
                 >
                   <Lightbulb className="w-5 h-5 shrink-0" />
-                  Ask a question
+                  {t('topics.askQuestion')}
                 </button>
               )}
             </div>

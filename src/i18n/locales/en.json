@@ -42,7 +42,11 @@
     "createFirstPost": "Create First Post",
     "untitled": "Untitled Topic",
     "noDescription": "No description provided yet. Jump into the questions or comments to start the discussion.",
-    "discussionDetails": "Discussion details coming soon. Share your insights below."
+    "discussionDetails": "Discussion details coming soon. Share your insights below.",
+    "deck": "Deck",
+    "theDeck": "The Deck",
+    "shuffleDeck": "Shuffle deck",
+    "askQuestion": "Ask a question"
   },
   "communityTabs": {
     "all": "All",

@@ -42,7 +42,11 @@
     "createFirstPost": "Cr\u00e9er la Premi\u00e8re Publication",
     "untitled": "Sujet sans Titre",
     "noDescription": "Pas encore de description. Rejoignez les questions ou commentaires pour d\u00e9marrer la discussion.",
-    "discussionDetails": "D\u00e9tails de la discussion \u00e0 venir. Partagez vos id\u00e9es ci-dessous."
+    "discussionDetails": "D\u00e9tails de la discussion \u00e0 venir. Partagez vos id\u00e9es ci-dessous.",
+    "deck": "Jeu",
+    "theDeck": "Le Jeu",
+    "shuffleDeck": "M\u00e9langer le jeu",
+    "askQuestion": "Poser une question"
   },
   "communityTabs": {
     "all": "Tout",

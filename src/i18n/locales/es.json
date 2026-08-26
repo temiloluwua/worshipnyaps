@@ -42,7 +42,11 @@
     "createFirstPost": "Crear Primera Publicaci\u00f3n",
     "untitled": "Tema sin T\u00edtulo",
     "noDescription": "A\u00fan no hay descripci\u00f3n. \u00danete a las preguntas o comentarios para iniciar la discusi\u00f3n.",
-    "discussionDetails": "Detalles de la discusi\u00f3n pr\u00f3ximamente. Comparte tus ideas abajo."
+    "discussionDetails": "Detalles de la discusi\u00f3n pr\u00f3ximamente. Comparte tus ideas abajo.",
+    "deck": "Mazo",
+    "theDeck": "El Mazo",
+    "shuffleDeck": "Barajar mazo",
+    "askQuestion": "Haz una pregunta"
   },
   "communityTabs": {
     "all": "Todo",
