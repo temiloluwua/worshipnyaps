@@ -15,6 +15,7 @@ import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress, reverseGeocodeArea } from '../../lib/geocode';
 import { shareOrigin } from '../../lib/openExternal';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import { createHelpRequestsFromTitles } from '../../lib/eventHelpRequests';
 import { ServeWithGiftsFeed } from './ServeWithGiftsFeed';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
@@ -918,7 +919,10 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
 
       eventData.description_template = {
         whatToExpect: descriptionTemplate.whatToExpect || '',
-        whatToBring: Array.isArray(descriptionTemplate.whatToBring) ? descriptionTemplate.whatToBring : [],
+        // "Help Requests" items don't live in the template — they become real,
+        // claimable help requests in the Help tab (see below), so clear here to
+        // keep a single source of truth.
+        whatToBring: [],
         parkingDirections: descriptionTemplate.parkingDirections || '',
         contactInfo: descriptionTemplate.contactInfo || '',
         specialNotes: descriptionTemplate.specialNotes || ''
@@ -935,6 +939,15 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
 
     const result = await createEvent(eventData);
     setSubmitting(false);
+
+    // Convert the form's "Help Requests" list into real, claimable help
+    // requests in the new event's Help tab.
+    if (result?.id && useTemplate) {
+      await createHelpRequestsFromTitles(
+        result.id,
+        Array.isArray(descriptionTemplate.whatToBring) ? descriptionTemplate.whatToBring : []
+      );
+    }
 
     if (result) {
       if (asDraft) {

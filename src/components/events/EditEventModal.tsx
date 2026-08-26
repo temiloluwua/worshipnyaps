@@ -9,6 +9,7 @@ import { EventImageUploader } from './EventImageUploader';
 import { TopicPicker } from './TopicPicker';
 import { AddressAutocomplete } from '../locations/AddressAutocomplete';
 import { geocodeAddress } from '../../lib/geocode';
+import { createHelpRequestsFromTitles } from '../../lib/eventHelpRequests';
 
 interface EditEventModalProps {
   event: DbEvent;
@@ -116,7 +117,10 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
           setSubmitting(false);
           return;
         }
-        updates.description_template = descriptionTemplate;
+        // "Help Requests" items become real, claimable help requests in the
+        // Help tab rather than living in the template, so clear them here and
+        // create them after the event update succeeds.
+        updates.description_template = { ...descriptionTemplate, whatToBring: [] };
         updates.description = descriptionTemplate.whatToExpect || 'Event details in template';
       } else {
         if (!formData.description.trim()) {
@@ -134,6 +138,15 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         .eq('id', event.id);
 
       if (error) throw error;
+
+      // Turn any newly-added "Help Requests" items into real, claimable help
+      // requests in the Help tab (they were cleared from the template above).
+      if (useTemplate) {
+        await createHelpRequestsFromTitles(
+          event.id,
+          Array.isArray(descriptionTemplate.whatToBring) ? descriptionTemplate.whatToBring : []
+        );
+      }
 
       // Persist location changes (address / dragged pin) to the linked
       // locations row. RLS lets the host update their own location; the DB
