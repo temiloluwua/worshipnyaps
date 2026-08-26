@@ -1,0 +1,29 @@
+# Render Blueprint for a self-hosted LibreTranslate (no CLI needed).
+#   1) Push this repo to GitHub (already done).
+#   2) In Render: New + -> Blueprint -> pick this repo. Render reads this file.
+#   3) It provisions the service on the free plan and gives you an HTTPS URL.
+#   4) Set VITE_LIBRETRANSLATE_URL=https://<your-service>.onrender.com in the
+#      app env (Vercel) and rebuild.
+#
+# Free instances spin down when idle and cold-start on the next request — fine
+# here because translations are cached in Supabase after the first hit.
+services:
+  - type: web
+    name: wny-libretranslate
+    runtime: image
+    image:
+      url: docker.io/libretranslate/libretranslate:latest
+    plan: free
+    healthCheckPath: /languages
+    envVars:
+      - key: LT_LOAD_ONLY
+        value: en,es,fr
+      - key: LT_DISABLE_WEB_UI
+        value: "true"
+      - key: LT_HOST
+        value: 0.0.0.0
+      # Render routes to $PORT; make LibreTranslate listen there.
+      - key: LT_PORT
+        value: "10000"
+      - key: PORT
+        value: "10000"

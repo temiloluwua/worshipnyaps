@@ -1,0 +1,36 @@
+# Fly.io deployment for a self-hosted LibreTranslate.
+#   1) install flyctl:      brew install flyctl
+#   2) log in:              fly auth login
+#   3) from this folder:    fly launch --copy-config --no-deploy   (accept the app name / pick a region)
+#   4) deploy:              fly deploy
+#   5) your URL:            https://<app-name>.fly.dev
+# Then set VITE_LIBRETRANSLATE_URL=https://<app-name>.fly.dev in the app env and rebuild.
+#
+# Scales to zero when idle (free-friendly). Cold start is a few seconds — fine
+# because the app caches every translation in Supabase after the first hit.
+
+app = "wny-libretranslate"
+primary_region = "sea"
+
+[build]
+  image = "libretranslate/libretranslate:latest"
+
+[env]
+  # Only load the app's languages — smaller memory + much faster boot.
+  LT_LOAD_ONLY = "en,es,fr"
+  LT_DISABLE_WEB_UI = "true"
+  LT_HOST = "0.0.0.0"
+  LT_PORT = "5000"
+  # LibreTranslate allows all CORS origins by default (what we want).
+
+[http_service]
+  internal_port = 5000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

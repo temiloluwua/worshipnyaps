@@ -43,21 +43,33 @@ Then set `VITE_LIBRETRANSLATE_URL=http://localhost:5000` in `.env` and
 
 ## Deploy it for free
 
-LibreTranslate is a Docker container, so any host that runs a container works.
-Good free options:
+Two turnkey configs live in this folder — pick one.
 
-- **Fly.io** — generous free allowance; stays warm cheaply.
-  ```bash
-  fly launch --image libretranslate/libretranslate --no-deploy
-  fly secrets set LT_LOAD_ONLY=en,es,fr
-  fly deploy
-  # then: VITE_LIBRETRANSLATE_URL=https://<your-app>.fly.dev
-  ```
-- **Render / Koyeb / Railway** — create a web service from the
-  `libretranslate/libretranslate` image, port `5000`, env `LT_LOAD_ONLY=en,es,fr`.
-  Free tiers may cold-start; that's fine here because of the Supabase cache.
-- **Any small VPS** — `docker compose up -d` from this folder, put it behind
-  HTTPS (Caddy/nginx). Recommended for production reliability.
+### Option A — Render (no CLI, easiest) — uses `render.yaml`
+1. In the [Render dashboard](https://dashboard.render.com): **New + → Blueprint**.
+2. Select this GitHub repo. Render reads `libretranslate/render.yaml` and
+   provisions the service on the **free** plan with an HTTPS URL.
+3. Set `VITE_LIBRETRANSLATE_URL=https://<your-service>.onrender.com` in the app
+   env (Vercel) and redeploy the web app.
+
+### Option B — Fly.io (CLI) — uses `fly.toml`
+```bash
+brew install flyctl          # if you don't have it
+fly auth login
+cd libretranslate
+fly launch --copy-config --no-deploy   # accept app name, pick a region
+fly deploy
+# -> https://<app-name>.fly.dev
+```
+Then set `VITE_LIBRETRANSLATE_URL=https://<app-name>.fly.dev` in the app env and rebuild.
+
+### Option C — any small VPS
+`docker compose up -d` from this folder, behind an HTTPS reverse proxy
+(Caddy/nginx). Most reliable for production (no cold starts).
+
+> Free instances on Render/Fly scale to zero and cold-start on the next request
+> (a few seconds). That's fine here: the app caches every translation in
+> Supabase, so the instance is hit at most once per unique phrase.
 
 ## CORS / HTTPS
 
