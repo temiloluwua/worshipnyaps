@@ -5,11 +5,17 @@
 // Cost model — free and sustainable:
 //   L1  in-memory + localStorage (per device)
 //   L2  Supabase `content_translations` (shared across all users, forever)
-//   L3  free provider (Google's keyless `gtx` endpoint) — hit at most once per
+//   L3  free provider (LibreTranslate — open source) — hit at most once per
 //       unique phrase ever, since the result is written back to L2.
 // Every layer degrades gracefully: any failure falls back to the original
-// English text, so the card always renders. To move to a paid/official
-// provider later, swap only `fetchTranslation`.
+// English text, so the card always renders.
+//
+// Provider config (optional, via env):
+//   VITE_LIBRETRANSLATE_URL      base URL of a LibreTranslate instance
+//                                (default: a public instance)
+//   VITE_LIBRETRANSLATE_API_KEY  api key, only if your instance requires one
+// You can self-host LibreTranslate for free (Docker) and point the URL at it
+// for full control; the default public instance works with no setup.
 
 import { supabase } from './supabase';
 
@@ -52,20 +58,28 @@ function persistLsCache(): void {
   }, 500);
 }
 
+const LIBRETRANSLATE_URL =
+  (import.meta.env.VITE_LIBRETRANSLATE_URL as string | undefined)?.replace(/\/$/, '') ||
+  'https://libretranslate.com';
+const LIBRETRANSLATE_API_KEY = import.meta.env.VITE_LIBRETRANSLATE_API_KEY as string | undefined;
+
 async function fetchTranslation(text: string, targetLang: Lang): Promise<string> {
-  const url =
-    'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' +
-    encodeURIComponent(targetLang) +
-    '&dt=t&q=' +
-    encodeURIComponent(text);
-  const res = await fetch(url);
+  const body: Record<string, string> = {
+    q: text,
+    source: 'auto',
+    target: targetLang,
+    format: 'text',
+  };
+  if (LIBRETRANSLATE_API_KEY) body.api_key = LIBRETRANSLATE_API_KEY;
+
+  const res = await fetch(`${LIBRETRANSLATE_URL}/translate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
   if (!res.ok) throw new Error(`translate ${res.status}`);
   const data = await res.json();
-  // Response shape: [[[ "translated", "original", ... ], ...], ...]
-  const segments: string = Array.isArray(data?.[0])
-    ? data[0].map((seg: unknown[]) => (Array.isArray(seg) ? seg[0] : '')).join('')
-    : '';
-  return segments || text;
+  return (data?.translatedText as string) || text;
 }
 
 // L2: shared Supabase cache. Reads are public; a hit means no provider call.
