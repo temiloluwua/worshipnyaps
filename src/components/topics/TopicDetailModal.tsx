@@ -24,6 +24,9 @@ interface TopicDetailModalProps {
   onEdit: () => void;
   onDeleted?: () => void;
   onViewProfile?: (userId: string) => void;
+  // Under-18 restricted mode: read the card only — no like / share /
+  // bookmark / edit / comment actions.
+  readOnly?: boolean;
 }
 
 export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
@@ -38,6 +41,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   onEdit,
   onDeleted,
   onViewProfile,
+  readOnly = false,
 }) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
@@ -140,7 +144,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <Sparkles className={`w-4 h-4 ${featuredLocal ? 'fill-current' : ''}`} />
               </button>
             )}
-            {canEdit && (
+            {canEdit && !readOnly && (
               <button onClick={onEdit} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
                 <Edit className="w-4 h-4" />
               </button>
@@ -298,6 +302,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
               <span>{topic.likes || 0} likes</span>
             </div>
 
+            {!readOnly && (
             <div className="flex items-center gap-4 border-t border-b border-gray-200 dark:border-gray-700 py-3 mb-6">
               {topic.community_category === 'prayer_point' ? (
                 <button
@@ -331,7 +336,9 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
               </button>
             </div>
+            )}
 
+            {!readOnly && (
             <div>
               <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white mb-4">
                 <MessageCircle className="w-4 h-4" />
@@ -343,6 +350,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <CommentThread topicId={topic.id} onCommentAdded={() => setCommentCount(c => c + 1)} />
               )}
             </div>
+            )}
           </div>
         </div>
       </div>

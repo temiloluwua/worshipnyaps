@@ -4,7 +4,7 @@ import { useNotificationSubscription } from '../../hooks/useNotificationSubscrip
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, ExternalLink, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -93,7 +93,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [isRsvped, setIsRsvped] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('details');
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  // Value is unused (only the setter drives fetchEventConversation's flow); keep the setter.
+  const [, setConversationId] = useState<string | null>(null);
   const [chatChannel, setChatChannel] = useState<string | null>(null);
   const [organizerChannel, setOrganizerChannel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -103,6 +104,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [orgMessageContent, setOrgMessageContent] = useState('');
   const [sending, setSending] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [isCoHost, setIsCoHost] = useState(false);
+  const [showCalendarMenu, setShowCalendarMenu] = useState(false);
   const [canEditEvent, setCanEditEvent] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -136,7 +139,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   useEffect(() => { window.scrollTo(0, 0); }, [eventId]);
   const isAdmin = profile?.role === 'admin';
   const canAccessChat = Boolean(chatChannel && (isRsvped || isHost));
-  const canAccessOrganizerChat = Boolean(isHost || isOrganizer);
+  const canAccessOrganizerChat = Boolean(isHost || isOrganizer || isCoHost);
   const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
   const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
   const isEventFull = attendeeCount >= safeCapacity;
@@ -387,10 +390,35 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     };
   }, [organizerChannel]);
 
+  // The team ("organizer") chat is backed by a dedicated group conversation
+  // per event (conversations.is_team_chat = true) whose participants are the
+  // host and all co-hosts. Using the conversation id as the chat_messages
+  // channel means the existing conversation-membership RLS governs read/write,
+  // so co-hosts get a proper, persistent team GC.
   useEffect(() => {
-    if (!canAccessOrganizerChat || !eventId) return;
-    const orgChannelName = `org:${eventId}`;
-    setOrganizerChannel(orgChannelName);
+    if (!canAccessOrganizerChat || !eventId) {
+      setOrganizerChannel(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('is_team_chat', true)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        if (error) throw error;
+        const teamId = data?.[0]?.id || null;
+        if (!cancelled) setOrganizerChannel(teamId);
+      } catch (err) {
+        console.error('Error loading team chat conversation:', err);
+        if (!cancelled) setOrganizerChannel(null);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [canAccessOrganizerChat, eventId]);
 
   const sendOrgMessage = async () => {
@@ -503,8 +531,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           .eq('user_id', user.id)
           .maybeSingle();
         setCanEditEvent(Boolean(cohostRow?.can_edit));
+        setIsCoHost(Boolean(cohostRow));
       } else {
         setCanEditEvent(false);
+        setIsCoHost(false);
       }
     } catch (error) {
       console.error('Error fetching event:', error);
@@ -582,6 +612,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         .from('conversations')
         .select('id')
         .eq('event_id', eventId)
+        .eq('is_team_chat', false)
         .order('created_at', { ascending: true })
         .limit(1);
 
@@ -1100,6 +1131,21 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     window.open(url, '_blank');
   };
 
+  // Apple Calendar (and any other app) via a standard .ics file. On iOS/macOS
+  // this opens the Calendar "Add Event" sheet; elsewhere it downloads/imports.
+  const addToAppleCalendar = () => {
+    if (!event) return;
+    shareIcs({
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      time: event.time,
+      description: event.description || '',
+      locationName: event.locations?.name,
+      locationAddress: event.locations?.address,
+    });
+  };
+
   useEffect(() => {
     const tid = (event as { topic_id?: string | null } | null)?.topic_id;
     if (!tid) { setAttachedTopic(null); return; }
@@ -1217,7 +1263,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                         Invite Friends
                       </button>
                       <button
-                        onClick={() => { addToGoogleCalendar(); setShowHostActions(false); }}
+                        onClick={() => { setShowCalendarMenu(true); setShowHostActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
                         <CalendarPlus className="w-4 h-4" />
@@ -1639,11 +1685,11 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 {notifOn ? 'Notifications on' : 'Notifications off'}
               </button>
               <button
-                onClick={addToGoogleCalendar}
+                onClick={() => setShowCalendarMenu(true)}
                 className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <CalendarPlus className="w-4 h-4 text-blue-500" />
-                Google Calendar
+                Add to Calendar
               </button>
               <button
                 onClick={() => setShowInviteModal(true)}
@@ -1768,7 +1814,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
                   <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
                     <Shield size={12} />
-                    {t('chat.organizerChat')} - {isHost ? 'Host' : 'Organizer'}
+                    {t('chat.organizerChat')} - {isHost ? 'Host' : isCoHost ? 'Co-Host' : 'Organizer'}
                   </p>
                 </div>
                 <div className="h-[55vh] overflow-y-auto p-4 space-y-4">
@@ -1902,6 +1948,43 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           eventTitle={event.title}
           onClose={() => setShowInviteModal(false)}
         />
+      )}
+
+      {showCalendarMenu && event && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowCalendarMenu(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-2">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Add to calendar</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Choose where to save this event.</p>
+            </div>
+            <button
+              onClick={() => { addToAppleCalendar(); setShowCalendarMenu(false); }}
+              className="w-full flex items-center gap-3 px-5 py-3.5 text-left text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              Apple Calendar
+            </button>
+            <button
+              onClick={() => { addToGoogleCalendar(); setShowCalendarMenu(false); }}
+              className="w-full flex items-center gap-3 px-5 py-3.5 text-left text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700"
+            >
+              <CalendarPlus className="w-5 h-5 text-blue-500" />
+              Google Calendar
+            </button>
+            <button
+              onClick={() => setShowCalendarMenu(false)}
+              className="w-full px-5 py-3.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {showRsvpDisclaimer && event && (

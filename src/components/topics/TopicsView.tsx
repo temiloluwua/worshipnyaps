@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { geocodeCity, distanceKm, Coords } from '../../lib/cityGeo';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, ShoppingBag, Spade } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, Spade } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
@@ -113,22 +113,23 @@ const isValidTopic = (
 
 interface TopicsViewProps {
   onViewProfile?: (userId: string) => void;
-  onViewHashtag?: (hashtagName: string) => void;
   focusTopicId?: string | null;
   onFocusedTopicHandled?: () => void;
-  onViewShop?: () => void;
   openCreateRequest?: number;
   onOpenEvent?: (eventId: string) => void;
+  // Restricted mode for under-18 users: read cards and shuffle only.
+  // Hides the Community tab, the "Request a card" action, and all
+  // per-card interactions (like / comment / share / bookmark / edit).
+  readOnly?: boolean;
 }
 
 export function TopicsView({
   onViewProfile,
-  onViewHashtag,
   focusTopicId,
   onFocusedTopicHandled,
-  onViewShop,
   openCreateRequest,
   onOpenEvent,
+  readOnly = false,
 }: TopicsViewProps = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -152,7 +153,8 @@ export function TopicsView({
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_TOPICS);
   const lastScrollY = useRef(0);
   const [highlightedTopicId, setHighlightedTopicId] = useState<string | null>(null);
-  const [topicRefreshCountdown, setTopicRefreshCountdown] = useState(formatTimeUntilNextTopic);
+  // Value is unused in render; the setter ticks to force a re-render for the countdown.
+  const [, setTopicRefreshCountdown] = useState(formatTimeUntilNextTopic);
   const [communitySub, setCommunitySub] = useState<CommunitySub>('all');
   const [cityCoords, setCityCoords] = useState<Record<string, Coords>>({});
   const [viewingTopic, setViewingTopic] = useState<any>(null);
@@ -252,17 +254,6 @@ export function TopicsView({
     handleViewTopic(pool[randomIndex]);
   };
 
-  const categories = [
-    'all',
-    ...Array.from(
-      new Set(
-        (activeTab === 'topics' ? topicsFiltered : communityTopics)
-          .map((topic) => topic.category)
-          .filter((category) => typeof category === 'string' && category.trim().length > 0)
-      )
-    ),
-  ];
-
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const hasSearchQuery = normalizedQuery.length > 0;
@@ -273,9 +264,6 @@ export function TopicsView({
   const showTopicOfTheDayCard = Boolean(
     topicOfTheDay && !hasSearchQuery && selectedCategory === 'all' && activeTab === 'topics'
   );
-  const showRandomCard = false;
-
-  const featuredExclusions = new Set<string>();
 
   const primaryTopics = topicsFiltered;
   const communityFiltered = communitySub === 'all'
@@ -420,6 +408,7 @@ export function TopicsView({
   }, []);
 
   useEffect(() => {
+    if (readOnly) return;
     if (openCreateRequest && openCreateRequest > 0) {
       if (!user) {
         setShowAuthModal(true);
@@ -428,7 +417,7 @@ export function TopicsView({
         setShowCreateModal(true);
       }
     }
-  }, [openCreateRequest, user]);
+  }, [openCreateRequest, user, readOnly]);
 
   useEffect(() => {
     if (topics.length > 0) {
@@ -635,21 +624,23 @@ export function TopicsView({
               <Spade className="w-4 h-4 inline mr-1" />
               Deck
             </button>
-            <button
-              onClick={() => {
-                setActiveTab('community');
-                setSearchQuery('');
-                setSelectedCategory('all');
-              }}
-              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'community'
-                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              <Users className="w-4 h-4 inline mr-1" />
-              Community
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => {
+                  setActiveTab('community');
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                }}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'community'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                Community
+              </button>
+            )}
           </div>
 
           <div className="relative mb-4">
@@ -666,7 +657,7 @@ export function TopicsView({
           {/* Deck controls — the two signature card-game actions, made
               unmissable: draw a random card, or ask us to add a new one. */}
           {activeTab === 'topics' && (
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className={`grid ${readOnly ? 'grid-cols-1' : 'grid-cols-2'} gap-2 mb-4`}>
               <button
                 onClick={pickRandomTopic}
                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-lg hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all"
@@ -674,13 +665,15 @@ export function TopicsView({
                 <Shuffle className="w-5 h-5" />
                 Shuffle deck
               </button>
-              <button
-                onClick={handleRequestTopic}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 font-bold shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700 active:scale-[0.98] transition-all"
-              >
-                <Lightbulb className="w-5 h-5" />
-                Request a card
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={handleRequestTopic}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 font-bold shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700 active:scale-[0.98] transition-all whitespace-nowrap"
+                >
+                  <Lightbulb className="w-5 h-5 shrink-0" />
+                  Ask a question
+                </button>
+              )}
             </div>
           )}
 
@@ -753,6 +746,7 @@ export function TopicsView({
                 onEdit={() => handleEdit(topicOfTheDay)}
                 onView={() => handleViewTopic(topicOfTheDay)}
                 frameTone="gold"
+                readOnly={readOnly}
               />
             </div>
           )}
@@ -786,6 +780,7 @@ export function TopicsView({
                       onView={() => handleViewTopic(topic)}
                       onViewProfile={onViewProfile}
                       cardStyle="game"
+                      readOnly={readOnly}
                     />
                   </div>
                 );
@@ -1015,6 +1010,7 @@ export function TopicsView({
               else fetchTopics();
             }}
             onViewProfile={onViewProfile}
+            readOnly={readOnly}
           />
         );
       })()}

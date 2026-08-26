@@ -11,6 +11,7 @@ interface TopicOfTheDayCardProps {
   onEdit: () => void;
   onView: () => void;
   frameTone?: 'default' | 'gold';
+  readOnly?: boolean;
 }
 
 export const TopicOfTheDayCard: React.FC<TopicOfTheDayCardProps> = ({
@@ -23,6 +24,7 @@ export const TopicOfTheDayCard: React.FC<TopicOfTheDayCardProps> = ({
   onEdit,
   onView,
   frameTone = 'default',
+  readOnly = false,
 }) => {
   // Lightweight wrapper around TopicCard with the "game" style for emphasis
   return (
@@ -37,6 +39,7 @@ export const TopicOfTheDayCard: React.FC<TopicOfTheDayCardProps> = ({
       onView={onView}
       cardStyle="game"
       frameTone={frameTone}
+      readOnly={readOnly}
     />
   );
 };

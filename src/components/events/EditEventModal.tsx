@@ -7,6 +7,8 @@ import { EventDescriptionForm } from './EventDescriptionTemplate';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { EventImageUploader } from './EventImageUploader';
 import { TopicPicker } from './TopicPicker';
+import { AddressAutocomplete } from '../locations/AddressAutocomplete';
+import { geocodeAddress } from '../../lib/geocode';
 
 interface EditEventModalProps {
   event: DbEvent;
@@ -36,6 +38,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
   });
   const [topicId, setTopicId] = useState<string | null>((event as { topic_id?: string | null }).topic_id ?? null);
   const [imageUrl, setImageUrl] = useState<string | null>((event as { image_url?: string | null }).image_url ?? null);
+
+  // Location editing. Exact coords live on the linked `locations` row; the
+  // public map stays fuzzed via the area-coords trigger that fires on update.
+  const initialAddress = event.locations?.address || '';
+  const initialLat = event.locations?.latitude;
+  const initialLng = event.locations?.longitude;
+  const hasInitialCoords =
+    typeof initialLat === 'number' && typeof initialLng === 'number' && !(initialLat === 0 && initialLng === 0);
+  const [address, setAddress] = useState(initialAddress);
+  const [pickedCoords, setPickedCoords] = useState<{ latitude: number; longitude: number } | null>(
+    hasInitialCoords ? { latitude: initialLat as number, longitude: initialLng as number } : null
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -120,6 +134,34 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         .eq('id', event.id);
 
       if (error) throw error;
+
+      // Persist location changes (address / dragged pin) to the linked
+      // locations row. RLS lets the host update their own location; the DB
+      // area-coords trigger re-derives the fuzzed public pin automatically.
+      const locationId = (event as { location_id?: string | null }).location_id;
+      const addressChanged = address.trim() !== initialAddress.trim();
+      const coordsChanged =
+        !!pickedCoords &&
+        (pickedCoords.latitude !== initialLat || pickedCoords.longitude !== initialLng);
+      if (locationId && (addressChanged || coordsChanged)) {
+        const coords = pickedCoords ?? (address.trim() ? await geocodeAddress(address) : null);
+        const locationUpdates: Record<string, any> = {};
+        if (addressChanged && address.trim()) locationUpdates.address = address.trim();
+        if (coords) {
+          locationUpdates.latitude = coords.latitude;
+          locationUpdates.longitude = coords.longitude;
+        }
+        if (Object.keys(locationUpdates).length > 0) {
+          const { error: locErr } = await supabase
+            .from('locations')
+            .update(locationUpdates)
+            .eq('id', locationId);
+          if (locErr) {
+            // Non-fatal: the event itself saved. Tell the host the pin didn't move.
+            toast.error("Saved, but couldn't update the location pin.");
+          }
+        }
+      }
 
       toast.success(publish ? 'Draft published!' : 'Event updated!');
       onSaved();
@@ -259,6 +301,17 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+            <AddressAutocomplete
+              value={address}
+              onChange={setAddress}
+              onPick={(s) => { setAddress(s.displayName); setPickedCoords({ latitude: s.latitude, longitude: s.longitude }); }}
+              initialCoords={pickedCoords}
+              placeholder="Search an address, then drag the pin"
+            />
           </div>
 
           <div>
