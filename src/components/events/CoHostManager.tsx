@@ -183,7 +183,10 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
       fetchPending();
       fetchTeamCode();
     }
-  }, [eventId, isHost]);
+    // `user` comes from a per-instance useAuth() that resolves a tick after mount,
+    // so depend on user?.id to refetch friends once the session is ready — otherwise
+    // fetchFriends() bails on the initial null user and never re-runs.
+  }, [eventId, isHost, user?.id]);
 
   const teamOrigin = shareOrigin();
 

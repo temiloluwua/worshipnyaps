@@ -51,6 +51,19 @@ interface ViewState {
   returnEventId?: string;
 }
 
+// Returns true when the recorded birthdate makes the user under 18.
+// Under-18 accounts get a restricted, read-only Topics-only experience.
+function isUnderEighteen(birthdate?: string | null): boolean {
+  if (!birthdate) return false;
+  const dob = new Date(`${birthdate}T00:00:00`);
+  if (isNaN(dob.getTime())) return false;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age < 18;
+}
+
 function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('topics');
@@ -389,6 +402,30 @@ function App() {
     return <CityGate onSaved={() => setCitySaved(true)} />;
   }
 
+  // Under-18 restricted mode: signed-in minors get a read-only, Topics-only
+  // experience — they can read the cards and shuffle the deck, but cannot
+  // post, comment, message, or reach events / community / shop. This gate is
+  // placed before the event/group/other view branches so those are
+  // unreachable even via deep links.
+  if (user && profile && isUnderEighteen(profile.birthdate)) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="focus:outline-none"
+          style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+        >
+          <TopicsView
+            readOnly
+            focusTopicId={focusedTopicId}
+            onFocusedTopicHandled={() => setFocusedTopicId(null)}
+          />
+        </main>
+      </div>
+    );
+  }
+
   if (showSuccessPage) {
     return (
       <Suspense fallback={loadingFallback}>
@@ -553,10 +590,8 @@ function App() {
         {activeTab === 'topics' && (
           <TopicsView
             onViewProfile={handleViewProfile}
-            onViewHashtag={handleViewHashtag}
             focusTopicId={focusedTopicId}
             onFocusedTopicHandled={() => setFocusedTopicId(null)}
-            onViewShop={() => setActiveTab('shop')}
             openCreateRequest={openCreatePostRequest}
             onOpenEvent={handleOpenEvent}
           />

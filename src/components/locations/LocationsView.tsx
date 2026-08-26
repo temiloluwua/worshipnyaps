@@ -454,11 +454,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                 {(() => {
                   const imageUrl = (event as { image_url?: string | null }).image_url;
                   const evType = (event as { event_type?: string }).event_type || '';
-                  const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣' };
+                  const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣', volunteering: '🤝' };
                   const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[evType] || '✨';
                   const fallbackGradient =
                     evType === 'bible_study' ? 'from-indigo-400 via-purple-400 to-blue-500'
                     : evType === 'evangelism' ? 'from-emerald-400 via-teal-400 to-cyan-500'
+                    : evType === 'volunteering' ? 'from-emerald-400 via-teal-400 to-cyan-500'
                     : evType === 'church'    ? 'from-violet-400 via-fuchsia-400 to-rose-500'
                     : 'from-amber-400 via-orange-400 to-rose-500';
                   return (
@@ -712,7 +713,7 @@ function eventToHostDraft(event: DbEvent): HostEventDraft {
 const DEFAULT_HOST_FORM = {
   eventTitle: '',
   eventType: 'bible-study',
-  event_type: 'bible_study' as 'bible_study' | 'yap' | 'church' | 'evangelism',
+  event_type: 'bible_study' as 'bible_study' | 'yap' | 'church' | 'evangelism' | 'volunteering',
   eventDate: '',
   eventTime: '',
   eventLocationName: '',
@@ -1028,15 +1029,13 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">What kind of gathering is this?</label>
             <div className="flex flex-wrap gap-2">
               {([
-                { value: 'bible_study', label: '📖 Bible Study / Yaps', eventType: 'bible_study', vibe: '', tone: 'blue' },
-                { value: 'evangelism',  label: '📣 Evangelism',  eventType: 'evangelism',  vibe: '', tone: 'emerald' },
-                { value: 'church',      label: '✨ Yap',         eventType: 'church',      vibe: '', tone: 'violet' },
-                { value: 'games',       label: '🎲 Games',       eventType: 'yap',         vibe: 'games', tone: 'amber' },
-                { value: 'food',        label: '🍽️ Food / Potluck', eventType: 'yap',     vibe: 'food', tone: 'amber' },
-                { value: 'sports',      label: '🏅 Sports',      eventType: 'yap',         vibe: 'sports', tone: 'amber' },
-                { value: 'music',       label: '🎶 Music / Worship', eventType: 'yap',     vibe: 'music', tone: 'amber' },
-                { value: 'hanging',     label: '🗣️ Just hanging', eventType: 'yap',        vibe: 'hanging', tone: 'amber' },
-              ] as Array<{ value: string; label: string; eventType: 'bible_study' | 'yap' | 'church' | 'evangelism'; vibe: string; tone: 'blue' | 'violet' | 'amber' | 'emerald' }>).map(opt => {
+                { value: 'bible_study',  label: '📖 Bible Study',   eventType: 'bible_study',  vibe: '', tone: 'blue' },
+                { value: 'evangelism',   label: '📣 Evangelism',    eventType: 'evangelism',   vibe: '', tone: 'emerald' },
+                { value: 'volunteering', label: '🤝 Volunteering',  eventType: 'volunteering', vibe: '', tone: 'emerald' },
+                { value: 'sports',       label: '🏅 Sports',        eventType: 'yap',          vibe: 'sports', tone: 'amber' },
+                { value: 'music',        label: '🎶 Music / Worship', eventType: 'yap',        vibe: 'music', tone: 'amber' },
+                { value: 'hanging',      label: '🗣️ Just hanging',  eventType: 'yap',          vibe: 'hanging', tone: 'amber' },
+              ] as Array<{ value: string; label: string; eventType: 'bible_study' | 'yap' | 'church' | 'evangelism' | 'volunteering'; vibe: string; tone: 'blue' | 'violet' | 'amber' | 'emerald' }>).map(opt => {
                 const selected = opt.eventType === 'yap'
                   ? formData.event_type === 'yap' && formData.yap_vibe === opt.vibe
                   : formData.event_type === opt.eventType;
@@ -1145,23 +1144,6 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
             </>
           )}
 
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              General location name <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              name="eventLocationName"
-              value={formData.eventLocationName}
-              onChange={handleInputChange}
-              placeholder="Leave blank — we'll use the area, e.g. North side of Calgary"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              If you leave this blank, we'll name the general area for you from the address. The exact address is only shown after someone RSVPs.
-            </p>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>

@@ -13,6 +13,9 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   required?: boolean;
   name?: string;
+  // Seed the draggable pin with an existing location (e.g. when editing an
+  // event) so the host can nudge the current spot without re-searching.
+  initialCoords?: { latitude: number; longitude: number } | null;
 }
 
 const previewIcon = L.divIcon({
@@ -29,14 +32,29 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   placeholder,
   required,
   name,
+  initialCoords,
 }) => {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [picked, setPicked] = useState<AddressSuggestion | null>(null);
+  // Exact marker position, adjustable by dragging the pin. Kept separate from
+  // `picked` so nudging the pin doesn't remount/recenter the map.
+  const [markerPos, setMarkerPos] = useState<[number, number] | null>(null);
   const debounceRef = useRef<number | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Seed the pin once from an existing location (edit flow).
+  useEffect(() => {
+    if (initialCoords && Number.isFinite(initialCoords.latitude) && Number.isFinite(initialCoords.longitude)) {
+      const seed: AddressSuggestion = { displayName: value, latitude: initialCoords.latitude, longitude: initialCoords.longitude };
+      setPicked(seed);
+      setMarkerPos([initialCoords.latitude, initialCoords.longitude]);
+    }
+    // Seed only on mount; later changes come from user search/drag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -81,10 +99,17 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   const accept = (s: AddressSuggestion) => {
     setPicked(s);
+    setMarkerPos([s.latitude, s.longitude]);
     setOpen(false);
     setSuggestions([]);
     onChange(s.displayName);
     onPick?.(s);
+  };
+
+  // Dragging the pin sets the exact spot without changing the typed address.
+  const handleMarkerDragEnd = (lat: number, lng: number) => {
+    setMarkerPos([lat, lng]);
+    if (picked) onPick?.({ ...picked, latitude: lat, longitude: lng });
   };
 
   return (
@@ -130,24 +155,39 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         </ul>
       )}
 
-      {picked && (
-        <div className="mt-2 h-32 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-          <MapContainer
-            center={[picked.latitude, picked.longitude]}
-            zoom={15}
-            scrollWheelZoom={false}
-            zoomControl={false}
-            dragging={false}
-            doubleClickZoom={false}
-            style={{ height: '100%', width: '100%' }}
-            key={`${picked.latitude},${picked.longitude}`}
-          >
-            <TileLayer
-              attribution='&copy; OpenStreetMap'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={[picked.latitude, picked.longitude]} icon={previewIcon} />
-          </MapContainer>
+      {picked && markerPos && (
+        <div className="mt-2">
+          <div className="h-40 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
+            <MapContainer
+              center={[picked.latitude, picked.longitude]}
+              zoom={16}
+              scrollWheelZoom={false}
+              zoomControl={true}
+              dragging={true}
+              doubleClickZoom={true}
+              style={{ height: '100%', width: '100%' }}
+              key={`${picked.latitude},${picked.longitude}`}
+            >
+              <TileLayer
+                attribution='&copy; OpenStreetMap'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker
+                position={markerPos}
+                icon={previewIcon}
+                draggable
+                eventHandlers={{
+                  dragend: (e) => {
+                    const { lat, lng } = (e.target as L.Marker).getLatLng();
+                    handleMarkerDragEnd(lat, lng);
+                  },
+                }}
+              />
+            </MapContainer>
+          </div>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Drag the pin to set the exact spot. Your address stays private — the public map only shows the general area.
+          </p>
         </div>
       )}
     </div>

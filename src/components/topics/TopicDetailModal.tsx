@@ -8,6 +8,7 @@ import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useNotificationSubscription } from '../../hooks/useNotificationSubscription';
+import { useTranslatedTopic } from '../../hooks/useTranslatedTopic';
 import { bibleLinkFor } from '../../lib/bibleLink';
 import { CommentThread } from './CommentThread';
 import { ReportButton } from '../moderation/ReportButton';
@@ -24,6 +25,9 @@ interface TopicDetailModalProps {
   onEdit: () => void;
   onDeleted?: () => void;
   onViewProfile?: (userId: string) => void;
+  // Under-18 restricted mode: read the card only — no like / share /
+  // bookmark / edit / comment actions.
+  readOnly?: boolean;
 }
 
 export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
@@ -38,6 +42,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   onEdit,
   onDeleted,
   onViewProfile,
+  readOnly = false,
 }) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
@@ -59,12 +64,24 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
   const { subscribed: notifOn, toggle: toggleNotif, saving: notifSaving } =
     useNotificationSubscription('topic', topic?.id, { isAuthor: isTopicAuthor });
 
+  // Translate content to the active language on the fly (English is a no-op,
+  // failures fall back to the original). Called before the early return to
+  // keep hook order stable.
+  const tx = useTranslatedTopic({
+    title: typeof topic?.title === 'string' ? topic.title : '',
+    content: typeof topic?.content === 'string' ? topic.content : '',
+    questions: Array.isArray(topic?.questions) ? topic!.questions : [],
+    bibleReference: (topic?.bibleReference || topic?.bible_verse || '') as string,
+  });
+
   if (!isOpen || !topic) return null;
 
-  const safeTitle = typeof topic.title === 'string' && topic.title.trim().length > 0 ? topic.title : t('topics.untitled');
+  const safeTitle = tx.title && tx.title.trim().length > 0 ? tx.title : t('topics.untitled');
   const safeCategory = typeof topic.category === 'string' && topic.category.trim().length > 0 ? topic.category : 'general';
-  const safeContent = typeof topic.content === 'string' ? topic.content.trim() : '';
-  const hasQuestions = Array.isArray(topic.questions) && topic.questions.length > 0;
+  const safeContent = typeof tx.content === 'string' ? tx.content.trim() : '';
+  const translatedQuestions = tx.questions || [];
+  const translatedRef = tx.bibleReference || '';
+  const hasQuestions = translatedQuestions.length > 0;
   const isStaff = profile?.role === 'admin' || profile?.role === 'moderator';
   const canEdit = user && (topic.author_id === user.id || topic.authorId === user.id || profile?.role === 'admin');
   const canDelete = user && (topic.author_id === user.id || topic.authorId === user.id || isStaff);
@@ -140,7 +157,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <Sparkles className={`w-4 h-4 ${featuredLocal ? 'fill-current' : ''}`} />
               </button>
             )}
-            {canEdit && (
+            {canEdit && !readOnly && (
               <button onClick={onEdit} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
                 <Edit className="w-4 h-4" />
               </button>
@@ -229,7 +246,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                   <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Scripture</span>
                 </div>
-                <p className="font-bold text-amber-900 dark:text-amber-200 mb-3">{topic.bibleReference || topic.bible_verse}</p>
+                <p className="font-bold text-amber-900 dark:text-amber-200 mb-3">{translatedRef || topic.bibleReference || topic.bible_verse}</p>
                 {topic.bible_verse_text && (
                   <blockquote className="border-l-4 border-amber-300 dark:border-amber-600 pl-4 mb-3 italic text-amber-800 dark:text-amber-300 text-sm leading-relaxed">
                     {topic.bible_verse_text}
@@ -264,7 +281,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
               <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                 <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3">Discussion Questions</h3>
                 <div className="space-y-2">
-                  {(showAllQuestions ? topic.questions : topic.questions.slice(0, 3)).map((q: string, i: number) => (
+                  {(showAllQuestions ? translatedQuestions : translatedQuestions.slice(0, 3)).map((q: string, i: number) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className="flex-shrink-0 w-5 h-5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
                         {i + 1}
@@ -273,13 +290,13 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                     </div>
                   ))}
                 </div>
-                {topic.questions.length > 3 && (
+                {translatedQuestions.length > 3 && (
                   <button
                     onClick={() => setShowAllQuestions(!showAllQuestions)}
                     className="mt-3 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                   >
                     {showAllQuestions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {showAllQuestions ? t('common.showLess') : `${topic.questions.length - 3} more questions`}
+                    {showAllQuestions ? t('common.showLess') : `${translatedQuestions.length - 3} more questions`}
                   </button>
                 )}
               </div>
@@ -298,6 +315,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
               <span>{topic.likes || 0} likes</span>
             </div>
 
+            {!readOnly && (
             <div className="flex items-center gap-4 border-t border-b border-gray-200 dark:border-gray-700 py-3 mb-6">
               {topic.community_category === 'prayer_point' ? (
                 <button
@@ -331,7 +349,9 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
               </button>
             </div>
+            )}
 
+            {!readOnly && (
             <div>
               <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white mb-4">
                 <MessageCircle className="w-4 h-4" />
@@ -343,6 +363,7 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
                 <CommentThread topicId={topic.id} onCommentAdded={() => setCommentCount(c => c + 1)} />
               )}
             </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,0 +1,33 @@
+# Self-hosted LibreTranslate for on-the-fly topic-card translation.
+# Free, no API key, you control it. See README.md in this folder.
+#
+#   docker compose up -d      # start (first boot downloads the language models)
+#   docker compose logs -f    # watch startup
+#   docker compose down       # stop
+#
+services:
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: wny-libretranslate
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Only load the languages the app actually uses. Smaller memory footprint
+      # and much faster cold start than loading every model.
+      LT_LOAD_ONLY: "en,es,fr"
+      # Our own instance is open (no key). The app also caches every result in
+      # Supabase, so this server is hit at most once per unique phrase.
+      LT_DISABLE_WEB_UI: "false"
+    # Persist downloaded models so restarts don't re-download them.
+    volumes:
+      - lt-models:/home/libretranslate/.local/share/argos-translate
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/languages || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  lt-models:
