@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, ChevronDown, ChevronUp, Edit, Crown, BookOpen } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslatedTopic } from '../../hooks/useTranslatedTopic';
 import { CommentThread } from './CommentThread';
 
 // Small decorative corner flourish that echoes the printed WnY cards. Rendered
@@ -72,11 +73,21 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           ? topic.comments.length
           : 0;
   const [commentCount, setCommentCount] = useState<number>(initialCommentCount);
-  const safeTitle =
-    typeof topic.title === 'string' && topic.title.trim().length > 0 ? topic.title : 'Untitled Topic';
-  const safeContent = typeof topic.content === 'string' ? topic.content.trim() : '';
-  const safeBibleRef = topic.bibleReference || topic.bible_verse || '';
-  const hasQuestions = Array.isArray(topic.questions) && topic.questions.length > 0;
+
+  // Translate the card's content to the active language on the fly (English is
+  // a no-op). Falls back to the original text if translation is unavailable.
+  const tx = useTranslatedTopic({
+    title: typeof topic.title === 'string' ? topic.title : '',
+    content: typeof topic.content === 'string' ? topic.content : '',
+    questions: Array.isArray(topic.questions) ? topic.questions : [],
+    bibleReference: topic.bibleReference || topic.bible_verse || '',
+  });
+
+  const safeTitle = tx.title && tx.title.trim().length > 0 ? tx.title : 'Untitled Topic';
+  const safeContent = typeof tx.content === 'string' ? tx.content.trim() : '';
+  const safeBibleRef = tx.bibleReference || '';
+  const translatedQuestions = tx.questions || [];
+  const hasQuestions = translatedQuestions.length > 0;
 
   const openESV = (reference: string) => {
     const url = `https://www.esv.org/${encodeURIComponent(reference.replace(/\s+/g, '+'))}/`;
@@ -180,11 +191,11 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           {hasQuestions && (
             <div className="mb-6">
               <ul className="mx-auto max-w-md list-disc space-y-1.5 pl-6 text-left text-[15px] leading-relaxed text-gray-800 marker:text-gray-400 sm:text-base">
-                {(showAllQuestions ? topic.questions : topic.questions.slice(0, 3)).map((question: string, index: number) => (
+                {(showAllQuestions ? translatedQuestions : translatedQuestions.slice(0, 3)).map((question: string, index: number) => (
                   <li key={index}>{question}</li>
                 ))}
               </ul>
-              {topic.questions.length > 3 && (
+              {translatedQuestions.length > 3 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowAllQuestions(!showAllQuestions); }}
                   className="mx-auto mt-3 flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800"
@@ -192,7 +203,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                   {showAllQuestions ? (
                     <><ChevronUp className="h-3 w-3" /><span>Show less</span></>
                   ) : (
-                    <><ChevronDown className="h-3 w-3" /><span>Show {topic.questions.length - 3} more</span></>
+                    <><ChevronDown className="h-3 w-3" /><span>Show {translatedQuestions.length - 3} more</span></>
                   )}
                 </button>
               )}
@@ -375,13 +386,13 @@ export const TopicCard: React.FC<TopicCardProps> = ({
               <div className="bg-blue-50 rounded-lg p-3 mb-3">
                 <p className="text-sm font-medium text-blue-900 mb-2">Discussion Questions:</p>
                 <div className="space-y-2">
-                  {(showAllQuestions ? topic.questions : topic.questions.slice(0, 1)).map((question: string, index: number) => (
+                  {(showAllQuestions ? translatedQuestions : translatedQuestions.slice(0, 1)).map((question: string, index: number) => (
                     <p key={index} className="text-sm text-blue-800 leading-relaxed">
                       <span className="font-medium">{index + 1}.</span> {question}
                     </p>
                   ))}
                 </div>
-                {topic.questions.length > 1 && (
+                {translatedQuestions.length > 1 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -389,7 +400,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                     }}
                     className="text-xs text-blue-600 mt-2 hover:text-blue-700 font-medium"
                   >
-                    {showAllQuestions ? 'Show less' : `+${topic.questions.length - 1} more questions`}
+                    {showAllQuestions ? 'Show less' : `+${translatedQuestions.length - 1} more questions`}
                   </button>
                 )}
               </div>
