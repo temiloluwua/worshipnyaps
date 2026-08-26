@@ -1445,11 +1445,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           {(() => {
             const imageUrl = (event as { image_url?: string | null }).image_url;
             const ev = event as { event_type?: string };
-            const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣' };
+            const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣', volunteering: '🤝' };
             const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[ev.event_type || ''] || '✨';
             const fallbackGradient =
               ev.event_type === 'bible_study' ? 'from-indigo-500 via-purple-500 to-blue-600'
               : ev.event_type === 'evangelism' ? 'from-emerald-500 via-teal-500 to-cyan-600'
+              : ev.event_type === 'volunteering' ? 'from-emerald-500 via-teal-500 to-cyan-600'
               : ev.event_type === 'church'    ? 'from-violet-500 via-fuchsia-500 to-rose-600'
               : 'from-amber-500 via-orange-500 to-rose-600';
             return (
@@ -1541,11 +1542,11 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
                   event.event_type === 'yap'
                     ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                    : event.event_type === 'evangelism'
+                    : event.event_type === 'evangelism' || event.event_type === 'volunteering'
                     ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
                     : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                 }`}>
-                  {event.event_type === 'yap' ? '💬 Yap' : event.event_type === 'evangelism' ? '📣 Evangelism' : '📖 Bible Study'}
+                  {event.event_type === 'yap' ? '💬 Yap' : event.event_type === 'evangelism' ? '📣 Evangelism' : event.event_type === 'volunteering' ? '🤝 Volunteering' : '📖 Bible Study'}
                 </span>
                 {event.location_type && (
                   <span className="text-xs text-gray-500 dark:text-gray-400">
