@@ -4,6 +4,7 @@ import {
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
   BookOpen, Users, MessageSquare, ShieldCheck,
   User as UserIcon, Search, Spade, ClipboardList, Sparkles, ShoppingBag,
+  Instagram, Youtube,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { Logo } from '../ui/Logo';
@@ -668,6 +669,25 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             <a href="/privacy.html" className="hover:text-[#2563eb]">Privacy</a>
             <a href="/terms.html" className="hover:text-[#2563eb]">Terms</a>
             <a href="/support.html" className="hover:text-[#2563eb]">Contact</a>
+            {/* Update these hrefs to the real channel URLs. */}
+            <a
+              href="https://www.instagram.com/worshipnyaps"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Worship N Yaps on Instagram"
+              className="hover:text-[#2563eb]"
+            >
+              <Instagram className="w-5 h-5" />
+            </a>
+            <a
+              href="https://www.youtube.com/@worshipnyaps"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Worship N Yaps on YouTube"
+              className="hover:text-[#2563eb]"
+            >
+              <Youtube className="w-5 h-5" />
+            </a>
           </div>
         </div>
       </footer>
