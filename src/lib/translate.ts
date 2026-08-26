@@ -2,13 +2,16 @@
 // database in English (topic cards, etc.). i18n handles static UI strings;
 // this handles dynamic content.
 //
-// Provider: Google's keyless `gtx` translate endpoint. It needs no API key or
-// backend, so translation works out of the box. It's unofficial and rate
-// limited, so every call degrades gracefully (returns the original text on any
-// error) and results are cached hard (in-memory + localStorage) to keep calls
-// to a minimum. To move to a paid/official provider later, swap the fetch in
-// `fetchTranslation` for a call to a Supabase Edge Function proxy — the rest of
-// this module (caching, batching, fallback) stays the same.
+// Cost model — free and sustainable:
+//   L1  in-memory + localStorage (per device)
+//   L2  Supabase `content_translations` (shared across all users, forever)
+//   L3  free provider (Google's keyless `gtx` endpoint) — hit at most once per
+//       unique phrase ever, since the result is written back to L2.
+// Every layer degrades gracefully: any failure falls back to the original
+// English text, so the card always renders. To move to a paid/official
+// provider later, swap only `fetchTranslation`.
+
+import { supabase } from './supabase';
 
 type Lang = string;
 
@@ -65,6 +68,37 @@ async function fetchTranslation(text: string, targetLang: Lang): Promise<string>
   return segments || text;
 }
 
+// L2: shared Supabase cache. Reads are public; a hit means no provider call.
+async function fetchFromDbCache(text: string, lang: Lang): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('content_translations')
+      .select('translated_text')
+      .eq('lang', lang)
+      .eq('source_text', text)
+      .maybeSingle();
+    if (error) return null;
+    return (data as { translated_text?: string } | null)?.translated_text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Persist a provider result to the shared cache so every other user/device
+// gets it free next time. Ignores conflicts (another client may have raced us).
+async function writeToDbCache(text: string, lang: Lang, translated: string): Promise<void> {
+  try {
+    await supabase
+      .from('content_translations')
+      .upsert({ lang, source_text: text, translated_text: translated }, { onConflict: 'lang,source_text', ignoreDuplicates: true });
+  } catch { /* cache write is best-effort */ }
+}
+
+function remember(k: string, translated: string): void {
+  memCache.set(k, translated);
+  persistLsCache();
+}
+
 // Translate a single string. English (or empty) is a no-op. Never throws —
 // returns the original text if translation fails.
 export async function translateText(text: string, targetLang: Lang): Promise<string> {
@@ -72,12 +106,23 @@ export async function translateText(text: string, targetLang: Lang): Promise<str
   if (!text || lang === 'en') return text;
   loadLsCache();
   const k = key(lang, text);
+
+  // L1: local
   const cached = memCache.get(k);
   if (cached !== undefined) return cached;
+
+  // L2: shared DB cache
+  const fromDb = await fetchFromDbCache(text, lang);
+  if (fromDb !== null) {
+    remember(k, fromDb);
+    return fromDb;
+  }
+
+  // L3: free provider, then populate the shared cache
   try {
     const translated = await fetchTranslation(text, lang);
-    memCache.set(k, translated);
-    persistLsCache();
+    remember(k, translated);
+    if (translated && translated !== text) void writeToDbCache(text, lang, translated);
     return translated;
   } catch {
     return text;
