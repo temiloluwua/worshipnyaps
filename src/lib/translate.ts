@@ -5,17 +5,19 @@
 // Cost model — free and sustainable:
 //   L1  in-memory + localStorage (per device)
 //   L2  Supabase `content_translations` (shared across all users, forever)
-//   L3  free provider (LibreTranslate — open source) — hit at most once per
-//       unique phrase ever, since the result is written back to L2.
+//   L3  free provider — hit at most once per unique phrase ever, since the
+//       result is written back to L2. Two options:
+//         - LibreTranslate (preferred) when VITE_LIBRETRANSLATE_URL is set:
+//           official/self-hosted, free, no rate concern.
+//         - MyMemory (default fallback): free, keyless public API. Works with
+//           zero setup so translation runs out of the box.
 // Every layer degrades gracefully: any failure falls back to the original
 // English text, so the card always renders.
 //
-// Provider config (optional, via env):
-//   VITE_LIBRETRANSLATE_URL      base URL of a LibreTranslate instance
-//                                (default: a public instance)
-//   VITE_LIBRETRANSLATE_API_KEY  api key, only if your instance requires one
-// You can self-host LibreTranslate for free (Docker) and point the URL at it
-// for full control; the default public instance works with no setup.
+// Provider config (all optional, via env):
+//   VITE_LIBRETRANSLATE_URL      base URL of your LibreTranslate instance
+//   VITE_LIBRETRANSLATE_API_KEY  key, only if your instance requires one
+//   VITE_MYMEMORY_EMAIL          raises the free MyMemory quota (~5k -> 50k/day)
 
 import { supabase } from './supabase';
 
@@ -59,27 +61,56 @@ function persistLsCache(): void {
 }
 
 const LIBRETRANSLATE_URL =
-  (import.meta.env.VITE_LIBRETRANSLATE_URL as string | undefined)?.replace(/\/$/, '') ||
-  'https://libretranslate.com';
+  (import.meta.env.VITE_LIBRETRANSLATE_URL as string | undefined)?.replace(/\/$/, '') || '';
 const LIBRETRANSLATE_API_KEY = import.meta.env.VITE_LIBRETRANSLATE_API_KEY as string | undefined;
 
-async function fetchTranslation(text: string, targetLang: Lang): Promise<string> {
-  const body: Record<string, string> = {
-    q: text,
-    source: 'auto',
-    target: targetLang,
-    format: 'text',
-  };
+// Preferred provider: your own LibreTranslate instance, used only when
+// VITE_LIBRETRANSLATE_URL is set. Official/self-hosted, free, no rate concern.
+async function fetchFromLibre(text: string, targetLang: Lang): Promise<string> {
+  const body: Record<string, string> = { q: text, source: 'auto', target: targetLang, format: 'text' };
   if (LIBRETRANSLATE_API_KEY) body.api_key = LIBRETRANSLATE_API_KEY;
-
   const res = await fetch(`${LIBRETRANSLATE_URL}/translate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`translate ${res.status}`);
+  if (!res.ok) throw new Error(`libre ${res.status}`);
   const data = await res.json();
   return (data?.translatedText as string) || text;
+}
+
+// Zero-setup fallback: MyMemory — a free, keyless, CORS-friendly public API.
+// Free quota is ~5k words/day anonymously (50k with an email); combined with
+// the shared Supabase cache (each phrase translated once ever) that's ample for
+// a bounded card deck. Set VITE_MYMEMORY_EMAIL to raise the quota.
+const MYMEMORY_EMAIL = import.meta.env.VITE_MYMEMORY_EMAIL as string | undefined;
+
+async function fetchFromMyMemory(text: string, targetLang: Lang): Promise<string> {
+  const params = new URLSearchParams({ q: text, langpair: `en|${targetLang}` });
+  if (MYMEMORY_EMAIL) params.set('de', MYMEMORY_EMAIL);
+  const res = await fetch(`https://api.mymemory.translated.net/get?${params.toString()}`);
+  if (!res.ok) throw new Error(`mymemory ${res.status}`);
+  const data = await res.json();
+  const out = data?.responseData?.translatedText as string | undefined;
+  // MyMemory signals problems (quota, bad langpair) via responseStatus and an
+  // ALL-CAPS warning string in translatedText — treat those as failures.
+  if (data?.responseStatus !== 200 || !out || /MYMEMORY WARNING|QUOTA|INVALID|PLEASE SELECT/i.test(out)) {
+    throw new Error('mymemory unusable');
+  }
+  return out;
+}
+
+// Use LibreTranslate when it's configured (falling back to MyMemory if that
+// instance is momentarily unreachable); otherwise use MyMemory directly.
+async function fetchTranslation(text: string, targetLang: Lang): Promise<string> {
+  if (LIBRETRANSLATE_URL) {
+    try {
+      return await fetchFromLibre(text, targetLang);
+    } catch {
+      return await fetchFromMyMemory(text, targetLang);
+    }
+  }
+  return fetchFromMyMemory(text, targetLang);
 }
 
 // L2: shared Supabase cache. Reads are public; a hit means no provider call.
