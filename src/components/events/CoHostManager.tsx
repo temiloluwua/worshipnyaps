@@ -525,7 +525,6 @@ export const CoHostManager: React.FC<CoHostManagerProps> = ({ eventId, isHost, e
             <p className="font-semibold text-gray-900 dark:text-white mb-1">Co-hosts can:</p>
             <ul className="space-y-0.5">
               <li>✓ Post announcements & message attendees</li>
-              <li>✓ Mark people as attended</li>
               <li>✓ Assign help / food requests</li>
               <li>✓ Use the organizer chat</li>
             </ul>

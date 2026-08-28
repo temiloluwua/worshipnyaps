@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, AlertTriangle, Flag, Check, ShieldAlert, EyeOff } from 'lucide-react';
+import { UserPlus, AlertTriangle, Flag, ShieldAlert, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
@@ -124,24 +124,6 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost, isR
       } else {
         toast.error(err.message || 'Failed to send request');
       }
-    }
-  };
-
-  const handleMarkAttended = async (attendeeUserId: string) => {
-    if (!isHost) return;
-    try {
-      const { error } = await supabase
-        .from('event_attendees')
-        .update({ status: 'attended' })
-        .eq('event_id', eventId)
-        .eq('user_id', attendeeUserId);
-      if (error) throw error;
-      setAttendees(prev =>
-        prev.map(a => (a.user_id === attendeeUserId ? { ...a, status: 'attended' } : a))
-      );
-      toast.success('Marked as attended');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to mark attended');
     }
   };
 
@@ -284,24 +266,10 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost, isR
                       <span className="text-gray-500 dark:text-gray-400">Community member</span>
                     )}
                   </p>
-                  {attendee.status === 'attended' && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Attended</p>
-                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {isHost && !isSelf && attendee.status !== 'attended' && (
-                  <button
-                    onClick={() => handleMarkAttended(attendee.user_id)}
-                    className="px-3 py-1 text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors flex items-center gap-1"
-                    title="Mark this attendee as having attended the event"
-                  >
-                    <Check className="w-3 h-3" />
-                    Mark attended
-                  </button>
-                )}
-
                 {isHost && !isSelf && !isFriend && (
                   <button
                     onClick={() => handleAddFriend(attendee.user_id || '')}
