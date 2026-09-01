@@ -148,7 +148,9 @@ export function TopicsView({
   const [sharingTopic, setSharingTopic] = useState<Topic | null>(null);
   const [editingTopic, setEditingTopic] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'topics' | 'community'>('topics');
-  const [showSearch, setShowSearch] = useState(true);
+  // Search + community filters start collapsed to keep the deck header light;
+  // scrolling up reveals them, scrolling down hides them again.
+  const [showSearch, setShowSearch] = useState(false);
   const [randomTopic, setRandomTopic] = useState<Topic | null>(null);
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_TOPICS);
   const lastScrollY = useRef(0);
@@ -557,9 +559,7 @@ export function TopicsView({
   return (
     <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 min-h-screen">
       <div
-        className={`sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-10 transition-all duration-300 ease-in-out ${
-          showSearch ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
-        }`}
+        className="sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-10"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="p-4">
@@ -643,15 +643,19 @@ export function TopicsView({
             )}
           </div>
 
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder={t('topics.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm text-gray-900 dark:text-white"
-            />
+          {/* Search collapses on scroll-down and reveals on scroll-up to keep
+              the header light; the deck actions below always stay put. */}
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showSearch ? 'max-h-24 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}`}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder={t('topics.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm text-gray-900 dark:text-white"
+              />
+            </div>
           </div>
 
           {/* Deck controls — the two signature card-game actions, made
@@ -678,7 +682,7 @@ export function TopicsView({
           )}
 
           {activeTab === 'community' && (
-            <div className="space-y-3">
+            <div className={`space-y-3 overflow-hidden transition-all duration-300 ease-in-out ${showSearch ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
               <div className="flex space-x-1 overflow-x-auto pb-3 scrollbar-hide">
                 {communitySubTabs.map((tab) => (
                   <button
