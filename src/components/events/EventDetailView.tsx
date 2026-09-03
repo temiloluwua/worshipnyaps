@@ -8,6 +8,7 @@ import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send,
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
+import { PollsSection } from '../polls/PollsSection';
 import { recurrenceDatesUntil, type Recurrence } from '../../hooks/useEvents';
 import { EventRecapPhotos } from './EventRecapPhotos';
 import { EventDescriptionDisplay } from './EventDescriptionTemplate';
@@ -1807,6 +1808,11 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         ) : activeTab === 'help' ? (
           <>
             <EventHelpRequests eventId={eventId} eventTitle={event.title} isHost={isHost} teamCode={teamCode} onRequireAuth={onRequireAuth} />
+
+            {/* Event polls — attendees vote, host/co-hosts create. */}
+            <div className="border-t border-gray-200 dark:border-gray-700 mt-2 p-4">
+              <PollsSection scope={{ eventId }} canCreate={isHost || isCoHost || isOrganizer} />
+            </div>
 
             {/* Organizer group chat now lives under Help Needed (below the
                 requests and roles), for hosts and organizers only. */}

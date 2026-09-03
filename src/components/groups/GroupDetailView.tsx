@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGroups, Group, GroupMember, GroupAnnouncement, Poll } from '../../hooks/useGroups';
 import { shareUrl } from '../../lib/openExternal';
 import { TopicPicker } from '../events/TopicPicker';
+import { PollsSection } from '../polls/PollsSection';
 import { linkifyMessage } from '../../lib/linkify';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -19,7 +20,7 @@ interface GroupDetailViewProps {
   onRequireAuth?: () => void;
 }
 
-type Tab = 'chat' | 'events' | 'announcements' | 'members';
+type Tab = 'chat' | 'events' | 'polls' | 'announcements' | 'members';
 
 interface GroupEvent { id: string; title: string; date: string; time: string; type: string; recurrence?: string | null; is_recurrence_child?: boolean; locations?: { name?: string; address?: string } | null }
 
@@ -143,6 +144,7 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
   };
 
   const isLeader = members.some(m => m.user_id === user?.id && m.role === 'leader') || group?.created_by === user?.id;
+  const isMember = isLeader || members.some(m => m.user_id === user?.id);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -214,6 +216,7 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
         <div className="flex px-2">
           <TabBtn active={tab === 'chat'} onClick={() => setTab('chat')} icon={<MessageCircle className="w-4 h-4" />} label="Chat" />
           <TabBtn active={tab === 'events'} onClick={() => setTab('events')} icon={<Calendar className="w-4 h-4" />} label="Events" />
+          <TabBtn active={tab === 'polls'} onClick={() => setTab('polls')} icon={<BarChart3 className="w-4 h-4" />} label="Polls" />
           <TabBtn active={tab === 'announcements'} onClick={() => setTab('announcements')} icon={<Megaphone className="w-4 h-4" />} label="News" />
           <TabBtn active={tab === 'members'} onClick={() => setTab('members')} icon={<Users className="w-4 h-4" />} label="Members" />
         </div>
@@ -223,6 +226,12 @@ export const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, onBac
         group.conversation_id
           ? <GroupChat conversationId={group.conversation_id} />
           : <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Chat unavailable.</div>
+      )}
+
+      {tab === 'polls' && (
+        <div className="flex-1 overflow-y-auto max-w-2xl w-full mx-auto p-4">
+          <PollsSection scope={{ groupId }} canCreate={isMember} title="Group polls" />
+        </div>
       )}
 
       {tab === 'events' && (
