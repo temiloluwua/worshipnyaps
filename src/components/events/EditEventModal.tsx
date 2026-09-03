@@ -107,7 +107,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
       if (useTemplate) {
         const hasContent =
           descriptionTemplate.whatToExpect?.trim() ||
-          (Array.isArray(descriptionTemplate.whatToBring) && descriptionTemplate.whatToBring.length > 0) ||
+          (Array.isArray(descriptionTemplate.agenda) && descriptionTemplate.agenda.length > 0) ||
           descriptionTemplate.parkingDirections?.trim() ||
           descriptionTemplate.contactInfo?.trim() ||
           descriptionTemplate.specialNotes?.trim();
@@ -303,7 +303,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
               </div>
             </div>
             {useTemplate ? (
-              <EventDescriptionForm template={descriptionTemplate} onChange={setDescriptionTemplate} />
+              <EventDescriptionForm template={descriptionTemplate} onChange={setDescriptionTemplate} eventType={(event as { event_type?: string }).event_type} />
             ) : (
               <textarea
                 name="description"

@@ -73,9 +73,17 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export interface AgendaSegment {
+  label: string;
+  time?: string;   // "HH:MM" (24h), optional
+  note?: string;   // optional detail
+}
+
 export interface DescriptionTemplate {
   whatToExpect?: string;
-  whatToBring?: string[];
+  // Structured "gathering flow" (Fellowship, Worship, Prayer, Yap, ...).
+  agenda?: AgendaSegment[];
+  whatToBring?: string[]; // legacy — now handled as Help Requests (kept for old data)
   parkingDirections?: string;
   contactInfo?: string;
   specialNotes?: string;

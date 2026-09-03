@@ -906,7 +906,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
     if (useTemplate) {
       const hasTemplateContent =
         descriptionTemplate.whatToExpect?.trim() ||
-        (Array.isArray(descriptionTemplate.whatToBring) && descriptionTemplate.whatToBring.length > 0) ||
+        (Array.isArray(descriptionTemplate.agenda) && descriptionTemplate.agenda.length > 0) ||
         descriptionTemplate.parkingDirections?.trim() ||
         descriptionTemplate.contactInfo?.trim() ||
         descriptionTemplate.specialNotes?.trim();
@@ -919,9 +919,8 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
 
       eventData.description_template = {
         whatToExpect: descriptionTemplate.whatToExpect || '',
-        // "Help Requests" items don't live in the template — they become real,
-        // claimable help requests in the Help tab (see below), so clear here to
-        // keep a single source of truth.
+        agenda: Array.isArray(descriptionTemplate.agenda) ? descriptionTemplate.agenda : [],
+        // Help Requests live in the Help tab now, not the template.
         whatToBring: [],
         parkingDirections: descriptionTemplate.parkingDirections || '',
         contactInfo: descriptionTemplate.contactInfo || '',
@@ -1207,7 +1206,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
               </div>
             </div>
             {useTemplate ? (
-              <EventDescriptionForm template={descriptionTemplate} onChange={setDescriptionTemplate} />
+              <EventDescriptionForm template={descriptionTemplate} onChange={setDescriptionTemplate} eventType={formData.event_type} />
             ) : (
               <textarea
                 name="description"
