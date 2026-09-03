@@ -1,36 +1,37 @@
-import React, { useState } from 'react';
-import { ClipboardList, MapPin, Phone, AlertCircle, ListChecks, Plus, X, Eye, EyeOff, Sparkles, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ClipboardList, MapPin, Phone, AlertCircle, ListChecks, Plus, X, Eye, EyeOff, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { DescriptionTemplate, AgendaSegment } from '../../lib/supabase';
 import { T } from '../ui/T';
 
 // The signature "how to create a vibe" flow from the landing page. Hosts pick
 // segments to build an agenda; each can carry an optional time + note.
-const VIBE_SEGMENTS = ['Fellowship', 'Communion', 'Worship', 'Prayer', 'Yap', 'Word', 'Games', 'Debrief'];
+const VIBE_SEGMENTS = ['Fellowship', 'Communion', 'Worship', 'Prayer', 'Yap', 'Word', 'Games'];
 
-// One-tap starter templates keyed loosely by event type.
-const PRESETS: { key: string; label: string; match: (t?: string) => boolean; whatToExpect: string; agenda: string[] }[] = [
-  {
-    key: 'bible_study', label: '📖 Bible study', match: (t) => t === 'bible_study' || !t,
+// Per-event-type defaults. The "What to expect" text + starter agenda follow
+// the event type selected at the top of the create/edit form.
+const TYPE_DEFAULTS: Record<string, { whatToExpect: string; agenda: string[] }> = {
+  bible_study: {
     whatToExpect: "We'll open in worship, share a short word, then dig into the passage together. Come as you are — no prep needed.",
     agenda: ['Fellowship', 'Worship', 'Word', 'Yap', 'Prayer'],
   },
-  {
-    key: 'yap', label: '💬 Yap / hangout', match: (t) => t === 'yap' || t === 'church',
+  yap: {
     whatToExpect: "Casual hangout — bring something to share and let's yap. We'll eat, play, and end with prayer.",
     agenda: ['Fellowship', 'Communion', 'Games', 'Yap', 'Prayer'],
   },
-  {
-    key: 'evangelism', label: '📣 Evangelism', match: (t) => t === 'evangelism',
-    whatToExpect: "We'll meet, pray together, then head out to share and serve. Debrief and encourage each other after.",
-    agenda: ['Fellowship', 'Prayer', 'Word', 'Debrief'],
+  church: {
+    whatToExpect: "Casual hangout — bring something to share and let's yap. We'll eat, play, and end with prayer.",
+    agenda: ['Fellowship', 'Communion', 'Games', 'Yap', 'Prayer'],
   },
-  {
-    key: 'volunteering', label: '🤝 Volunteering', match: (t) => t === 'volunteering',
+  evangelism: {
+    whatToExpect: "We'll meet, pray together, then head out to share and serve. We'll encourage each other after.",
+    agenda: ['Fellowship', 'Prayer', 'Word'],
+  },
+  volunteering: {
     whatToExpect: "We'll gather, get briefed, pray, then serve together. Come ready to help — every hand counts.",
-    agenda: ['Fellowship', 'Prayer', 'Debrief'],
+    agenda: ['Fellowship', 'Prayer'],
   },
-];
+};
 
 // ---------------------------------------------------------------------------
 // Display (attendee-facing) — content auto-translates to the active language.
@@ -130,34 +131,34 @@ export const EventDescriptionForm: React.FC<EventDescriptionFormProps> = ({ temp
   const [openContact, setOpenContact] = useState(!!template.contactInfo);
   const [openNotes, setOpenNotes] = useState(!!template.specialNotes);
 
-  const applyPreset = (p: typeof PRESETS[number]) => {
-    onChange({
-      ...template,
-      whatToExpect: template.whatToExpect?.trim() ? template.whatToExpect : p.whatToExpect,
-      agenda: agenda.length > 0 ? agenda : p.agenda.map((label) => ({ label })),
-    });
-  };
-
   const addSegment = (label: string) => onChange({ ...template, agenda: [...agenda, { label }] });
   const updateSegment = (i: number, patch: Partial<AgendaSegment>) =>
     onChange({ ...template, agenda: agenda.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
   const removeSegment = (i: number) => onChange({ ...template, agenda: agenda.filter((_, j) => j !== i) });
 
-  const orderedPresets = [...PRESETS].sort((a, b) => Number(b.match(eventType)) - Number(a.match(eventType)));
+  // Follow the event type selected at the top: fill "What to expect" + the
+  // starter agenda from the type's default, but never clobber content the host
+  // has actually customized.
+  useEffect(() => {
+    const def = eventType ? TYPE_DEFAULTS[eventType] : undefined;
+    if (!def) return;
+    const wteIsDefault = !template.whatToExpect?.trim()
+      || Object.values(TYPE_DEFAULTS).some(d => d.whatToExpect === template.whatToExpect);
+    const agendaIsDefault = agenda.length === 0
+      || Object.values(TYPE_DEFAULTS).some(d =>
+        d.agenda.length === agenda.length && d.agenda.every((l, i) => agenda[i]?.label === l && !agenda[i]?.time && !agenda[i]?.note));
+    if (!wteIsDefault && !agendaIsDefault) return;
+    onChange({
+      ...template,
+      whatToExpect: wteIsDefault ? def.whatToExpect : template.whatToExpect,
+      agenda: agendaIsDefault ? def.agenda.map((label) => ({ label })) : agenda,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventType]);
 
   return (
     <div className="space-y-4">
-      {/* Presets + preview toggle */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Start from:</span>
-          {orderedPresets.map((p) => (
-            <button key={p.key} type="button" onClick={() => applyPreset(p)}
-              className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900/30">
-              {p.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex justify-end">
         <button type="button" onClick={() => setPreview(v => !v)}
           className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
           {preview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />} {preview ? 'Edit' : 'Preview'}
