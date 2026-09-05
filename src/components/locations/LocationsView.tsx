@@ -721,7 +721,7 @@ const DEFAULT_HOST_FORM = {
   eventAddress: '',
   capacity: 12,
   description: '',
-  visibility: 'public' as 'public' | 'private' | 'friends_only',
+  visibility: 'public' as 'public' | 'private' | 'friends_only' | 'friends_of_friends',
   addressVisibility: 'attendees_only' as 'general_area' | 'attendees_only' | 'public',
   study_topic: '',
   session_purpose: '',
@@ -972,6 +972,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
   const visibilityOptions = [
     { value: 'public', label: t('common.public'), description: t('events.publicDesc') },
     { value: 'friends_only', label: t('events.friendsOnly'), description: t('events.friendsOnlyDesc') },
+    { value: 'friends_of_friends', label: t('events.friendsOfFriends'), description: t('events.friendsOfFriendsDesc') },
     { value: 'private', label: t('common.private'), description: t('events.privateDesc') }
   ];
 

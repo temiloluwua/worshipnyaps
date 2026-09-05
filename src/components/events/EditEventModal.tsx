@@ -34,7 +34,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     time: event.time,
     capacity: event.capacity,
     description: event.description || '',
-    visibility: event.visibility as 'public' | 'private' | 'friends_only',
+    visibility: event.visibility as 'public' | 'private' | 'friends_only' | 'friends_of_friends',
     addressVisibility: (event.address_visibility || 'public') as 'general_area' | 'attendees_only' | 'public',
   });
   const [topicId, setTopicId] = useState<string | null>((event as { topic_id?: string | null }).topic_id ?? null);
@@ -189,6 +189,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
   const visibilityOptions = [
     { value: 'public', label: 'Public', description: 'Anyone can discover and RSVP' },
     { value: 'friends_only', label: 'Friends Only', description: 'Only your connections can see it' },
+    { value: 'friends_of_friends', label: 'Friends & mutuals', description: 'Your friends and their friends can see it' },
     { value: 'private', label: 'Private', description: 'Invite-code access only' },
   ];
 

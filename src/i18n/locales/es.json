@@ -168,6 +168,8 @@
     "whoCanSee": "\u00bfQui\u00e9n puede ver este evento?",
     "publicDesc": "Cualquiera puede ver y unirse a este evento",
     "friendsOnlyDesc": "Solo tus conexiones pueden ver este evento",
+    "friendsOfFriends": "Amigos y conocidos",
+    "friendsOfFriendsDesc": "Tus amigos y los amigos de tus amigos pueden ver este evento",
     "privateDesc": "Solo por invitaci\u00f3n - comparte por enlace o invitaci\u00f3n directa"
   },
   "eventTemplate": {

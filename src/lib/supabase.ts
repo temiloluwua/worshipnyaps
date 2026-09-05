@@ -102,7 +102,7 @@ export interface Event {
   capacity: number;
   attendees?: number;
   is_private: boolean;
-  visibility: 'public' | 'private' | 'friends_only';
+  visibility: 'public' | 'private' | 'friends_only' | 'friends_of_friends';
   address_visibility?: 'general_area' | 'attendees_only' | 'public';
   area_lat?: number | null;
   area_lng?: number | null;
