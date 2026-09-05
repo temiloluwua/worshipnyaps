@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +40,25 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const [showHostModal, setShowHostModal] = useState(false);
   const [duplicateSource, setDuplicateSource] = useState<DbEvent | null>(null);
   const [activeTab, setActiveTab] = useState<EventTab>('discover');
+  // How many of the viewer's connections are attending each event (social proof).
+  const [friendsGoing, setFriendsGoing] = useState<Record<string, { count: number; sample: string }>>({});
+
+  const eventIdsKey = events.map((e) => e.id).join(',');
+  useEffect(() => {
+    const ids = events.map((e) => e.id);
+    if (ids.length === 0) { setFriendsGoing({}); return; }
+    let cancelled = false;
+    supabase.rpc('event_friends_going', { p_event_ids: ids }).then(({ data, error }) => {
+      if (cancelled || error || !data) return;
+      const map: Record<string, { count: number; sample: string }> = {};
+      (data as { event_id: string; going_count: number; sample_name: string }[]).forEach((r) => {
+        map[r.event_id] = { count: r.going_count, sample: r.sample_name };
+      });
+      setFriendsGoing(map);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventIdsKey]);
 
   // Open the host modal pre-filled from an existing event (date/time cleared)
   // so a host can re-post a gathering they run regularly.
@@ -497,6 +516,17 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex-1">{event.title}</h3>
                       {event.is_private && <EyeOff className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />}
                     </div>
+                    {friendsGoing[event.id]?.count > 0 && (
+                      <div className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>
+                          {friendsGoing[event.id].sample?.split(' ')[0] || 'A friend'}
+                          {friendsGoing[event.id].count > 1
+                            ? ` and ${friendsGoing[event.id].count - 1} other${friendsGoing[event.id].count - 1 === 1 ? '' : 's'} going`
+                            : ' is going'}
+                        </span>
+                      </div>
+                    )}
                     {(event.visibility === 'friends_only' || event.visibility === 'private') && (
                       <div className="flex items-center flex-wrap gap-1">
                         {event.visibility === 'friends_only' && (
