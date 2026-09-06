@@ -3,6 +3,8 @@ import { ClipboardList, MapPin, Phone, AlertCircle, ListChecks, Plus, X, Eye, Ey
 import { useTranslation } from 'react-i18next';
 import type { DescriptionTemplate, AgendaSegment } from '../../lib/supabase';
 import { T } from '../ui/T';
+import { TwelveHourTimePicker } from '../ui/TimePicker';
+import { formatTime12h } from '../../lib/eventFormat';
 
 // The signature "how to create a vibe" flow from the landing page. Hosts pick
 // segments to build an agenda; each can carry an optional time + note.
@@ -71,7 +73,7 @@ export const EventDescriptionDisplay: React.FC<EventDescriptionDisplayProps> = (
                 <span className="absolute -left-[7px] mt-1 w-3 h-3 rounded-full bg-purple-400 dark:bg-purple-600" />
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-purple-900 dark:text-purple-200"><T>{seg.label}</T></span>
-                  {seg.time && <span className="text-[11px] text-purple-600 dark:text-purple-400 inline-flex items-center gap-0.5"><Clock className="w-3 h-3" />{seg.time}</span>}
+                  {seg.time && <span className="text-[11px] text-purple-600 dark:text-purple-400 inline-flex items-center gap-0.5"><Clock className="w-3 h-3" />{formatTime12h(seg.time)}</span>}
                 </div>
                 {seg.note && <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5"><T>{seg.note}</T></p>}
               </li>
@@ -197,12 +199,7 @@ export const EventDescriptionForm: React.FC<EventDescriptionFormProps> = ({ temp
                       onChange={(e) => updateSegment(i, { label: e.target.value })}
                       className="flex-1 px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                     />
-                    <input
-                      type="time"
-                      value={seg.time || ''}
-                      onChange={(e) => updateSegment(i, { time: e.target.value })}
-                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs w-[92px]"
-                    />
+                    <TwelveHourTimePicker value={seg.time || ''} onChange={(v) => updateSegment(i, { time: v })} />
                     <button type="button" onClick={() => removeSegment(i)} className="p-1 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
