@@ -11,7 +11,7 @@ RETURNS TABLE (event_id uuid, going_count int, sample_name text)
 LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   SELECT a.event_id,
          COUNT(*)::int AS going_count,
-         (ARRAY_AGG(u.name ORDER BY a.created_at))[1] AS sample_name
+         (ARRAY_AGG(u.name ORDER BY u.name))[1] AS sample_name
   FROM event_attendees a
   JOIN users u ON u.id = a.user_id
   WHERE a.event_id = ANY(p_event_ids)
