@@ -16,6 +16,8 @@ import { geocodeAddress, reverseGeocodeArea } from '../../lib/geocode';
 import { shareOrigin } from '../../lib/openExternal';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { createHelpRequestsFromTitles } from '../../lib/eventHelpRequests';
+import { TopicPicker } from '../events/TopicPicker';
+import { CreateTopicModal } from '../topics/CreateTopicModal';
 import { ServeWithGiftsFeed } from './ServeWithGiftsFeed';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
@@ -802,6 +804,9 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
     initialDraft ? { ...initialDraft.formData } : { ...DEFAULT_HOST_FORM }
   );
   const [imageUrl, setImageUrl] = useState<string | null>(initialDraft?.imageUrl ?? null);
+  // Yaps are topic-centered: attach an existing topic or create a new one.
+  const [topicId, setTopicId] = useState<string | null>(null);
+  const [showCreateTopic, setShowCreateTopic] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   // Cached coordinates from the address autocomplete pick, so we can skip
   // a redundant Nominatim round-trip at submit time.
@@ -930,6 +935,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
       study_topic: formData.event_type === 'bible_study' ? (formData.study_topic.trim() || null) : null,
       session_purpose: formData.event_type === 'bible_study' ? (formData.session_purpose.trim() || null) : null,
       yap_vibe: formData.event_type === 'yap' ? (formData.yap_vibe || null) : null,
+      topic_id: topicId,
       is_draft: asDraft,
     };
 
@@ -1012,6 +1018,20 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
       onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}
     >
       <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
+        {showCreateTopic && (
+          <CreateTopicModal
+            isOpen={showCreateTopic}
+            onClose={() => setShowCreateTopic(false)}
+            topicType="preselected"
+            allowNonAdmin
+            onCreated={(row) => {
+              const created = row as { id?: string } | null;
+              if (created?.id) setTopicId(created.id);
+              setShowCreateTopic(false);
+            }}
+          />
+        )}
+
         {showCloseConfirm && (
           <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-5">
@@ -1114,6 +1134,22 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
               })}
             </div>
           </div>
+
+          {/* Yaps are built around a discussion topic — pick one or create your own. */}
+          {formData.event_type === 'yap' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Discussion topic</label>
+              <TopicPicker value={topicId} onChange={(id) => setTopicId(id)} />
+              <button
+                type="button"
+                onClick={() => setShowCreateTopic(true)}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                <Plus className="w-3.5 h-3.5" /> Create a new topic
+              </button>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Pick a previous topic or write your own to center the conversation.</p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('events.eventTitle')}</label>

@@ -15,6 +15,9 @@ interface CreateTopicModalProps {
   initialValues?: Partial<{ title: string; content: string; bibleReference: string; questions: string[]; category: string; tags: string[] }>;
   // Called with the created topic/post row after a successful submit.
   onCreated?: (result: unknown) => void;
+  // Allow a non-admin to create a discussion topic (e.g. a host authoring the
+  // topic for their own yap event). RLS already permits author_id = self.
+  allowNonAdmin?: boolean;
 }
 
 export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
@@ -24,6 +27,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   topicType = 'community',
   initialValues,
   onCreated,
+  allowNonAdmin = false,
 }) => {
   const { user, profile } = useAuth();
   const { createTopic } = useTopics();
@@ -51,7 +55,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   // formData/createPost/createTopic are stable enough that we don't need
   // useCallback — the effect only fires on auth transitions, not renders.
   const performSubmit = async () => {
-    if (topicType === 'preselected' && !isAdmin) {
+    if (topicType === 'preselected' && !isAdmin && !allowNonAdmin) {
       toast.error('Only admins can create preselected topics');
       return;
     }
@@ -481,7 +485,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
             <button
               type="submit"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-              disabled={topicType === 'preselected' && !isAdmin}
+              disabled={topicType === 'preselected' && !isAdmin && !allowNonAdmin}
             >
               {isCommunityPost ? 'Post' : 'Create Topic'}
             </button>
