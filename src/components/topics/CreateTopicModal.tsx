@@ -11,6 +11,10 @@ interface CreateTopicModalProps {
   onClose: () => void;
   onRequireAuth?: () => void;
   topicType?: 'preselected' | 'community';
+  // Prefill the form (e.g. admin curating event notes into a topic).
+  initialValues?: Partial<{ title: string; content: string; bibleReference: string; questions: string[]; category: string; tags: string[] }>;
+  // Called with the created topic/post row after a successful submit.
+  onCreated?: (result: unknown) => void;
 }
 
 export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
@@ -18,6 +22,8 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   onClose,
   onRequireAuth,
   topicType = 'community',
+  initialValues,
+  onCreated,
 }) => {
   const { user, profile } = useAuth();
   const { createTopic } = useTopics();
@@ -69,12 +75,14 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         tags: formData.tags,
         topic_type: topicType,
         bible_verse: formData.bibleReference || undefined,
+        questions: formData.questions.map((q) => q.trim()).filter(Boolean),
         visibility: 'public',
       });
     }
 
     if (result) {
       toast.success(isCommunityPost ? 'Post shared!' : 'Topic created!');
+      onCreated?.(result);
       onClose();
       setFormData({
         title: '',
@@ -101,6 +109,22 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Seed the form from initialValues when the modal opens (curate-from-notes).
+  useEffect(() => {
+    if (isOpen && initialValues) {
+      setFormData((prev) => ({
+        ...prev,
+        ...(initialValues.title !== undefined ? { title: initialValues.title } : {}),
+        ...(initialValues.content !== undefined ? { content: initialValues.content } : {}),
+        ...(initialValues.bibleReference !== undefined ? { bibleReference: initialValues.bibleReference } : {}),
+        ...(initialValues.category !== undefined ? { category: initialValues.category } : {}),
+        ...(initialValues.tags !== undefined ? { tags: initialValues.tags } : {}),
+        ...(initialValues.questions && initialValues.questions.length > 0 ? { questions: initialValues.questions } : {}),
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
 import { PollsSection } from '../polls/PollsSection';
+import { EventNotesSection } from './EventNotesSection';
 import { recurrenceDatesUntil, type Recurrence } from '../../hooks/useEvents';
 import { EventRecapPhotos } from './EventRecapPhotos';
 import { EventDescriptionDisplay } from './EventDescriptionTemplate';
@@ -1801,6 +1802,19 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 hostId={event.host_id}
                 canUpload={Boolean(isHost || isRsvped)}
               />
+            )}
+
+            {/* Event notes — write during/after; organizers & admins see all,
+                admins can curate them into a new discussion topic. */}
+            {event && (isRsvped || isHost || isOrganizer || isCoHost || isAdmin) && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <EventNotesSection
+                  eventId={eventId}
+                  eventTitle={event.title}
+                  canCurate={Boolean(isHost || isOrganizer || isCoHost || isAdmin)}
+                  isAdmin={isAdmin}
+                />
+              </div>
             )}
           </div>
           </div>
