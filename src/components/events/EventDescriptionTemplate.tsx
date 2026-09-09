@@ -8,10 +8,11 @@ import { formatTime12h } from '../../lib/eventFormat';
 
 // The signature "how to create a vibe" flow from the landing page. Hosts pick
 // segments to build an agenda; each can carry an optional time + note.
-const VIBE_SEGMENTS = ['Fellowship', 'Communion', 'Worship', 'Prayer', 'Yap', 'Word', 'Games'];
+const VIBE_SEGMENTS = ['Fellowship', 'Communion', 'Worship', 'Prayer', 'Yap', 'Word', 'Games', 'Serve', 'Debrief'];
 
 // Per-event-type defaults. The "What to expect" text + starter agenda follow
-// the event type selected at the top of the create/edit form.
+// the event type selected at the top of the create/edit form — each type has
+// its own distinct flow.
 const TYPE_DEFAULTS: Record<string, { whatToExpect: string; agenda: string[] }> = {
   bible_study: {
     whatToExpect: "We'll open in worship, share a short word, then dig into the passage together. Come as you are — no prep needed.",
@@ -26,12 +27,12 @@ const TYPE_DEFAULTS: Record<string, { whatToExpect: string; agenda: string[] }> 
     agenda: ['Fellowship', 'Communion', 'Games', 'Yap', 'Prayer'],
   },
   evangelism: {
-    whatToExpect: "We'll meet, pray together, then head out to share and serve. We'll encourage each other after.",
-    agenda: ['Fellowship', 'Prayer', 'Word'],
+    whatToExpect: "We'll pray together, head out to serve and share, then debrief and encourage each other after.",
+    agenda: ['Prayer', 'Serve', 'Debrief'],
   },
   volunteering: {
-    whatToExpect: "We'll gather, get briefed, pray, then serve together. Come ready to help — every hand counts.",
-    agenda: ['Fellowship', 'Prayer'],
+    whatToExpect: "We'll pray together, serve side by side, then debrief and encourage each other after.",
+    agenda: ['Prayer', 'Serve', 'Debrief'],
   },
 };
 

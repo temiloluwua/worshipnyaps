@@ -1093,6 +1093,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
             <div className="flex flex-wrap gap-2">
               {([
                 { value: 'bible_study',  label: '📖 Bible Study',   eventType: 'bible_study',  vibe: '', tone: 'blue' },
+                { value: 'yap',          label: '💬 Yap',           eventType: 'yap',          vibe: '', tone: 'amber' },
                 { value: 'evangelism',   label: '📣 Evangelism',    eventType: 'evangelism',   vibe: '', tone: 'emerald' },
                 { value: 'volunteering', label: '🤝 Volunteering',  eventType: 'volunteering', vibe: '', tone: 'emerald' },
                 { value: 'sports',       label: '🏅 Sports',        eventType: 'yap',          vibe: 'sports', tone: 'amber' },
