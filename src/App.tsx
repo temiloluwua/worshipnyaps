@@ -35,13 +35,15 @@ const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDet
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { AgeGate, GUEST_ADULT_KEY } from './components/auth/AgeGate';
 import { CityGate } from './components/auth/CityGate';
+import { SettingsModal } from './components/SettingsModal';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useDirectMessages } from './hooks/useDirectMessages';
 import { useNotifications } from './hooks/useNotifications';
 import { useDevicePush } from './hooks/useDevicePush';
 import { useOAuthDeepLink } from './hooks/useOAuthDeepLink';
-import { Topic } from './lib/supabase';
+import { Home, Settings as SettingsIcon } from 'lucide-react';
+import { Topic, supabase } from './lib/supabase';
 
 interface ViewState {
   type: 'main' | 'profile' | 'hashtag' | 'network' | 'groups';
@@ -104,6 +106,8 @@ function App() {
       return v === null ? null : v === 'yes';
     } catch { return null; }
   });
+  // Settings modal, reachable from the under-18 restricted view.
+  const [showSettings, setShowSettings] = useState(false);
   const { loading, user, profile, signOut } = useAuth();
   useOAuthDeepLink();
   const { theme } = useTheme();
@@ -222,6 +226,68 @@ function App() {
   const handleEnterApp = () => {
     setShowLanding(false);
   };
+
+  // Flip the current visitor's age bucket to 18+ (from the under-18 view).
+  const switchToAdult = async () => {
+    if (user) {
+      setSelfIsAdult(true);
+      try { await supabase.from('users').update({ is_adult: true }).eq('id', user.id); } catch { /* best effort */ }
+    } else {
+      try { localStorage.setItem(GUEST_ADULT_KEY, 'yes'); } catch { /* ignore */ }
+      setGuestIsAdult(true);
+    }
+  };
+
+  // Restricted, read-only "card deck only" view for under-18 visitors (guest or
+  // signed-in). A slim header lets them go home, open settings, or — if they
+  // answered wrong — switch to the full 18+ experience.
+  const renderMinorView = () => (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <header
+        className="sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-2.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700"
+        style={{ paddingTop: 'calc(0.625rem + env(safe-area-inset-top))' }}
+      >
+        <button
+          onClick={() => setShowLanding(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <Home className="w-4 h-4" /> Home
+        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={switchToAdult}
+            className="px-3 py-1.5 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            I'm 18+
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            aria-label="Settings"
+            className="p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <SettingsIcon className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="focus:outline-none"
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+      >
+        <TopicsView
+          readOnly
+          focusTopicId={focusedTopicId}
+          onFocusedTopicHandled={() => setFocusedTopicId(null)}
+        />
+      </main>
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onShowLanding={() => { setShowSettings(false); setShowLanding(true); }}
+      />
+    </div>
+  );
 
   const handlePreOrder = () => {
     setShowLanding(false);
@@ -431,24 +497,10 @@ function App() {
   // experience — they can read the cards and shuffle the deck, but cannot
   // post, comment, message, or reach events / community / shop. This gate is
   // placed before the event/group/other view branches so those are
-  // unreachable even via deep links.
-  if (user && profile && signedInIsMinor(profile, selfIsAdult)) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="focus:outline-none"
-          style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
-        >
-          <TopicsView
-            readOnly
-            focusTopicId={focusedTopicId}
-            onFocusedTopicHandled={() => setFocusedTopicId(null)}
-          />
-        </main>
-      </div>
-    );
+  // unreachable even via deep links. It yields to `showLanding` so the in-view
+  // "Home" button can surface the welcome page.
+  if (user && profile && !showLanding && signedInIsMinor(profile, selfIsAdult)) {
+    return renderMinorView();
   }
 
   if (showSuccessPage) {
@@ -498,24 +550,9 @@ function App() {
 
   // Under-18 guests get the same read-only, Topics-only experience as signed-in
   // minors — no posting, messaging, events, community, or shop, even via a deep
-  // link.
+  // link. (The Home button sets showLanding, handled by the branch above.)
   if (!user && guestIsAdult === false) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="focus:outline-none"
-          style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
-        >
-          <TopicsView
-            readOnly
-            focusTopicId={focusedTopicId}
-            onFocusedTopicHandled={() => setFocusedTopicId(null)}
-          />
-        </main>
-      </div>
-    );
+    return renderMinorView();
   }
 
   if (activeEventId) {
