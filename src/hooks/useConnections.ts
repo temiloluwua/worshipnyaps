@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, Connection, ConnectionRequest } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useNotifications } from './useNotifications';
+import { blockUser as blockUserShared } from '../lib/blocking';
 import toast from 'react-hot-toast';
 
 export const useConnections = () => {
@@ -264,47 +265,11 @@ export const useConnections = () => {
     if (!user) return false;
 
     try {
-      // Remove existing connection if any
-      await supabase
-        .from('connections')
-        .delete()
-        .or(`and(user_id.eq.${user.id},connected_user_id.eq.${userId}),and(user_id.eq.${userId},connected_user_id.eq.${user.id})`);
-
-      // Add to blocked users
-      const { error } = await supabase
-        .from('blocked_users')
-        .insert({
-          user_id: user.id,
-          blocked_user_id: userId,
-          reason: context?.reason || 'Blocked by user'
-        });
-
-      if (error) throw error;
-
-      // App Store 1.2: blocking must ALSO notify the developer of the
-      // inappropriate content. We file a report to the moderation queue so a
-      // moderator reviews/ejects within 24h. Best-effort — a report failure
-      // must never stop the block from taking effect.
-      try {
-        await supabase.from('reports').insert({
-          reporter_id: user.id,
-          reported_user_id: userId,
-          report_type: 'user',
-          category: 'harassment',
-          severity: 'high',
-          description: context?.reason
-            ? `User blocked by a member. ${context.reason}`
-            : 'User blocked by a member — auto-filed for moderator review.',
-          ...(context?.snapshot ? { content_snapshot: context.snapshot } : {}),
-        });
-      } catch (reportErr) {
-        console.error('Auto-report on block failed (block still applied):', reportErr);
-      }
+      // Shared block helper: removes the connection, records the block, files a
+      // moderator report, and broadcasts instant feed removal (App Store 1.2).
+      await blockUserShared(user.id, userId, context);
 
       setBlockedUserIds(prev => new Set(prev).add(userId));
-      // Broadcast so any mounted feed drops this author's content immediately
-      // (App Store 1.2: blocking must remove content from the feed instantly).
-      try { window.dispatchEvent(new CustomEvent('wny:user-blocked', { detail: { userId } })); } catch { /* noop */ }
       toast.success('User blocked. Their content is hidden and our team has been notified.');
       await fetchConnections();
       return true;

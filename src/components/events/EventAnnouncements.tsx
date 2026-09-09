@@ -11,6 +11,7 @@ interface Announcement {
   is_pinned: boolean;
   created_at: string;
   author: {
+    id?: string;
     name: string;
     avatar_url?: string;
   };
@@ -36,7 +37,7 @@ export const EventAnnouncements: React.FC<EventAnnouncementsProps> = ({ eventId,
         .select(`
           id, content, is_pinned, created_at,
           author:users!event_announcements_author_id_fkey (
-            name, avatar_url
+            id, name, avatar_url
           )
         `)
         .eq('event_id', eventId)
@@ -205,6 +206,7 @@ export const EventAnnouncements: React.FC<EventAnnouncementsProps> = ({ eventId,
                   target={{
                     type: 'announcement',
                     id: ann.id,
+                    authorId: ann.author?.id,
                     preview: ann.content?.slice(0, 200),
                     contentSnapshot: { content: ann.content, author_name: ann.author?.name },
                   }}

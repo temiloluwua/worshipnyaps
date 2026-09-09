@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Flag, AlertTriangle, X } from 'lucide-react';
+import { Flag, AlertTriangle, X, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { blockUser } from '../../lib/blocking';
 
 export type ReportTargetType =
   | 'user'
@@ -65,11 +66,17 @@ export const ReportButton: React.FC<ReportButtonProps> = ({ target, className, v
   const [category, setCategory] = useState<typeof CATEGORIES[number]['value']>('inappropriate_behavior');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [alsoBlock, setAlsoBlock] = useState(true);
 
   // Hide the button when the user can't actually report (not signed in, or
   // they're trying to report themselves)
   if (!user) return null;
   if (target.authorId && target.authorId === user.id) return null;
+
+  // Whether we can offer to block the author from this report. Requires a known
+  // author (self-reports are already filtered out above). Block is idempotent,
+  // so we don't need to know the current block state here.
+  const canBlockAuthor = Boolean(target.authorId);
 
   const handleSubmit = async () => {
     if (description.trim().length < 5) {
@@ -99,10 +106,27 @@ export const ReportButton: React.FC<ReportButtonProps> = ({ target, className, v
       const { error } = await supabase.from('reports').insert(row);
       if (error) throw error;
 
-      toast.success('Report submitted. Thank you — our team will review it.');
+      // App Store 1.2: let the reporter also block the author in one step. The
+      // block hook notifies our moderators and removes their content from the
+      // feed instantly. Best-effort — a block failure must not fail the report.
+      let blocked = false;
+      if (alsoBlock && canBlockAuthor) {
+        blocked = await blockUser(user.id, target.authorId as string, {
+          reason: `Reported for ${category}. ${description.trim()}`,
+          snapshot: { report_type: target.type, target_id: target.id, ...(target.contentSnapshot || {}) },
+          skipReport: true,
+        });
+      }
+
+      if (blocked) {
+        toast.success('Report submitted and user blocked. Their content is now hidden.');
+      } else {
+        toast.success('Report submitted. Thank you — our team will review it.');
+      }
       setOpen(false);
       setDescription('');
       setCategory('inappropriate_behavior');
+      setAlsoBlock(true);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to submit report');
     } finally {
@@ -192,6 +216,21 @@ export const ReportButton: React.FC<ReportButtonProps> = ({ target, className, v
                 <p className="mt-1 text-xs text-gray-400 text-right">{description.length}/500</p>
               </div>
 
+              {canBlockAuthor && (
+                <label className="flex items-start gap-2.5 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={alsoBlock}
+                    onChange={(e) => setAlsoBlock(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed flex items-center gap-1.5">
+                    <Ban className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span><span className="font-semibold">Also block this person.</span> We'll hide all their content from you instantly and stop them from contacting you.</span>
+                  </span>
+                </label>
+              )}
+
               <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                 For emergencies or threats of harm, please also contact local authorities. See
                 our <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Community Guidelines</a> for what we prohibit.
@@ -210,7 +249,7 @@ export const ReportButton: React.FC<ReportButtonProps> = ({ target, className, v
                   disabled={submitting || description.trim().length < 5}
                   className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
                 >
-                  {submitting ? 'Sending...' : 'Submit report'}
+                  {submitting ? 'Sending...' : (alsoBlock && canBlockAuthor ? 'Report & block' : 'Submit report')}
                 </button>
               </div>
             </div>
