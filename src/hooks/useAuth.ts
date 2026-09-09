@@ -14,6 +14,8 @@ interface Profile {
   bio?: string;
   city?: string;
   birthdate?: string | null;
+  // Age bucket from the 18+ gate. null = not yet answered.
+  is_adult?: boolean | null;
   banned_at?: string | null;
   banned_reason?: string | null;
   created_at: string;

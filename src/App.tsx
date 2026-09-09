@@ -33,7 +33,7 @@ const GroupsView = lazyWithRetry(() => import('./components/groups/GroupsView').
 const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
-import { AgeGate, GUEST_BIRTHDATE_KEY } from './components/auth/AgeGate';
+import { AgeGate, GUEST_ADULT_KEY } from './components/auth/AgeGate';
 import { CityGate } from './components/auth/CityGate';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -52,7 +52,8 @@ interface ViewState {
 }
 
 // Returns true when the recorded birthdate makes the user under 18.
-// Under-18 accounts get a restricted, read-only Topics-only experience.
+// (Legacy path: some accounts were verified with a real date of birth before we
+// switched to the is_adult yes/no bucket.)
 function isUnderEighteen(birthdate?: string | null): boolean {
   if (!birthdate) return false;
   const dob = new Date(`${birthdate}T00:00:00`);
@@ -62,6 +63,20 @@ function isUnderEighteen(birthdate?: string | null): boolean {
   const m = now.getMonth() - dob.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
   return age < 18;
+}
+
+// Whether a signed-in user should get the restricted, read-only under-18 view.
+// Prefers the is_adult bucket (from the gate); falls back to a legacy birthdate.
+// `justAnswered` reflects the choice made this session before the profile
+// refetches.
+function signedInIsMinor(
+  profile: { is_adult?: boolean | null; birthdate?: string | null },
+  justAnswered: boolean | null
+): boolean {
+  if (justAnswered !== null) return !justAnswered;
+  if (profile.is_adult === true) return false;
+  if (profile.is_adult === false) return true;
+  return isUnderEighteen(profile.birthdate);
 }
 
 function App() {
@@ -77,15 +92,17 @@ function App() {
   const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
-  const [ageVerified, setAgeVerified] = useState(false);
-  // Bucketed birthdate the signed-in user just chose in the age gate, used to
-  // route minors immediately (before the profile row refetches).
-  const [selfBirthdate, setSelfBirthdate] = useState<string | null>(null);
+  // Age bucket the signed-in user just chose in the gate, used to route minors
+  // immediately (before the profile row refetches). null = not answered yet.
+  const [selfIsAdult, setSelfIsAdult] = useState<boolean | null>(null);
   const [citySaved, setCitySaved] = useState(false);
-  // Guest (never signed in) confirmed date of birth. Age is the only thing we
-  // require of a guest before they can browse; persisted locally so we ask once.
-  const [guestBirthdate, setGuestBirthdate] = useState<string | null>(() => {
-    try { return localStorage.getItem(GUEST_BIRTHDATE_KEY); } catch { return null; }
+  // Guest (never signed in) age bucket. Age is the only thing we require of a
+  // guest before they can browse; persisted locally so we ask once.
+  const [guestIsAdult, setGuestIsAdult] = useState<boolean | null>(() => {
+    try {
+      const v = localStorage.getItem(GUEST_ADULT_KEY);
+      return v === null ? null : v === 'yes';
+    } catch { return null; }
   });
   const { loading, user, profile, signOut } = useAuth();
   useOAuthDeepLink();
@@ -392,11 +409,12 @@ function App() {
   }
 
   // Age verification gate: any signed-in user whose age bucket we don't know
-  // yet must answer whether they're 18 or older before using the app.
-  if (user && profile && !profile.birthdate && !ageVerified) {
+  // yet must answer whether they're 18 or older before using the app. Users
+  // with a legacy recorded birthdate are already verified and skip this.
+  if (user && profile && profile.is_adult == null && !profile.birthdate && selfIsAdult === null) {
     return (
       <AgeGate
-        onVerified={(bd) => { setAgeVerified(true); if (bd) setSelfBirthdate(bd); }}
+        onVerified={(isAdult) => setSelfIsAdult(isAdult)}
       />
     );
   }
@@ -414,7 +432,7 @@ function App() {
   // post, comment, message, or reach events / community / shop. This gate is
   // placed before the event/group/other view branches so those are
   // unreachable even via deep links.
-  if (user && profile && isUnderEighteen(profile.birthdate || selfBirthdate)) {
+  if (user && profile && signedInIsMinor(profile, selfIsAdult)) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
         <main
@@ -466,14 +484,14 @@ function App() {
     );
   }
 
-  // Guest age gate: an unauthenticated visitor must confirm their date of birth
+  // Guest age gate: an unauthenticated visitor must answer whether they're 18+
   // once before browsing any content — age is the only thing we ask of guests.
   // Signing in / up has its own age + terms flow, so let the auth modal through.
-  if (!user && !guestBirthdate && !showAuthModal) {
+  if (!user && guestIsAdult === null && !showAuthModal) {
     return (
       <AgeGate
         mode="guest"
-        onVerified={(bd) => setGuestBirthdate(bd ?? null)}
+        onVerified={(isAdult) => setGuestIsAdult(isAdult)}
       />
     );
   }
@@ -481,7 +499,7 @@ function App() {
   // Under-18 guests get the same read-only, Topics-only experience as signed-in
   // minors — no posting, messaging, events, community, or shop, even via a deep
   // link.
-  if (!user && guestBirthdate && isUnderEighteen(guestBirthdate)) {
+  if (!user && guestIsAdult === false) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
         <main

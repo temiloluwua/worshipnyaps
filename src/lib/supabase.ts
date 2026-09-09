@@ -66,6 +66,9 @@ export interface UserProfile {
   bio?: string;
   city?: string;
   age?: number;
+  birthdate?: string | null;
+  // Age bucket from the 18+ gate. null = not yet answered.
+  is_adult?: boolean | null;
   relationship_status?: 'single' | 'married' | 'in_a_relationship' | 'engaged' | 'prefer_not_to_say';
   interests?: string[];
   spiritual_gifts?: string[];

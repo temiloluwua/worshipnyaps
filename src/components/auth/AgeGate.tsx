@@ -5,54 +5,44 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 interface AgeGateProps {
-  // Called once the user answers. The bucketed birthdate is passed back so the
+  // Called once the user answers, with whether they're 18 or older, so the
   // caller can route minors (under-18) to the read-only experience.
-  onVerified: (birthdate?: string) => void;
+  onVerified: (isAdult: boolean) => void;
   // 'account' (default): persist to the signed-in user's profile.
   // 'guest': no account yet — persist locally and surface Terms agreement, so
   // age is the only thing we ask of a guest before they can browse.
   mode?: 'account' | 'guest';
 }
 
-// Local key for a guest's confirmed age bucket (no account to write to).
-export const GUEST_BIRTHDATE_KEY = 'wny_guest_birthdate';
-
-// We ask a single yes/no question ("18 or older?") rather than an exact date of
-// birth — it's clearer and matches the 18+ line on the sign-up form. We still
-// persist the answer as a representative `birthdate` (Jan 1 of a year safely
-// inside the chosen bucket) so all existing age routing keeps working unchanged.
-function bucketBirthdate(isAdult: boolean): string {
-  const year = new Date().getFullYear() - (isAdult ? 20 : 15);
-  return `${year}-01-01`;
-}
+// Local key for a guest's confirmed age bucket ('yes' = 18+, 'no' = under 18).
+export const GUEST_ADULT_KEY = 'wny_guest_is_adult';
 
 // Blocking, non-dismissable gate shown once to anyone whose age bucket we don't
-// yet know. Confirms whether they are 18 or older before the app is usable.
+// yet know. Asks a single yes/no question — "Are you 18 or older?" — matching
+// the 18+ line on the sign-up form.
 export const AgeGate: React.FC<AgeGateProps> = ({ onVerified, mode = 'account' }) => {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const isGuest = mode === 'guest';
 
   const answer = async (isAdult: boolean) => {
-    const birthdate = bucketBirthdate(isAdult);
-
     // Guest: no account to write to — persist the answer locally so we only ask
     // once, then let the caller route minors client-side.
     if (isGuest) {
-      try { localStorage.setItem(GUEST_BIRTHDATE_KEY, birthdate); } catch { /* ignore */ }
-      onVerified(birthdate);
+      try { localStorage.setItem(GUEST_ADULT_KEY, isAdult ? 'yes' : 'no'); } catch { /* ignore */ }
+      onVerified(isAdult);
       return;
     }
 
-    if (!user) { onVerified(birthdate); return; }
+    if (!user) { onVerified(isAdult); return; }
     setSaving(true);
     try {
       const { error } = await supabase
         .from('users')
-        .update({ birthdate })
+        .update({ is_adult: isAdult })
         .eq('id', user.id);
       if (error) throw error;
-      onVerified(birthdate);
+      onVerified(isAdult);
     } catch (err: any) {
       toast.error(err?.message || 'Could not save. Please try again.');
     } finally {
