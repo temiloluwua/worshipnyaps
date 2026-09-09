@@ -78,6 +78,9 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   const [ageVerified, setAgeVerified] = useState(false);
+  // Bucketed birthdate the signed-in user just chose in the age gate, used to
+  // route minors immediately (before the profile row refetches).
+  const [selfBirthdate, setSelfBirthdate] = useState<string | null>(null);
   const [citySaved, setCitySaved] = useState(false);
   // Guest (never signed in) confirmed date of birth. Age is the only thing we
   // require of a guest before they can browse; persisted locally so we ask once.
@@ -388,13 +391,12 @@ function App() {
     );
   }
 
-  // Age verification gate: any signed-in user without a recorded birthdate
-  // must confirm they meet the 13+ minimum before using the app.
+  // Age verification gate: any signed-in user whose age bucket we don't know
+  // yet must answer whether they're 18 or older before using the app.
   if (user && profile && !profile.birthdate && !ageVerified) {
     return (
       <AgeGate
-        onVerified={() => setAgeVerified(true)}
-        onUnderage={() => { setAgeVerified(false); setShowLanding(true); }}
+        onVerified={(bd) => { setAgeVerified(true); if (bd) setSelfBirthdate(bd); }}
       />
     );
   }
@@ -412,7 +414,7 @@ function App() {
   // post, comment, message, or reach events / community / shop. This gate is
   // placed before the event/group/other view branches so those are
   // unreachable even via deep links.
-  if (user && profile && isUnderEighteen(profile.birthdate)) {
+  if (user && profile && isUnderEighteen(profile.birthdate || selfBirthdate)) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
         <main
@@ -472,7 +474,6 @@ function App() {
       <AgeGate
         mode="guest"
         onVerified={(bd) => setGuestBirthdate(bd ?? null)}
-        onUnderage={() => setShowLanding(true)}
       />
     );
   }
