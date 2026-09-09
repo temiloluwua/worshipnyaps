@@ -33,7 +33,7 @@ const GroupsView = lazyWithRetry(() => import('./components/groups/GroupsView').
 const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
-import { AgeGate } from './components/auth/AgeGate';
+import { AgeGate, GUEST_BIRTHDATE_KEY } from './components/auth/AgeGate';
 import { CityGate } from './components/auth/CityGate';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -79,6 +79,11 @@ function App() {
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   const [ageVerified, setAgeVerified] = useState(false);
   const [citySaved, setCitySaved] = useState(false);
+  // Guest (never signed in) confirmed date of birth. Age is the only thing we
+  // require of a guest before they can browse; persisted locally so we ask once.
+  const [guestBirthdate, setGuestBirthdate] = useState<string | null>(() => {
+    try { return localStorage.getItem(GUEST_BIRTHDATE_KEY); } catch { return null; }
+  });
   const { loading, user, profile, signOut } = useAuth();
   useOAuthDeepLink();
   const { theme } = useTheme();
@@ -456,6 +461,41 @@ function App() {
           setShowAuthModal(true);
         }}
       />
+    );
+  }
+
+  // Guest age gate: an unauthenticated visitor must confirm their date of birth
+  // once before browsing any content — age is the only thing we ask of guests.
+  // Signing in / up has its own age + terms flow, so let the auth modal through.
+  if (!user && !guestBirthdate && !showAuthModal) {
+    return (
+      <AgeGate
+        mode="guest"
+        onVerified={(bd) => setGuestBirthdate(bd ?? null)}
+        onUnderage={() => setShowLanding(true)}
+      />
+    );
+  }
+
+  // Under-18 guests get the same read-only, Topics-only experience as signed-in
+  // minors — no posting, messaging, events, community, or shop, even via a deep
+  // link.
+  if (!user && guestBirthdate && isUnderEighteen(guestBirthdate)) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="focus:outline-none"
+          style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+        >
+          <TopicsView
+            readOnly
+            focusTopicId={focusedTopicId}
+            onFocusedTopicHandled={() => setFocusedTopicId(null)}
+          />
+        </main>
+      </div>
     );
   }
 

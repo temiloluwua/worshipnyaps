@@ -644,19 +644,22 @@ export function TopicsView({
           </div>
 
           {/* Search collapses on scroll-down and reveals on scroll-up to keep
-              the header light; the deck actions below always stay put. */}
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showSearch ? 'max-h-24 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}`}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder={t('topics.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm text-gray-900 dark:text-white"
-              />
+              the header light; the deck actions below always stay put. Hidden
+              entirely in read-only mode (under-18 "card game only" view). */}
+          {!readOnly && (
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showSearch ? 'max-h-24 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}`}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder={t('topics.searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm text-gray-900 dark:text-white"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Deck controls — the two signature card-game actions, made
               unmissable: draw a random card, or ask us to add a new one. */}

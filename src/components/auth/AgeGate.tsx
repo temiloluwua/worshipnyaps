@@ -5,11 +5,19 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 interface AgeGateProps {
-  // Called after a valid birthdate (>= MIN_AGE) is saved.
-  onVerified: () => void;
+  // Called after a valid birthdate (>= MIN_AGE) is saved. In guest mode the
+  // saved birthdate is passed back so the caller can route minors.
+  onVerified: (birthdate?: string) => void;
   // Called when the user is under the minimum age and must be signed out.
   onUnderage: () => void;
+  // 'account' (default): persist to the signed-in user's profile.
+  // 'guest': no account yet — persist locally and surface Terms agreement, so
+  // age is the only thing we ask of a guest before they can browse.
+  mode?: 'account' | 'guest';
 }
+
+// Local key for a guest's confirmed date of birth (no account to write to).
+export const GUEST_BIRTHDATE_KEY = 'wny_guest_birthdate';
 
 const MIN_AGE = 13;
 
@@ -24,10 +32,11 @@ function ageFromBirthdate(birthdate: string): number {
 
 // Blocking, non-dismissable gate shown once to any signed-in user who hasn't
 // recorded a birthdate yet. Confirms the 13+ minimum before the app is usable.
-export const AgeGate: React.FC<AgeGateProps> = ({ onVerified, onUnderage }) => {
+export const AgeGate: React.FC<AgeGateProps> = ({ onVerified, onUnderage, mode = 'account' }) => {
   const { user, signOut } = useAuth();
   const [birthdate, setBirthdate] = useState('');
   const [saving, setSaving] = useState(false);
+  const isGuest = mode === 'guest';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +50,21 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onVerified, onUnderage }) => {
       return;
     }
     if (age < MIN_AGE) {
-      // Under the minimum — record nothing, sign out, and inform them.
+      // Under the minimum — record nothing, sign out (if any), and inform them.
       toast.error(`You must be at least ${MIN_AGE} to use Worship N Yaps.`);
-      try { await signOut(); } catch { /* ignore */ }
+      if (!isGuest) { try { await signOut(); } catch { /* ignore */ } }
       onUnderage();
       return;
     }
+
+    // Guest: no account to write to — persist the confirmed DOB locally so we
+    // only ask once, and route minors client-side.
+    if (isGuest) {
+      try { localStorage.setItem(GUEST_BIRTHDATE_KEY, birthdate); } catch { /* ignore */ }
+      onVerified(birthdate);
+      return;
+    }
+
     if (!user) return;
     setSaving(true);
     try {
@@ -55,7 +73,7 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onVerified, onUnderage }) => {
         .update({ birthdate })
         .eq('id', user.id);
       if (error) throw error;
-      onVerified();
+      onVerified(birthdate);
     } catch (err: any) {
       toast.error(err?.message || 'Could not save. Please try again.');
     } finally {
@@ -94,6 +112,13 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onVerified, onUnderage }) => {
             {saving ? 'Saving…' : 'Continue'}
           </button>
         </form>
+        {isGuest && (
+          <p className="mt-4 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+            By continuing you agree to our{' '}
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Terms of Service</a>,{' '}
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Privacy Policy</a>, and Community Guidelines.
+          </p>
+        )}
       </div>
     </div>
   );
