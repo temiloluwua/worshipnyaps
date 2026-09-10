@@ -125,7 +125,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ events, onEventC
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    {event.attendees}/{event.capacity}
+                    {t('events.going', { count: event.attendees })}
                   </span>
                 </div>
                 <button

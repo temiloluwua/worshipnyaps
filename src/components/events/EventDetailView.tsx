@@ -142,6 +142,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const isAdmin = profile?.role === 'admin';
   const canAccessChat = Boolean(chatChannel && (isRsvped || isHost));
   const canAccessOrganizerChat = Boolean(isHost || isOrganizer || isCoHost);
+  // Total capacity / % full is host-facing only. Everyone else just sees how
+  // many people are going, never the max.
+  const canSeeCapacity = Boolean(isHost || isOrganizer || isCoHost);
   const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
   const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
   const isEventFull = attendeeCount >= safeCapacity;
@@ -1638,18 +1641,14 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             <div className="flex items-start">
               <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {(isRsvped || isHost || isOrganizer)
+                {canSeeCapacity
                   ? t('events.attending', { count: attendeeCount, capacity: safeCapacity })
-                  : (isEventFull
-                      ? 'Event is full'
-                      : (safeCapacity - attendeeCount <= 2 && attendeeCount > 0)
-                        ? 'Almost full'
-                        : 'Spots available — RSVP to see who\'s coming')}
+                  : t('events.going', { count: attendeeCount })}
               </div>
             </div>
           </div>
 
-          {(isRsvped || isHost || isOrganizer) && (
+          {canSeeCapacity && (
             <div className="mb-6">
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                 <span>{t('events.eventCapacity')}</span>

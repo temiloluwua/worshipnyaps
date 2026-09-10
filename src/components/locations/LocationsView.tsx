@@ -454,7 +454,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
           </div>
         ) : (
           displayEvents.map((event) => {
-            const { attendeeCount, spotsLeft, safeCapacity, isLow, isFull } = getSpotsSummary(event);
+            const { attendeeCount, safeCapacity, isLow, isFull } = getSpotsSummary(event);
             const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
             const isRsvped = rsvpEventIds.has(event.id);
             const isHosting = user && event.host_id === user.id;
@@ -567,14 +567,18 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
                   <div className="mb-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-semibold ${isFull ? 'text-red-600 dark:text-red-400' : isLow ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                        {isFull ? 'Event Full' : isLow ? `Almost full` : `Spots available`}
+                      {/* Viewers only ever see how many are going, never the
+                          total capacity. The host still gets the full X/Y +
+                          progress bar to manage the event. */}
+                      <span className={`text-xs font-semibold flex items-center gap-1 ${isFull ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                        <Users className="w-3.5 h-3.5" />
+                        {t('events.going', { count: attendeeCount })}{isFull ? ' · Full' : ''}
                       </span>
-                      {(isRsvped || isHosting) && (
+                      {isHosting && (
                         <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
                       )}
                     </div>
-                    {(isRsvped || isHosting) && (
+                    {isHosting && (
                       <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
                         <div
                           className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}

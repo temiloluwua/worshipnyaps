@@ -391,7 +391,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({ event, isOpen, onClose, on
           <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.date} at {event.time}</span>
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.locations?.name || event.location || 'Location TBD'}</span>
-            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{(event.attendees || 0)}/{event.capacity} attending</span>
+            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{(event.attendees || 0)} going</span>
           </div>
         </div>
 
