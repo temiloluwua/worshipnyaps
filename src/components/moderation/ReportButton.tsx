@@ -118,10 +118,19 @@ export const ReportButton: React.FC<ReportButtonProps> = ({ target, className, v
         });
       }
 
+      // Remove the reported content from the reporter's view instantly. Block
+      // already broadcast wny:user-blocked (drops all the author's content); a
+      // report on its own still hides at least the reported item.
+      try {
+        window.dispatchEvent(new CustomEvent('wny:content-reported', {
+          detail: { targetType: target.type, targetId: target.id, authorId: target.authorId },
+        }));
+      } catch { /* noop */ }
+
       if (blocked) {
         toast.success('Report submitted and user blocked. Their content is now hidden.');
       } else {
-        toast.success('Report submitted. Thank you — our team will review it.');
+        toast.success('Report submitted. It\'s now hidden and our team will review it.');
       }
       setOpen(false);
       setDescription('');

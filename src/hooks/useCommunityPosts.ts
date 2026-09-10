@@ -45,8 +45,17 @@ export const useCommunityPosts = () => {
       const uid = (e as CustomEvent).detail?.userId as string | undefined;
       if (uid) setPosts(prev => prev.filter(p => p.author_id !== uid));
     };
+    // A report hides at least the reported item from the reporter immediately.
+    const onReported = (e: Event) => {
+      const id = (e as CustomEvent).detail?.targetId as string | undefined;
+      if (id) setPosts(prev => prev.filter(p => p.id !== id));
+    };
     window.addEventListener('wny:user-blocked', onBlocked);
-    return () => window.removeEventListener('wny:user-blocked', onBlocked);
+    window.addEventListener('wny:content-reported', onReported);
+    return () => {
+      window.removeEventListener('wny:user-blocked', onBlocked);
+      window.removeEventListener('wny:content-reported', onReported);
+    };
   }, []);
 
   const createPost = useCallback(async (postData: {

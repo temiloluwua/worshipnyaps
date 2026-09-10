@@ -326,6 +326,18 @@ export const useConnections = () => {
     }
   }, [user]);
 
+  // useConnections is per-instance, so a block from one place (e.g. the report
+  // dialog) wouldn't update isBlocked() elsewhere. Sync every instance off the
+  // shared broadcast so blocked users drop out of lists/chats immediately.
+  useEffect(() => {
+    const onBlocked = (e: Event) => {
+      const uid = (e as CustomEvent).detail?.userId as string | undefined;
+      if (uid) setBlockedUserIds(prev => (prev.has(uid) ? prev : new Set(prev).add(uid)));
+    };
+    window.addEventListener('wny:user-blocked', onBlocked);
+    return () => window.removeEventListener('wny:user-blocked', onBlocked);
+  }, []);
+
   return {
     connections,
     connectionRequests,

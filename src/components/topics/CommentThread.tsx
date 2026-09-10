@@ -134,6 +134,29 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ topicId, community
     loadComments();
   }, [loadComments]);
 
+  // App Store 1.2: blocking an author (or reporting a comment) removes the
+  // content from the reporter's view instantly. Prune the comment tree in place.
+  useEffect(() => {
+    const prune = (list: Comment[], remove: (c: Comment) => boolean): Comment[] =>
+      list
+        .filter(c => !remove(c))
+        .map(c => ({ ...c, replies: c.replies ? prune(c.replies, remove) : c.replies }));
+    const onBlocked = (e: Event) => {
+      const uid = (e as CustomEvent).detail?.userId as string | undefined;
+      if (uid) setComments(prev => prune(prev, c => c.author?.id === uid));
+    };
+    const onReported = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (d.targetType === 'comment' && d.targetId) setComments(prev => prune(prev, c => c.id === d.targetId));
+    };
+    window.addEventListener('wny:user-blocked', onBlocked);
+    window.addEventListener('wny:content-reported', onReported);
+    return () => {
+      window.removeEventListener('wny:user-blocked', onBlocked);
+      window.removeEventListener('wny:content-reported', onReported);
+    };
+  }, []);
+
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     if (!user) {

@@ -7,6 +7,7 @@ import { useEvents } from '../../hooks/useEvents';
 import { CommunityChat } from '../community/CommunityChat';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { supabase, UserProfile } from '../../lib/supabase';
+import { fetchBlockedIds } from '../../lib/blocking';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -45,7 +46,8 @@ export function CommunityView({ onViewProfile, onStartChat, onViewGroups }: Comm
           .neq('id', user.id)
           .order('name');
         if (error) throw error;
-        setAllUsers(data || []);
+        const blocked = await fetchBlockedIds(user.id);
+        setAllUsers((data || []).filter((u: UserProfile) => !blocked.has(u.id)));
       } catch (error) {
         console.error('Error fetching users:', error);
       } finally {
@@ -54,6 +56,24 @@ export function CommunityView({ onViewProfile, onStartChat, onViewGroups }: Comm
     };
     fetchUsers();
   }, [user]);
+
+  // App Store 1.2: drop a blocked/reported person from the people list instantly.
+  useEffect(() => {
+    const onBlocked = (e: Event) => {
+      const uid = (e as CustomEvent).detail?.userId as string | undefined;
+      if (uid) setAllUsers(prev => prev.filter(u => u.id !== uid));
+    };
+    const onReported = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (d.targetType === 'user' && d.targetId) setAllUsers(prev => prev.filter(u => u.id !== d.targetId));
+    };
+    window.addEventListener('wny:user-blocked', onBlocked);
+    window.addEventListener('wny:content-reported', onReported);
+    return () => {
+      window.removeEventListener('wny:user-blocked', onBlocked);
+      window.removeEventListener('wny:content-reported', onReported);
+    };
+  }, []);
 
   const connectedUserIds = connections.map(c => c.connected_user_id);
   const pendingUserIds = connectionRequests.map(r => r.from_user_id === user?.id ? r.to_user_id : r.from_user_id);

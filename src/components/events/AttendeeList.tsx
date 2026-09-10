@@ -52,6 +52,16 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, isHost, isR
     }
   }, [eventId, user]);
 
+  // Drop a blocked person from the attendee list instantly (App Store 1.2).
+  useEffect(() => {
+    const onBlocked = (e: Event) => {
+      const uid = (e as CustomEvent).detail?.userId as string | undefined;
+      if (uid) setBlockedIds(prev => (prev.has(uid) ? prev : new Set(prev).add(uid)));
+    };
+    window.addEventListener('wny:user-blocked', onBlocked);
+    return () => window.removeEventListener('wny:user-blocked', onBlocked);
+  }, []);
+
   const fetchBlocked = async () => {
     if (!user) return;
     try {
