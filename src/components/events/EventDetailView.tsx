@@ -28,6 +28,7 @@ import { mapLinkFor } from '../../lib/mapLink';
 import { shareOrigin } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
 import { ReportButton } from '../moderation/ReportButton';
+import { TopicCard } from '../topics/TopicCard';
 
 interface EventDetailViewProps {
   eventId: string;
@@ -73,7 +74,8 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
 
 export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile, onViewTopic, onRequireAuth }) => {
   const { user, profile } = useAuth();
-  const [attachedTopic, setAttachedTopic] = useState<{ id: string; title: string } | null>(null);
+  const [attachedTopic, setAttachedTopic] = useState<any | null>(null);
+  const [showTopicCard, setShowTopicCard] = useState(false);
   // Team-recruitment link params (e.g. /event/{id}?team={code}&pick=cohost:worship).
   const teamCode = new URLSearchParams(window.location.search).get('team');
   const teamPick = new URLSearchParams(window.location.search).get('pick');
@@ -1154,8 +1156,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   useEffect(() => {
     const tid = (event as { topic_id?: string | null } | null)?.topic_id;
     if (!tid) { setAttachedTopic(null); return; }
-    supabase.from('topics').select('id, title').eq('id', tid).maybeSingle()
-      .then(({ data }) => setAttachedTopic(data ? { id: (data as any).id, title: (data as any).title } : null));
+    // Full row so we can render the actual card in a popup (not just the title).
+    supabase.from('topics').select('*, users!topics_author_id_fkey (name, city)').eq('id', tid).maybeSingle()
+      .then(({ data }) => setAttachedTopic(data || null));
   }, [event]);
 
   const typingLabel = (() => {
@@ -1500,16 +1503,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           {attachedTopic && (
             <button
-              onClick={() => onViewTopic?.(attachedTopic.id)}
-              disabled={!onViewTopic}
-              className="w-full mb-6 flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:cursor-default"
+              onClick={() => setShowTopicCard(true)}
+              className="w-full mb-6 flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 ring-1 ring-blue-200/60 dark:ring-blue-800/50 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:scale-[1.01] active:scale-[0.99] transition-all"
             >
               <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">Discussion topic</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">Discussion topic · tap to read</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{attachedTopic.title}</div>
               </div>
-              {onViewTopic && <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+              <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0" />
             </button>
           )}
 
@@ -2247,6 +2249,51 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           </div>
         </div>
       )}
+
+      {showTopicCard && attachedTopic && (
+        <AttachedTopicPopup
+          topic={attachedTopic}
+          onClose={() => setShowTopicCard(false)}
+          onOpenFull={onViewTopic ? () => { setShowTopicCard(false); onViewTopic(attachedTopic.id); } : undefined}
+        />
+      )}
+    </div>
+  );
+};
+
+// The event's discussion topic, shown as the actual card in a pop-in overlay.
+const AttachedTopicPopup: React.FC<{ topic: any; onClose: () => void; onOpenFull?: () => void }> = ({ topic, onClose, onOpenFull }) => {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+      <div
+        className={`relative w-full max-w-md transition-all duration-200 ease-out ${shown ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center text-gray-600 dark:text-gray-200"
+        >
+          <XCircle className="w-5 h-5" />
+        </button>
+        <TopicCard
+          topic={topic}
+          isLiked={false}
+          isBookmarked={false}
+          onLike={() => {}}
+          onBookmark={() => {}}
+          onShare={() => {}}
+          onEdit={() => {}}
+          onView={() => onOpenFull?.()}
+          cardStyle="game"
+          readOnly
+        />
+      </div>
     </div>
   );
 };
