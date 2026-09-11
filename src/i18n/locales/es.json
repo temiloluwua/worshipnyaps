@@ -135,6 +135,7 @@
     "hostedBy": "Organizado por {{name}}",
     "attending": "{{count}} / {{capacity}} asistiendo",
     "going": "{{count}} asistirán",
+    "youreGoing": "Asistirás",
     "eventCapacity": "Capacidad del Evento",
     "percentFull": "{{percent}}% lleno",
     "youreAttending": "\u00a1Vas a asistir a este evento!",

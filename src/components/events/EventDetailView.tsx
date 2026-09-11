@@ -1452,19 +1452,14 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             const ev = event as { event_type?: string };
             const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣', volunteering: '🤝' };
             const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[ev.event_type || ''] || '✨';
-            const fallbackGradient =
-              ev.event_type === 'bible_study' ? 'from-indigo-500 via-purple-500 to-blue-600'
-              : ev.event_type === 'evangelism' ? 'from-emerald-500 via-teal-500 to-cyan-600'
-              : ev.event_type === 'volunteering' ? 'from-emerald-500 via-teal-500 to-cyan-600'
-              : ev.event_type === 'church'    ? 'from-violet-500 via-fuchsia-500 to-rose-600'
-              : 'from-amber-500 via-orange-500 to-rose-600';
             return (
               <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden">
                 {imageUrl ? (
                   <img src={imageUrl} alt={event.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
-                    <span className="text-8xl opacity-90 drop-shadow-lg" aria-hidden="true">{locEmoji}</span>
+                  // Single calm neutral fallback instead of a per-type gradient.
+                  <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+                    <span className="text-8xl opacity-80" aria-hidden="true">{locEmoji}</span>
                   </div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
@@ -1638,14 +1633,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               </div>
             </div>
 
-            <div className="flex items-start">
-              <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {canSeeCapacity
-                  ? t('events.attending', { count: attendeeCount, capacity: safeCapacity })
-                  : t('events.going', { count: attendeeCount })}
+            {/* Attendance is host-facing only. Everyone else sees no headcount
+                — just whether they're going. */}
+            {(canSeeCapacity || isRsvped) && (
+              <div className="flex items-start">
+                <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {canSeeCapacity
+                    ? t('events.attending', { count: attendeeCount, capacity: safeCapacity })
+                    : t('events.youreGoing')}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {canSeeCapacity && (

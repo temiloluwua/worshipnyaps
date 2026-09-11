@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Clock, Users } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 
@@ -122,10 +122,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ events, onEventC
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {event.time}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {t('events.going', { count: event.attendees })}
                   </span>
                 </div>
                 <button

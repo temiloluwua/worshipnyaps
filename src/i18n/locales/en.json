@@ -135,6 +135,7 @@
     "hostedBy": "Hosted by {{name}}",
     "attending": "{{count}} / {{capacity}} attending",
     "going": "{{count}} going",
+    "youreGoing": "You're going",
     "eventCapacity": "Event Capacity",
     "percentFull": "{{percent}}% full",
     "youreAttending": "You're attending this event!",

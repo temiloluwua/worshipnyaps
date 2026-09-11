@@ -263,17 +263,17 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen pb-24">
       <div
-        className="p-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white"
+        className="p-4 bg-blue-600 text-white"
         style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
       >
         <h1 className="text-2xl font-bold mb-1">{t('events.nearYou')}</h1>
         <p className="text-blue-100 text-sm">{t('events.discover')}</p>
       </div>
 
-      <div className="p-4 bg-gradient-to-r from-green-500 to-blue-500 flex gap-2">
+      <div className="p-4 flex gap-2 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setShowHostModal(true)}
-          className="flex-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-white py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-md flex items-center justify-center space-x-2"
+          className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
         >
           <Plus className="w-5 h-5" />
           <span>{t('events.hostEvent')}</span>
@@ -282,10 +282,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
           onClick={() => setShowMap((s) => !s)}
           aria-pressed={showMap}
           aria-label={showMap ? 'Hide map' : 'Show map'}
-          className={`px-4 py-3 rounded-lg font-semibold transition-all shadow-md flex items-center justify-center gap-1 ${
+          className={`px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1 border ${
             showMap
-              ? 'bg-blue-700 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
           <Map className="w-5 h-5" />
@@ -478,35 +478,30 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                   const evType = (event as { event_type?: string }).event_type || '';
                   const eventTypeEmoji: Record<string, string> = { bible_study: '📖', church: '⛪', yap: '✨', evangelism: '📣', volunteering: '🤝' };
                   const locEmoji = ({ home: '🏠', church: '⛪', park: '🌿', cafe: '☕', online: '💻' } as Record<string, string>)[event.location_type || ''] || eventTypeEmoji[evType] || '✨';
-                  const fallbackGradient =
-                    evType === 'bible_study' ? 'from-indigo-400 via-purple-400 to-blue-500'
-                    : evType === 'evangelism' ? 'from-emerald-400 via-teal-400 to-cyan-500'
-                    : evType === 'volunteering' ? 'from-emerald-400 via-teal-400 to-cyan-500'
-                    : evType === 'church'    ? 'from-violet-400 via-fuchsia-400 to-rose-500'
-                    : 'from-amber-400 via-orange-400 to-rose-500';
                   return (
                     <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden">
                       {imageUrl ? (
                         <img src={imageUrl} alt={event.title} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
-                        <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
-                          <span className="text-6xl opacity-90 drop-shadow-sm" aria-hidden="true">{locEmoji}</span>
+                        // Single calm neutral fallback instead of a per-type gradient.
+                        <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+                          <span className="text-6xl opacity-80" aria-hidden="true">{locEmoji}</span>
                         </div>
                       )}
                       {isHosting && (
-                        <div className="absolute bottom-2 left-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-1 rounded-full shadow-lg text-xs font-bold uppercase tracking-wide flex items-center gap-1">
+                        <div className="absolute bottom-2 left-2 bg-gray-900/80 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           You're hosting
                         </div>
                       )}
-                      <div className="absolute top-2 left-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow text-xs font-semibold text-gray-900 dark:text-white">
+                      <div className="absolute top-2 left-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow-sm text-xs font-medium text-gray-700 dark:text-gray-200">
                         {formatEventTypeLabel(event as any)}
                       </div>
-                      <div className="absolute top-2 right-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-blue-500" />
+                      <div className="absolute top-2 right-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow-sm text-xs font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-gray-400" />
                         <span>{formatDateShort(event.date)}</span>
-                        <span className="text-gray-400">·</span>
-                        <Clock className="w-3 h-3 text-blue-500" />
+                        <span className="text-gray-300 dark:text-gray-600">·</span>
+                        <Clock className="w-3 h-3 text-gray-400" />
                         <span>{formatTime12h(event.time)}</span>
                       </div>
                     </div>
@@ -565,28 +560,29 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                     </div>
                   </div>
 
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      {/* Viewers only ever see how many are going, never the
-                          total capacity. The host still gets the full X/Y +
-                          progress bar to manage the event. */}
-                      <span className={`text-xs font-semibold flex items-center gap-1 ${isFull ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                        <Users className="w-3.5 h-3.5" />
-                        {t('events.going', { count: attendeeCount })}{isFull ? ' · Full' : ''}
-                      </span>
+                  {/* Attendance is host-only. Non-hosts never see a headcount or
+                      capacity — at most a subtle "Full" note. The host gets the
+                      full X/Y + progress bar to manage the event. */}
+                  {(isHosting || isFull) && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        {isFull
+                          ? <span className="text-xs font-semibold text-red-600 dark:text-red-400">Full</span>
+                          : <span />}
+                        {isHosting && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
+                        )}
+                      </div>
                       {isHosting && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
+                        <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                          <div
+                            className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}
+                            style={{ width: `${capacityPercentage}%` }}
+                          />
+                        </div>
                       )}
                     </div>
-                    {isHosting && (
-                      <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                        <div
-                          className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}
-                          style={{ width: `${capacityPercentage}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {isRsvped && (
                     <div className="mb-3 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
