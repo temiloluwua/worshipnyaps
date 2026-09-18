@@ -270,7 +270,11 @@ export function TopicsView({
   const primaryTopics = topicsFiltered;
   const communityFiltered = communitySub === 'all'
     ? communityTopics
-    : communityTopics.filter((t: any) => t.community_category === communitySub);
+    // Posts with no stored community_category are displayed and styled as
+    // 'general' (see the map above), so the filter must normalize the same
+    // way — otherwise a null-category post shows as General yet disappears
+    // when you tap the General tab, making type-sorting look broken.
+    : communityTopics.filter((t: any) => (t.community_category || 'general') === communitySub);
 
   // Community tab respects the Friends / Local audience chip. The "Friends"
   // chip also includes anyone the user follows (one-way) — they only see
