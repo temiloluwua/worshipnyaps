@@ -181,6 +181,10 @@ export interface CommunityPost {
   bible_verse?: string;
   community_category?: CommunityCategory;
   visibility: 'public' | 'friends_only';
+  // A post can share one of the host's events (and flag it needs volunteers),
+  // or be filled in automatically when a scheduling poll is finalized.
+  event_id?: string | null;
+  needs_help?: boolean;
   is_pinned: boolean;
   is_featured?: boolean;
   featured_at?: string | null;

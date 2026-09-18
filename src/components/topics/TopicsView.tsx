@@ -17,6 +17,8 @@ import { CreateTopicModal } from './CreateTopicModal';
 import { EditTopicModal } from './EditTopicModal';
 import { TopicOfTheDayCard } from './TopicOfTheDayCard';
 import { TopicDetailModal } from './TopicDetailModal';
+import { CommunityPollCard } from './CommunityPollCard';
+import { EventShareChip } from './EventShareChip';
 import { RequestTopicModal } from './RequestTopicModal';
 import { AdminTopicReviewPanel } from './AdminTopicReviewPanel';
 import { AuthModal } from '../auth/AuthModal';
@@ -864,6 +866,19 @@ export function TopicsView({
                         ))}
                       </div>
                     )}
+                    {topic.event_id && (
+                      <EventShareChip
+                        eventId={topic.event_id}
+                        needsHelp={topic.needs_help}
+                        onOpenEvent={onOpenEvent}
+                      />
+                    )}
+                    <CommunityPollCard
+                      postId={topic.id}
+                      authorId={topic.author_id || topic.authorId}
+                      onOpenEvent={onOpenEvent}
+                      onRequireAuth={() => setShowAuthModal(true)}
+                    />
                     <div className="flex gap-6 text-xs text-gray-500 dark:text-gray-400">
                       {/* Prayer requests get a praying-hands react instead of a heart. */}
                       {topic.community_category === 'prayer_point' ? (

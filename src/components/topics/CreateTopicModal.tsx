@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Minus, Book } from 'lucide-react';
+import { X, Plus, Minus, Book, CalendarClock } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
+import { useCommunityPolls } from '../../hooks/useCommunityPolls';
+import { useEvents } from '../../hooks/useEvents';
 import { CommunityCategory } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+
+// A community post is either a plain post, one that carries a "which day
+// works?" scheduling poll the host can later turn into an event, or one that
+// shares an existing event the host needs help with.
+type PostKind = 'plain' | 'poll' | 'event';
 
 interface CreateTopicModalProps {
   isOpen: boolean;
@@ -32,6 +39,8 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   const { user, profile } = useAuth();
   const { createTopic } = useTopics();
   const { createPost } = useCommunityPosts();
+  const { createPoll } = useCommunityPolls();
+  const { myEvents, fetchMyEvents } = useEvents();
   const [formData, setFormData] = useState({
     title: '',
     category: 'life-questions',
@@ -42,6 +51,17 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     questions: [''],
     visibility: 'public' as 'public' | 'friends_only',
   });
+  // Scheduling-poll composer state (community posts only).
+  const [postKind, setPostKind] = useState<PostKind>('plain');
+  const [pollOptions, setPollOptions] = useState<{ date: string; time: string }[]>([
+    { date: '', time: '18:00' },
+    { date: '', time: '18:00' },
+  ]);
+  // Share-an-event composer state (community posts only).
+  const [sharedEventId, setSharedEventId] = useState('');
+  const [needsHelp, setNeedsHelp] = useState(true);
+  // Only the host's own events can be shared as "I'm doing this / need help".
+  const hostedEvents = myEvents.filter((e: any) => e.role === 'host' || e.host_id === user?.id);
   const [newTag, setNewTag] = useState('');
   // True the moment the user hits Submit while logged-out — we then wait
   // for them to authenticate and auto-fire the post.
@@ -70,7 +90,21 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         bible_verse: formData.bibleReference || undefined,
         community_category: formData.communityCategory,
         visibility: formData.visibility,
+        event_id: postKind === 'event' ? sharedEventId : null,
+        needs_help: postKind === 'event' ? needsHelp : false,
       });
+
+      // Attach the scheduling poll once the post exists. If it fails the post
+      // still stands, so surface the error but don't abort the whole flow.
+      if (result && postKind === 'poll') {
+        const postId = (result as { id?: string }).id;
+        const cleanOptions = pollOptions
+          .filter((o) => o.date)
+          .map((o) => ({ date: o.date, time: o.time || '18:00' }));
+        if (postId) {
+          await createPoll(postId, formData.title, cleanOptions);
+        }
+      }
     } else {
       result = await createTopic({
         title: formData.title,
@@ -98,8 +132,19 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         questions: [''],
         visibility: 'public',
       });
+      setPostKind('plain');
+      setPollOptions([{ date: '', time: '18:00' }, { date: '', time: '18:00' }]);
+      setSharedEventId('');
+      setNeedsHelp(true);
     }
   };
+
+  const addPollOption = () =>
+    setPollOptions((prev) => [...prev, { date: '', time: '18:00' }]);
+  const updatePollOption = (index: number, patch: Partial<{ date: string; time: string }>) =>
+    setPollOptions((prev) => prev.map((o, i) => (i === index ? { ...o, ...patch } : o)));
+  const removePollOption = (index: number) =>
+    setPollOptions((prev) => prev.filter((_, i) => i !== index));
 
   // All hooks must be declared BEFORE the conditional early return so the
   // hook order is stable when the modal toggles open/closed. After a
@@ -129,6 +174,13 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // Load the user's events so they can share one. Fetch on open (cheap; the
+  // hook caches into myEvents).
+  useEffect(() => {
+    if (isOpen && user && isCommunityPost) fetchMyEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user?.id]);
 
   if (!isOpen) return null;
 
@@ -195,6 +247,19 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isCommunityPost && postKind === 'poll') {
+      const dated = pollOptions.filter((o) => o.date).length;
+      if (dated < 2) {
+        toast.error('Add at least two days for people to vote on.');
+        return;
+      }
+    }
+
+    if (isCommunityPost && postKind === 'event' && !sharedEventId) {
+      toast.error('Pick one of your events to share.');
+      return;
+    }
+
     if (!user) {
       if (!formHasContent()) {
         toast.error('Add a title or content first.');
@@ -234,12 +299,49 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
 
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="p-6 space-y-6">
+            {isCommunityPost && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  What kind of post?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: 'plain', label: 'Post', desc: 'Share a thought or question' },
+                    { value: 'poll', label: 'Schedule a day', desc: 'Vote on a day, then make it an event' },
+                    { value: 'event', label: 'Share an event', desc: 'Promote your event / ask for help' },
+                  ] as { value: PostKind; label: string; desc: string }[]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPostKind(opt.value)}
+                      className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left touch-manipulation ${
+                        postKind === opt.value
+                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {opt.value === 'poll' && <CalendarClock className="w-4 h-4" />}
+                        {opt.value === 'event' && <CalendarClock className="w-4 h-4" />}
+                        {opt.label}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label
                 htmlFor="topic-title"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                {isCommunityPost ? "What's on your mind?" : 'Topic Title'}
+                {!isCommunityPost
+                  ? 'Topic Title'
+                  : postKind === 'poll'
+                    ? 'What are you planning?'
+                    : "What's on your mind?"}
               </label>
               <input
                 id="topic-title"
@@ -248,14 +350,104 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                 value={formData.title}
                 onChange={handleInputChange}
                 placeholder={
-                  isCommunityPost
-                    ? 'Share your thoughts or ask a question...'
-                    : 'e.g., How do we handle comparison in our faith?'
+                  !isCommunityPost
+                    ? 'e.g., How do we handle comparison in our faith?'
+                    : postKind === 'poll'
+                      ? 'e.g., Saturday morning hike — which day works?'
+                      : 'Share your thoughts or ask a question...'
                 }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               />
             </div>
+
+            {isCommunityPost && postKind === 'poll' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Which days? People vote for the ones they can make.
+                </label>
+                <div className="space-y-2">
+                  {pollOptions.map((opt, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={opt.date}
+                        onChange={(e) => updatePollOption(index, { date: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                      <input
+                        type="time"
+                        value={opt.time}
+                        onChange={(e) => updatePollOption(index, { time: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removePollOption(index)}
+                          className="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                          aria-label="Remove day"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addPollOption}
+                    className="flex items-center space-x-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add another day</span>
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Once people vote, you can turn the winning day into an event — everyone who voted for it is added automatically.
+                </p>
+              </div>
+            )}
+
+            {isCommunityPost && postKind === 'event' && (
+              <div>
+                <label htmlFor="share-event" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Which event?
+                </label>
+                {hostedEvents.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 px-3 py-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+                    You're not hosting any events yet. Create one from the Locations tab first.
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      id="share-event"
+                      value={sharedEventId}
+                      onChange={(e) => setSharedEventId(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select one of your events…</option>
+                      {hostedEvents.map((e: any) => (
+                        <option key={e.id} value={e.id}>
+                          {e.title}{e.date ? ` — ${new Date(`${e.date}T00:00`).toLocaleDateString()}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={needsHelp}
+                        onChange={(e) => setNeedsHelp(e.target.checked)}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                      />
+                      I need help with this event (volunteers, setup, food…)
+                    </label>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Readers can tap through to your event and its Help tab to pitch in.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             {!isCommunityPost && (
               <div>

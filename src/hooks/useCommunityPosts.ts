@@ -66,6 +66,8 @@ export const useCommunityPosts = () => {
     bible_verse?: string;
     community_category?: CommunityPost['community_category'];
     visibility?: CommunityPost['visibility'];
+    event_id?: string | null;
+    needs_help?: boolean;
   }) => {
     if (!user) return null;
 
@@ -81,6 +83,8 @@ export const useCommunityPosts = () => {
           bible_verse: postData.bible_verse,
           community_category: postData.community_category,
           visibility: postData.visibility || 'public',
+          event_id: postData.event_id ?? null,
+          needs_help: postData.needs_help ?? false,
           is_pinned: false,
           view_count: 0,
         })
@@ -98,7 +102,7 @@ export const useCommunityPosts = () => {
 
   const updatePost = useCallback(async (
     postId: string,
-    updates: Partial<Pick<CommunityPost, 'title' | 'content' | 'tags' | 'image_url' | 'bible_verse' | 'community_category' | 'visibility' | 'is_pinned'>>
+    updates: Partial<Pick<CommunityPost, 'title' | 'content' | 'tags' | 'image_url' | 'bible_verse' | 'community_category' | 'visibility' | 'is_pinned' | 'event_id' | 'needs_help'>>
   ) => {
     if (!user) return false;
 
