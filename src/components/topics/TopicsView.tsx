@@ -340,28 +340,51 @@ export function TopicsView({
 
   const displayTopics = (() => {
     if (hasSearchQuery || selectedCategory !== 'all') return filteredTopics;
+    // The Community feed reads newest-first like any social feed. The Topics
+    // deck, by contrast, uses a daily seeded shuffle so the card game feels
+    // fresh each day.
+    if (activeTab === 'community') {
+      return [...filteredTopics].sort(
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      );
+    }
     const rng = seededRandom(dailySeed);
     const arr = [...filteredTopics];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    // Lift the current user's own posts to the top so freshly-created
-    // content is immediately visible instead of buried by the shuffle.
-    if (user) {
-      const mine: any[] = [];
-      const rest: any[] = [];
-      for (const t of arr) {
-        const aid = t.author_id || t.authorId;
-        if (aid === user.id) mine.push(t);
-        else rest.push(t);
-      }
-      return [...mine, ...rest];
-    }
     return arr;
   })();
   const visibleTopics = displayTopics.slice(0, visibleCount);
-  const hasMoreTopics = displayTopics.length > visibleTopics.length;
+
+  // Community feed = posts + reposts interleaved newest-first, so reposts sit in
+  // their true chronological place instead of being pinned above everything.
+  // (The Topics tab has no reposts.)
+  type FeedEntry =
+    | { kind: 'post'; date: number; key: string; post: any }
+    | { kind: 'repost'; date: number; key: string; repost: Repost };
+  const communityEntries: FeedEntry[] = useMemo(() => {
+    const postEntries: FeedEntry[] = displayTopics.map((p: any) => ({
+      kind: 'post',
+      date: new Date(p.created_at || 0).getTime(),
+      key: `p_${p.id}`,
+      post: p,
+    }));
+    const repostEntries: FeedEntry[] = reposts.map((rp) => ({
+      kind: 'repost',
+      date: new Date(rp.created_at || 0).getTime(),
+      key: `r_${rp.id}`,
+      repost: rp,
+    }));
+    return [...postEntries, ...repostEntries].sort((a, b) => b.date - a.date);
+  }, [displayTopics, reposts]);
+  const visibleCommunityEntries = communityEntries.slice(0, visibleCount);
+
+  const hasMoreTopics =
+    activeTab === 'community'
+      ? communityEntries.length > visibleCommunityEntries.length
+      : displayTopics.length > visibleTopics.length;
 
   useEffect(() => {
     setVisibleCount(DEFAULT_VISIBLE_TOPICS);
@@ -818,29 +841,32 @@ export function TopicsView({
       ) : (
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           <NearbyEventsRail onOpenEvent={onOpenEvent} />
-          {reposts.map((rp) => {
-            const orig: any = rp.original_topic;
-            if (!orig) return null;
-            const likeType: 'topic' | 'community_post' =
-              orig.topic_type === 'community' ? 'community_post' : 'topic';
-            return (
-              <RepostCard
-                key={rp.id}
-                repost={rp}
-                isLiked={isLiked(likeType, orig.id)}
-                isBookmarked={isBookmarked(orig.id)}
-                onLike={() => { if (!user) { setShowAuthModal(true); return; } toggleLike(likeType, orig.id); }}
-                onBookmark={() => { if (!user) { setShowAuthModal(true); return; } toggleBookmark(orig.id, likeType); }}
-                onShare={() => handleShare(orig)}
-                onView={() => handleViewTopic(orig)}
-                onViewProfile={onViewProfile}
-              />
-            );
-          })}
-          {visibleTopics.length > 0 ? (
-            visibleTopics.map((topic) => (
+          {visibleCommunityEntries.length > 0 ? (
+            visibleCommunityEntries.map((entry) => {
+              if (entry.kind === 'repost') {
+                const rp = entry.repost;
+                const orig: any = rp.original_topic;
+                if (!orig) return null;
+                const likeType: 'topic' | 'community_post' =
+                  orig.topic_type === 'community' ? 'community_post' : 'topic';
+                return (
+                  <RepostCard
+                    key={entry.key}
+                    repost={rp}
+                    isLiked={isLiked(likeType, orig.id)}
+                    isBookmarked={isBookmarked(orig.id)}
+                    onLike={() => { if (!user) { setShowAuthModal(true); return; } toggleLike(likeType, orig.id); }}
+                    onBookmark={() => { if (!user) { setShowAuthModal(true); return; } toggleBookmark(orig.id, likeType); }}
+                    onShare={() => handleShare(orig)}
+                    onView={() => handleViewTopic(orig)}
+                    onViewProfile={onViewProfile}
+                  />
+                );
+              }
+              const topic: any = entry.post;
+              return (
               <div
-                key={topic.id}
+                key={entry.key}
                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border-l-4 border-transparent hover:border-blue-500"
                 onClick={() => handleViewTopic(topic)}
               >
@@ -933,7 +959,8 @@ export function TopicsView({
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-16 px-4">
               <Users className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
