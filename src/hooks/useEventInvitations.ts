@@ -86,7 +86,7 @@ export const useEventInvitations = () => {
         return false;
       }
 
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('event_invitations')
         .insert({
           event_id: eventId,
@@ -94,7 +94,9 @@ export const useEventInvitations = () => {
           invitee_id: inviteeId,
           message,
           status: 'pending'
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
@@ -104,12 +106,15 @@ export const useEventInvitations = () => {
         .eq('id', eventId)
         .maybeSingle();
 
+      // Stash the invitation id so the notification can offer inline
+      // Going / Can't-make-it without opening the buried Invitations tab.
       await createNotification(
         inviteeId,
         'event',
         'Event Invitation',
         `${profile?.name || 'Someone'} invited you to ${event?.title || 'an event'}`,
-        eventId
+        eventId,
+        { invitation_id: created?.id, event_id: eventId }
       );
 
       toast.success('Invitation sent!');

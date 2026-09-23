@@ -11,6 +11,7 @@ interface SuggestedHelpersProps {
   eventTitle: string;
   helpType: string;   // event_help_requests.request_type
   roleLabel: string;  // human label, e.g. "Prayer"
+  itemId: string;     // the specific event_help_requests row, so it can be claimed
 }
 
 interface Candidate {
@@ -23,7 +24,7 @@ interface Candidate {
 // Host-facing: for an open help request, suggest community members whose
 // spiritual gifts fit the need, and let the host invite them with one tap
 // (a volunteer-opportunity notification). Shown only to the host.
-export const SuggestedHelpers: React.FC<SuggestedHelpersProps> = ({ eventId, eventTitle, helpType, roleLabel }) => {
+export const SuggestedHelpers: React.FC<SuggestedHelpersProps> = ({ eventId, eventTitle, helpType, roleLabel, itemId }) => {
   const { user } = useAuth();
   const { sendVolunteerOpportunityNotification } = useNotifications();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -55,7 +56,7 @@ export const SuggestedHelpers: React.FC<SuggestedHelpersProps> = ({ eventId, eve
 
   const invite = async (candidate: Candidate) => {
     setSending(candidate.id);
-    const ok = await sendVolunteerOpportunityNotification(eventTitle, roleLabel, eventId, [candidate.id]);
+    const ok = await sendVolunteerOpportunityNotification(eventTitle, roleLabel, eventId, [candidate.id], itemId);
     setSending(null);
     if (ok) {
       // sendVolunteerOpportunityNotification shows its own success toast.

@@ -6,6 +6,7 @@ import {
 import { useNotifications } from '../../hooks/useNotifications';
 import { useActivityFeed } from '../../hooks/useActivityFeed';
 import { useConnections } from '../../hooks/useConnections';
+import { useEventInvitations } from '../../hooks/useEventInvitations';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 import { SettingsModal } from '../SettingsModal';
@@ -39,6 +40,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     getActivityMessage
   } = useActivityFeed();
   const { acceptConnectionRequest, declineConnectionRequest } = useConnections();
+  const { respondToInvitation } = useEventInvitations();
 
   const [showSettings, setShowSettings] = useState(false);
   const [actors, setActors] = useState<Record<string, ActorInfo>>({});
@@ -48,6 +50,8 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
   // Accept/Decline buttons — anything already accepted/declined (even from a
   // previous session) is treated as resolved so the buttons don't reappear.
   const [pendingRequestIds, setPendingRequestIds] = useState<Set<string> | null>(null);
+  // Same idea for event invitations carried in a notification's payload.
+  const [pendingInvitationIds, setPendingInvitationIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     fetchMyNotifications();
@@ -74,6 +78,29 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
         (data || []).filter((r: any) => r.status === 'pending').map((r: any) => r.id)
       );
       setPendingRequestIds(pending);
+    })();
+    return () => { cancelled = true; };
+  }, [notifications]);
+
+  // Look up the real status of every event invitation referenced by a
+  // notification, so resolved ones never show Going/Can't-make-it again.
+  useEffect(() => {
+    const ids = Array.from(new Set(
+      notifications
+        .map((n) => (n as any).payload?.invitation_id)
+        .filter(Boolean)
+    ));
+    if (ids.length === 0) { setPendingInvitationIds(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('event_invitations')
+        .select('id, status')
+        .in('id', ids);
+      if (cancelled) return;
+      setPendingInvitationIds(new Set<string>(
+        (data || []).filter((r: any) => r.status === 'pending').map((r: any) => r.id)
+      ));
     })();
     return () => { cancelled = true; };
   }, [notifications]);
@@ -225,6 +252,33 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     }
   };
 
+  // Respond to an event invitation straight from its notification. Reuses the
+  // resolved/responding id sets (invitation ids are uuids, no collision with
+  // connection-request ids).
+  const handleInviteRespond = async (invitationId: string, accept: boolean) => {
+    setRespondingRequestId(invitationId);
+    try {
+      const ok = await respondToInvitation(invitationId, accept);
+      if (ok) setResolvedRequestIds(prev => new Set(prev).add(invitationId));
+    } finally {
+      setRespondingRequestId(null);
+    }
+  };
+
+  // Claim a help request straight from its volunteer-opportunity notification.
+  // Keyed by the notification id (uuid) in the shared resolved/responding sets.
+  const handleVolunteer = async (itemId: string, notifId: string) => {
+    setRespondingRequestId(notifId);
+    try {
+      const { error } = await supabase.rpc('volunteer_for_help_request', { p_item_id: itemId });
+      if (error) { toast.error(error.message || 'That role is no longer available'); return; }
+      setResolvedRequestIds(prev => new Set(prev).add(notifId));
+      toast.success("You're helping — thank you!");
+    } finally {
+      setRespondingRequestId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
@@ -299,6 +353,24 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   (pendingRequestIds !== null && !pendingRequestIds.has(requestId))
                 : false;
               const isResponding = requestId ? respondingRequestId === requestId : false;
+
+              // Event invitation carried in the payload → inline Going / Can't-make-it.
+              const inviteId: string | undefined =
+                notification.source === 'notification' ? notification.payload?.invitation_id : undefined;
+              const inviteResolved = inviteId
+                ? resolvedRequestIds.has(inviteId) ||
+                  (pendingInvitationIds !== null && !pendingInvitationIds.has(inviteId))
+                : false;
+              const inviteResponding = inviteId ? respondingRequestId === inviteId : false;
+
+              // Volunteer opportunity carrying a help request id → one-tap "I'll help".
+              const volunteerItemId: string | undefined =
+                notification.source === 'notification' && notification.type === 'volunteer_opportunity'
+                  ? notification.payload?.item_id
+                  : undefined;
+              const volunteerResolved =
+                notification.source === 'notification' && resolvedRequestIds.has(notification.id);
+              const volunteerResponding = respondingRequestId === notification.id;
 
               return (
                 <div
@@ -385,6 +457,57 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
                                     Decline
                                   </button>
                                 </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Inline Going / Can't-make-it for event invitations. */}
+                          {inviteId && (
+                            <div className="mt-2 flex gap-2">
+                              {inviteResolved ? (
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Responded</span>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleInviteRespond(inviteId, true); }}
+                                    disabled={inviteResponding}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-full transition-colors touch-manipulation"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    Going
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleInviteRespond(inviteId, false); }}
+                                    disabled={inviteResponding}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-full transition-colors touch-manipulation"
+                                  >
+                                    <XIcon className="w-3.5 h-3.5" />
+                                    Can't make it
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* One-tap "I'll help" for a gift-matched volunteer ask. */}
+                          {volunteerItemId && (
+                            <div className="mt-2 flex gap-2">
+                              {volunteerResolved ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+                                  <HeartHandshake className="w-3.5 h-3.5" /> You're helping — thank you!
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleVolunteer(volunteerItemId, notification.id); }}
+                                  disabled={volunteerResponding}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold rounded-full transition-colors touch-manipulation"
+                                >
+                                  <HeartHandshake className="w-3.5 h-3.5" />
+                                  I'll help
+                                </button>
                               )}
                             </div>
                           )}

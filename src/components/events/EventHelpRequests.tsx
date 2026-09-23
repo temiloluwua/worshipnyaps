@@ -731,6 +731,7 @@ export const EventHelpRequests: React.FC<EventHelpRequestsProps> = ({ eventId, e
                   eventTitle={eventTitle || 'this event'}
                   helpType={item.category}
                   roleLabel={categoryLabel[item.category] || item.category}
+                  itemId={item.id}
                 />
               )}
 

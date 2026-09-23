@@ -109,7 +109,8 @@ export const useNotifications = () => {
     type: Notification['type'],
     title: string,
     message: string,
-    eventId?: string
+    eventId?: string,
+    payload?: Record<string, any>
   ) => {
     try {
       const { error } = await supabase
@@ -120,6 +121,7 @@ export const useNotifications = () => {
           title,
           message,
           event_id: eventId,
+          payload,
           is_read: false
         });
 
@@ -142,11 +144,15 @@ export const useNotifications = () => {
     eventTitle: string,
     roleNeeded: string,
     eventId: string,
-    targetUserIds?: string[]
+    targetUserIds?: string[],
+    helpItemId?: string
   ) => {
     try {
       const title = `${roleNeeded} Needed`;
       const message = `${eventTitle} needs a ${roleNeeded.toLowerCase()}. Can you help?`;
+      // Carry the help request id so the recipient can claim it in one tap
+      // straight from the notification.
+      const payload = helpItemId ? { event_id: eventId, item_id: helpItemId } : { event_id: eventId };
 
       if (targetUserIds && targetUserIds.length > 0) {
         // Send to specific users
@@ -156,6 +162,7 @@ export const useNotifications = () => {
           title,
           message,
           event_id: eventId,
+          payload,
           is_read: false
         }));
 

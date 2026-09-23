@@ -19,6 +19,7 @@ import { createHelpRequestsFromTitles } from '../../lib/eventHelpRequests';
 import { TopicPicker } from '../events/TopicPicker';
 import { CreateTopicModal } from '../topics/CreateTopicModal';
 import { ServeWithGiftsFeed } from './ServeWithGiftsFeed';
+import { InviteFriendsModal } from '../events/InviteFriendsModal';
 import { formatTime12h, formatDateShort, formatEventTypeLabel, formatLocationType, formatLocationNameOrType } from '../../lib/eventFormat';
 
 interface LocationsViewProps {
@@ -40,6 +41,9 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHostModal, setShowHostModal] = useState(false);
+  // After creating an event, prompt the host to invite people before we drop
+  // them into the event's Help tab.
+  const [newlyCreated, setNewlyCreated] = useState<{ id: string; title: string } | null>(null);
   const [duplicateSource, setDuplicateSource] = useState<DbEvent | null>(null);
   const [activeTab, setActiveTab] = useState<EventTab>('discover');
   // How many of the viewer's connections are attending each event (social proof).
@@ -693,9 +697,22 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       {showHostModal && (
         <HostEventModal
           onClose={closeHostModal}
-          onEventCreated={(eventId) => onOpenEvent?.(eventId)}
+          onEventCreated={(eventId, eventTitle) => setNewlyCreated({ id: eventId, title: eventTitle })}
           onRequireAuth={() => setShowAuthModal(true)}
           initialDraft={duplicateSource ? eventToHostDraft(duplicateSource) : undefined}
+        />
+      )}
+
+      {/* Post-create nudge: invite people first, then land on the event. */}
+      {newlyCreated && (
+        <InviteFriendsModal
+          eventId={newlyCreated.id}
+          eventTitle={newlyCreated.title}
+          onClose={() => {
+            const id = newlyCreated.id;
+            setNewlyCreated(null);
+            onOpenEvent?.(id);
+          }}
         />
       )}
     </div>
@@ -704,7 +721,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
 interface HostEventModalProps {
   onClose: () => void;
-  onEventCreated?: (eventId: string) => void;
+  onEventCreated?: (eventId: string, eventTitle: string) => void;
   onRequireAuth?: () => void;
   // When present, the form starts pre-filled from an existing event (used by
   // "Duplicate"). Date/time are intentionally left blank so the host picks new ones.
@@ -998,9 +1015,9 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
         } catch {
           // ignore
         }
-        toast.success("Event created! Add help & food on the Help tab.");
+        toast.success("Event created! Invite people, then add help & food.");
         onClose();
-        onEventCreated?.(result.id);
+        onEventCreated?.(result.id, formData.eventTitle);
       }
     }
   };
