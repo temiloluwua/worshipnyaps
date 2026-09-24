@@ -19,6 +19,7 @@ import { PostEventFriendSuggestions } from './PostEventFriendSuggestions';
 import { EditEventModal } from './EditEventModal';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { RSVPDisclaimerModal } from './RSVPDisclaimerModal';
+import { GuestRsvpModal } from './GuestRsvpModal';
 import { InviteFriendsModal } from './InviteFriendsModal';
 import { CoHostManager } from './CoHostManager';
 import { EventAnnouncements } from './EventAnnouncements';
@@ -125,6 +126,14 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [repeatUntil, setRepeatUntil] = useState('');
   const [repeating, setRepeating] = useState(false);
   const [showRsvpDisclaimer, setShowRsvpDisclaimer] = useState(false);
+  // Guest RSVP (never-signed-in visitor with the link). Persisted per event so
+  // the unlocked location survives reloads.
+  const [guestRsvp, setGuestRsvp] = useState<{
+    token: string; location_name: string | null; address: string | null;
+    latitude: number | null; longitude: number | null;
+  } | null>(null);
+  const [showGuestRsvp, setShowGuestRsvp] = useState(false);
+  const [guestCount, setGuestCount] = useState(0);
   const [showAdminDeleteConfirm, setShowAdminDeleteConfirm] = useState(false);
   const [adminDeleting, setAdminDeleting] = useState(false);
   const [showHostDeleteConfirm, setShowHostDeleteConfirm] = useState(false);
@@ -150,6 +159,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
   const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
   const isEventFull = attendeeCount >= safeCapacity;
+  // A guest is a viewer with no account. Once they RSVP we treat them like an
+  // attendee for address/going display only — never for help/chat/host actions.
+  const isGuest = !user;
+  const isGuestRsvped = isGuest && Boolean(guestRsvp);
+  const shownLocationName = (isGuest ? guestRsvp?.location_name : event?.locations?.name) || null;
+  const shownAddress = (isGuest ? guestRsvp?.address : event?.locations?.address) || null;
   const typingUserNames = Object.values(typingUsers);
   const isPrivateEvent = event?.visibility === 'private';
 
@@ -488,16 +503,16 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         // If the URL has an invite code, ask the SECURITY DEFINER RPC.
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('invite');
-        if (inviteCode) {
-          const { data: rpcData } = await supabase
-            .rpc('get_event_by_invite_code', { p_event_id: eventId, p_invite_code: inviteCode });
-          const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-          if (row) {
-            data = row;
-            // Note: this row has no joined locations/users — we accept that
-            // limitation for the invite landing view; once they RSVP via
-            // claim_event_invite the normal join works on subsequent loads.
-          }
+        // guest_view_event is anon-callable and works for public events (no code)
+        // and private/friends events with a matching code, so it covers both
+        // signed-out guests and signed-in non-attendees behind an invite link.
+        const { data: rpcData } = await supabase
+          .rpc('guest_view_event', { p_event_id: eventId, p_invite_code: inviteCode });
+        const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+        if (row) {
+          // Note: this row has no joined locations/users — accepted for the
+          // landing view. A guest unlocks the address by RSVPing.
+          data = row;
         }
         if (!data) {
           if (directError && directError.code !== 'PGRST116') throw directError;
@@ -793,6 +808,50 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  // Restore a prior guest RSVP for this event (unlocks the location on return).
+  useEffect(() => {
+    if (user) { setGuestRsvp(null); return; }
+    try {
+      const raw = localStorage.getItem(`wny_guest_rsvp_${eventId}`);
+      if (raw) setGuestRsvp(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [user, eventId]);
+
+  // Host-facing guest headcount (RPC returns 0 for non-managers).
+  useEffect(() => {
+    if (!isHost) { setGuestCount(0); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.rpc('event_guest_count', { p_event_id: eventId });
+      if (!cancelled && typeof data === 'number') setGuestCount(data);
+    })();
+    return () => { cancelled = true; };
+  }, [isHost, eventId, attendeeCount]);
+
+  const submitGuestRsvp = async (name: string, email: string): Promise<boolean> => {
+    const inviteCode = new URLSearchParams(window.location.search).get('invite');
+    const { data, error } = await supabase.rpc('guest_rsvp_to_event', {
+      p_event_id: eventId,
+      p_invite_code: inviteCode,
+      p_name: name,
+      p_email: email,
+    });
+    if (error) { toast.error(error.message || 'Could not RSVP'); return false; }
+    const row: any = Array.isArray(data) ? data[0] : data;
+    const rec = {
+      token: row?.guest_token,
+      location_name: row?.location_name ?? null,
+      address: row?.address ?? null,
+      latitude: row?.latitude ?? null,
+      longitude: row?.longitude ?? null,
+    };
+    setGuestRsvp(rec);
+    try { localStorage.setItem(`wny_guest_rsvp_${eventId}`, JSON.stringify(rec)); } catch { /* ignore */ }
+    setShowGuestRsvp(false);
+    toast.success('RSVP confirmed — location unlocked!');
+    return true;
   };
 
   const handleRSVP = async () => {
@@ -1393,22 +1452,26 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
               )}
             </button>
-            <button
-              onClick={() => setActiveTab('help')}
-              className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
-                activeTab === 'help'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              <span className="flex items-center justify-center gap-1">
-                <HeartHandshake size={16} />
-                {t('helpRequests.title')}
-              </span>
-              {activeTab === 'help' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-              )}
-            </button>
+            {/* Help/volunteer functions are for signed-in people only — guests
+                (no account) get a view/RSVP-only experience. */}
+            {!isGuest && (
+              <button
+                onClick={() => setActiveTab('help')}
+                className={`flex-1 py-3 text-center text-sm font-medium transition-colors relative whitespace-nowrap px-2 ${
+                  activeTab === 'help'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1">
+                  <HeartHandshake size={16} />
+                  {t('helpRequests.title')}
+                </span>
+                {activeTab === 'help' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                )}
+              </button>
+            )}
             {canAccessChat && (
               <button
                 onClick={() => setActiveTab('chat')}
@@ -1606,14 +1669,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">
-                  {event.locations?.name || t('events.locationTBD')}
+                  {shownLocationName || t('events.locationTBD')}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   {(() => {
                     const visibility = event.address_visibility || 'public';
-                    const canSeeAddress = isHost || isRsvped || visibility === 'public';
+                    // Guests unlock the address by RSVPing (their address comes
+                    // from the guest RSVP RPC, not the RLS-gated join).
+                    const canSeeAddress = isHost || isRsvped || isGuestRsvped
+                      || (!isGuest && visibility === 'public');
                     if (canSeeAddress) {
-                      const addr = event.locations?.address;
+                      const addr = shownAddress;
                       if (!addr) return t('events.addressAfterRSVP');
                       return (
                         <a
@@ -1642,7 +1708,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 mr-3" />
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   {canSeeCapacity
-                    ? t('events.attending', { count: attendeeCount, capacity: safeCapacity })
+                    ? `${t('events.attending', { count: attendeeCount, capacity: safeCapacity })}${guestCount > 0 ? ` · ${guestCount} guest${guestCount === 1 ? '' : 's'}` : ''}`
                     : t('events.youreGoing')}
                 </div>
               </div>
@@ -1704,9 +1770,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </div>
           )}
 
-          {!isRsvped && !isHost && (
+          {isGuestRsvped && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-green-800 dark:text-green-300 font-medium">You're going! The location is unlocked below.</p>
+              <p className="text-green-700/80 dark:text-green-300/70 text-sm mt-1">
+                Want to help out, chat, or save this event? <button type="button" onClick={() => onRequireAuth?.()} className="underline font-medium">Create a free account</button>.
+              </p>
+            </div>
+          )}
+
+          {!isRsvped && !isHost && !isGuestRsvped && (
             <button
-              onClick={() => setShowRsvpDisclaimer(true)}
+              onClick={() => (isGuest ? setShowGuestRsvp(true) : setShowRsvpDisclaimer(true))}
               disabled={isEventFull}
               className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
                 isEventFull
@@ -1729,14 +1804,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
           <div className="space-y-6 mt-8">
             {/* Open in Maps — only when the viewer is allowed to see the address */}
-            {event.locations?.address && (() => {
+            {shownAddress && (() => {
               const visibility = event.address_visibility || 'public';
-              const canSeeAddress = isHost || isRsvped || visibility === 'public';
+              const canSeeAddress = isHost || isRsvped || isGuestRsvped
+                || (!isGuest && visibility === 'public');
               return canSeeAddress;
             })() && (
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <a
-                  href={mapLinkFor(event.locations.address)}
+                  href={mapLinkFor(shownAddress)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
@@ -2017,6 +2093,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             await handleRSVP();
             setShowRsvpDisclaimer(false);
           }}
+        />
+      )}
+
+      {showGuestRsvp && event && (
+        <GuestRsvpModal
+          eventTitle={event.title}
+          onSubmit={submitGuestRsvp}
+          onClose={() => setShowGuestRsvp(false)}
+          onRequireAuth={onRequireAuth}
         />
       )}
 

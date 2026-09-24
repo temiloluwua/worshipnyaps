@@ -36,6 +36,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
     description: event.description || '',
     visibility: event.visibility as 'public' | 'private' | 'friends_only' | 'friends_of_friends',
     addressVisibility: (event.address_visibility || 'public') as 'general_area' | 'attendees_only' | 'public',
+    allowGuestRsvp: event.allow_guest_rsvp ?? true,
   });
   const [topicId, setTopicId] = useState<string | null>((event as { topic_id?: string | null }).topic_id ?? null);
   const [imageUrl, setImageUrl] = useState<string | null>((event as { image_url?: string | null }).image_url ?? null);
@@ -95,6 +96,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
         visibility: effectiveVisibility,
         is_private: effectiveVisibility === 'private',
         address_visibility: effectiveAddressVisibility,
+        allow_guest_rsvp: formData.allowGuestRsvp,
         image_url: imageUrl,
         topic_id: topicId,
         updated_at: new Date().toISOString(),
@@ -389,6 +391,23 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
               ))}
             </div>
           </div>
+
+          {/* Guest RSVP toggle — people with the link can RSVP without an account
+              and unlock the location. Off means only signed-in people can RSVP. */}
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.allowGuestRsvp}
+              onChange={(e) => setFormData({ ...formData, allowGuestRsvp: e.target.checked })}
+              className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <div className="font-medium text-gray-900 dark:text-white text-sm">Allow guest RSVPs</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Anyone with the link can RSVP (name + email, no account) and see the location. Turn off to require sign-in.
+              </div>
+            </div>
+          </label>
 
           {isDraft ? (
             <div className="grid grid-cols-2 gap-3 pt-2">

@@ -107,6 +107,9 @@ export interface Event {
   is_private: boolean;
   visibility: 'public' | 'private' | 'friends_only' | 'friends_of_friends';
   address_visibility?: 'general_area' | 'attendees_only' | 'public';
+  // When true (default), people with the link can RSVP as a guest (no account)
+  // and unlock the location. Hosts can turn this off.
+  allow_guest_rsvp?: boolean;
   area_lat?: number | null;
   area_lng?: number | null;
   event_type?: 'bible_study' | 'yap' | 'church' | 'evangelism' | 'volunteering';
