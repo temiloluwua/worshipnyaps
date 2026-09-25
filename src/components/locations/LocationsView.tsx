@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress, reverseGeocodeArea } from '../../lib/geocode';
-import { shareOrigin } from '../../lib/openExternal';
+import { eventShareUrl } from '../../lib/openExternal';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { createHelpRequestsFromTitles } from '../../lib/eventHelpRequests';
 import { TopicPicker } from '../events/TopicPicker';
@@ -32,7 +32,7 @@ type EventTab = 'discover' | 'my-events';
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
-  const { events, loading, rsvpEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts, pastEvents } = useEvents();
+  const { events, loading, rsvpEventIds, waitlistedEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts, pastEvents } = useEvents();
   const [combinedFilter, setCombinedFilter] = useState<CombinedFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
@@ -192,7 +192,8 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
   const handleRSVP = (event: DbEvent) => {
     if (!user) { setShowAuthModal(true); return; }
-    if ((event.attendees || 0) >= event.capacity) { toast.error(t('events.eventFull')); return; }
+    // Capacity is a host-only planning figure — we don't block or show a
+    // negative "Event full" message to attendees.
     setSelectedEvent(event);
     setShowRSVPModal(true);
   };
@@ -207,11 +208,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
     if (!success) toast.error('Could not update RSVP');
   };
 
-  const buildShareUrl = (event: DbEvent) => {
-    const url = new URL(`/event/${event.id}`, shareOrigin());
-    if (event.invite_code) url.searchParams.set('invite', event.invite_code);
-    return url.toString();
-  };
+  const buildShareUrl = (event: DbEvent) => eventShareUrl(event);
 
   const shareEvent = async (event: DbEvent) => {
     const shareUrl = buildShareUrl(event);
@@ -248,7 +245,10 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
     const attendeeCount = event.attendees || 0;
     const safeCapacity = Math.max(event.capacity || 1, 1);
     const spotsLeft = safeCapacity - attendeeCount;
-    return { attendeeCount, spotsLeft, safeCapacity, isLow: spotsLeft <= 2, isFull: spotsLeft <= 0 };
+    // "Full" only means something when the host set a real limit (>0);
+    // otherwise the event is unlimited and never fills.
+    const hasLimit = (event.capacity || 0) > 0;
+    return { attendeeCount, spotsLeft, safeCapacity, isLow: hasLimit && spotsLeft <= 2, isFull: hasLimit && spotsLeft <= 0 };
   };
 
   if (loading) {
@@ -461,6 +461,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
             const { attendeeCount, safeCapacity, isLow, isFull } = getSpotsSummary(event);
             const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
             const isRsvped = rsvpEventIds.has(event.id);
+            const isWaitlisted = waitlistedEventIds.has(event.id);
             const isHosting = user && event.host_id === user.id;
 
             return (
@@ -564,27 +565,24 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                     </div>
                   </div>
 
-                  {/* Attendance is host-only. Non-hosts never see a headcount or
-                      capacity — at most a subtle "Full" note. The host gets the
-                      full X/Y + progress bar to manage the event. */}
-                  {(isHosting || isFull) && (
+                  {/* Capacity is a host-only planning figure. Non-hosts never see
+                      a headcount, capacity, %-full, or a "Full" note — an event
+                      isn't a success or failure based on hitting a number, so we
+                      don't surface that frame to attendees. */}
+                  {isHosting && (
                     <div className="mb-3">
                       <div className="flex items-center justify-between mb-1">
                         {isFull
                           ? <span className="text-xs font-semibold text-red-600 dark:text-red-400">Full</span>
                           : <span />}
-                        {isHosting && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
-                        )}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{attendeeCount}/{safeCapacity}</span>
                       </div>
-                      {isHosting && (
-                        <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                          <div
-                            className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}
-                            style={{ width: `${capacityPercentage}%` }}
-                          />
-                        </div>
-                      )}
+                      <div className={`w-full h-2 rounded-full overflow-hidden ${isFull ? 'bg-red-200 dark:bg-red-900/30' : isLow ? 'bg-orange-200 dark:bg-orange-900/30' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                        <div
+                          className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : isLow ? 'bg-orange-600' : 'bg-blue-600'}`}
+                          style={{ width: `${capacityPercentage}%` }}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -625,24 +623,19 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                     )}
                   </div>
 
-                  {isRsvped ? (
+                  {isRsvped || isWaitlisted ? (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCancelRSVP(event.id); }}
                       className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                     >
-                      Cancel RSVP
+                      {isWaitlisted ? 'Leave waitlist' : 'Cancel RSVP'}
                     </button>
                   ) : (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleRSVP(event); }}
-                      disabled={isFull}
-                      className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        isFull
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
+                      className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
-                      {isFull ? 'Event Full' : 'RSVP'}
+                      {isFull ? 'Join waitlist' : 'RSVP'}
                     </button>
                   )}
                 </div>

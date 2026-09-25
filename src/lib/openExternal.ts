@@ -29,6 +29,21 @@ export function shareUrl(path: string): string {
   return `${shareOrigin()}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+// Build the shareable invite link for an event. Prefers the compact
+// /e/{short_code} slug (which also carries the invite code server-side, so it
+// works for private/friends events). Falls back to the canonical
+// /event/{id}?invite={code} form if an older client lacks short_code.
+export function eventShareUrl(event: { id: string; short_code?: string | null; invite_code?: string | null }): string {
+  if (event.short_code) {
+    return `${shareOrigin()}/e/${event.short_code}`;
+  }
+  const url = new URL(`/event/${event.id}`, shareOrigin());
+  if (event.invite_code) {
+    url.searchParams.set('invite', event.invite_code);
+  }
+  return url.toString();
+}
+
 // Open a URL the right way per platform:
 // - Native: in-app Safari sheet (@capacitor/browser). Relative paths are
 //   resolved against the production origin since capacitor:// isn't openable.

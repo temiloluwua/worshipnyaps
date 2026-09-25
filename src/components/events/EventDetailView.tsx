@@ -26,7 +26,7 @@ import { EventAnnouncements } from './EventAnnouncements';
 import { formatTime12h, formatDateShort } from '../../lib/eventFormat';
 import { shareIcs } from '../../lib/icsExport';
 import { mapLinkFor } from '../../lib/mapLink';
-import { shareOrigin } from '../../lib/openExternal';
+import { eventShareUrl } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
 import { ReportButton } from '../moderation/ReportButton';
 import { TopicCard } from '../topics/TopicCard';
@@ -96,6 +96,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [displayCapacity, setDisplayCapacity] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isRsvped, setIsRsvped] = useState(false);
+  const [isWaitlisted, setIsWaitlisted] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('details');
   // Value is unused (only the setter drives fetchEventConversation's flow); keep the setter.
@@ -158,7 +159,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const canSeeCapacity = Boolean(isHost || isOrganizer || isCoHost);
   const safeCapacity = Math.max(displayCapacity || event?.capacity || 1, 1);
   const capacityPercentage = Math.min(100, Math.round((attendeeCount / safeCapacity) * 100));
-  const isEventFull = attendeeCount >= safeCapacity;
   // A guest is a viewer with no account. Once they RSVP we treat them like an
   // attendee for address/going display only — never for help/chat/host actions.
   const isGuest = !user;
@@ -589,14 +589,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     try {
       const { data, error } = await supabase
         .from('event_attendees')
-        .select('id')
+        .select('status')
         .eq('event_id', eventId)
         .eq('user_id', user.id)
-        .eq('status', 'registered')
+        .in('status', ['registered', 'waitlisted'])
         .maybeSingle();
 
       if (error) throw error;
-      setIsRsvped(Boolean(data));
+      setIsRsvped(data?.status === 'registered');
+      setIsWaitlisted(data?.status === 'waitlisted');
     } catch (error) {
       console.error('Error checking RSVP status:', error);
     }
@@ -869,6 +870,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       const inviteCode = urlParams.get('invite');
       const isPrivateInvite = event?.visibility === 'private' && inviteCode;
 
+      let waitlisted = false;
       if (isPrivateInvite) {
         const { error } = await supabase.rpc('claim_event_invite', {
           p_event_id: eventId,
@@ -876,25 +878,26 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('event_attendees')
-          .upsert(
-            {
-              event_id: eventId,
-              user_id: user.id,
-              status: 'registered',
-            },
-            { onConflict: 'event_id,user_id' }
-          );
-
+        // Claim a seat server-side: registers if there's room, otherwise joins
+        // the waitlist. The DB decides atomically so the last seat can't be
+        // double-booked.
+        const { data: seatStatus, error } = await supabase.rpc('claim_event_seat', {
+          p_event_id: eventId,
+        });
         if (error) throw error;
+        waitlisted = seatStatus === 'waitlisted';
       }
-      setIsRsvped(true);
+      setIsWaitlisted(waitlisted);
+      setIsRsvped(!waitlisted);
       await fetchAttendeeCount(eventId);
-      if (event) {
+      // Waitlisted people aren't confirmed attendees yet, so don't pull them
+      // into the event chat until they're promoted.
+      if (event && !waitlisted) {
         await fetchEventConversation(event);
       }
-      toast.success('RSVP confirmed!');
+      toast.success(waitlisted
+        ? "Event's full — you're on the waitlist. We'll let you know if a spot opens."
+        : 'RSVP confirmed!');
     } catch (error: any) {
       console.error('Error RSVPing:', error);
       toast.error(error.message || 'Failed to RSVP');
@@ -921,6 +924,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
       if (error) throw error;
       setIsRsvped(false);
+      setIsWaitlisted(false);
       setActiveTab('details');
       await fetchAttendeeCount(eventId);
       toast.success('RSVP updated');
@@ -933,10 +937,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const shareEvent = async () => {
     if (!event) return;
 
-    const shareUrl = new URL(`/event/${event.id}`, shareOrigin());
-    if (event.invite_code) {
-      shareUrl.searchParams.set('invite', event.invite_code);
-    }
+    const shareUrl = new URL(eventShareUrl(event));
 
     const shareText = `Join us for ${event.title} on ${formatDateShort(event.date)} at ${formatTime12h(event.time)}!`;
 
@@ -1779,26 +1780,44 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </div>
           )}
 
-          {!isRsvped && !isHost && !isGuestRsvped && (
-            <button
-              onClick={() => (isGuest ? setShowGuestRsvp(true) : setShowRsvpDisclaimer(true))}
-              disabled={isEventFull}
-              className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
-                isEventFull
-                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              {isEventFull ? t('events.eventFull') : t('events.rsvpNow')}
-            </button>
+          {/* Capacity only "fills" when the host set a real limit (>0). At that
+              point RSVPs join a waitlist instead of being turned away. */}
+          {isWaitlisted && !isHost && (
+            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-amber-800 dark:text-amber-300 font-medium">You're on the waitlist</p>
+              <p className="text-amber-700/80 dark:text-amber-300/70 text-sm mt-1">
+                This event is full. We'll notify you the moment a spot opens up.
+              </p>
+            </div>
           )}
 
-          {isRsvped && !isHost && (
+          {!isRsvped && !isWaitlisted && !isHost && !isGuestRsvped && (() => {
+            // Viewers never see the headcount or capacity — only whether the
+            // event is full, so they can choose to join the waitlist.
+            const isFull = (event.capacity || 0) > 0 && attendeeCount >= (event.capacity || 0);
+            return (
+              <>
+                {isFull && (
+                  <p className="mb-2 text-sm text-center text-gray-500 dark:text-gray-400">
+                    This event is full — join the waitlist and we'll notify you if a spot opens.
+                  </p>
+                )}
+                <button
+                  onClick={() => (isGuest ? setShowGuestRsvp(true) : setShowRsvpDisclaimer(true))}
+                  className="w-full py-4 rounded-lg font-semibold text-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  {isFull ? 'Join the waitlist' : t('events.rsvpNow')}
+                </button>
+              </>
+            );
+          })()}
+
+          {(isRsvped || isWaitlisted) && !isHost && (
             <button
               onClick={handleCancelRSVP}
               className="w-full py-4 rounded-lg font-semibold text-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
             >
-              {t('events.notGoing')}
+              {isWaitlisted ? 'Leave waitlist' : t('events.notGoing')}
             </button>
           )}
 
@@ -2043,6 +2062,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         <InviteFriendsModal
           eventId={eventId}
           eventTitle={event.title}
+          shortCode={event.short_code}
           onClose={() => setShowInviteModal(false)}
         />
       )}

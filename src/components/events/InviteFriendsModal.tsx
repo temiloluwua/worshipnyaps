@@ -14,10 +14,11 @@ interface Friend {
 interface InviteFriendsModalProps {
   eventId: string;
   eventTitle: string;
+  shortCode?: string | null;
   onClose: () => void;
 }
 
-export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId, eventTitle, onClose }) => {
+export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId, eventTitle, shortCode, onClose }) => {
   const { user } = useAuth();
   const { sendInvitation, sentInvitations } = useEventInvitations();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -46,7 +47,9 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
     }
     return origin;
   })();
-  const eventLink = `${shareOrigin}/event/${eventId}`;
+  // Prefer the compact /e/{short_code} slug (works for private events too);
+  // fall back to the canonical path if we weren't handed a short code.
+  const eventLink = shortCode ? `${shareOrigin}/e/${shortCode}` : `${shareOrigin}/event/${eventId}`;
   const shareText = `Join me at "${eventTitle}" on Worship N Yaps`;
 
   const handleCopyLink = async () => {

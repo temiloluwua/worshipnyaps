@@ -177,6 +177,28 @@ function App() {
   useEffect(() => {
     const applyPathState = () => {
       const path = window.location.pathname;
+
+      // Compact invite links: /e/{short_code}. Resolve the slug to the event
+      // (and its invite code), rewrite to the canonical /event/{id}?invite=…
+      // URL, then fall through the normal event-loading path.
+      const shortMatch = path.match(/^\/e\/([^/]+)$/);
+      if (shortMatch) {
+        setShowLanding(false);
+        setShowSuccessPage(false);
+        setActiveTab('locations');
+        supabase
+          .rpc('resolve_event_short_code', { p_code: decodeURIComponent(shortMatch[1]) })
+          .then(({ data }) => {
+            const row = Array.isArray(data) ? data[0] : data;
+            if (!row?.event_id) return;
+            const canonical = new URL(`/event/${row.event_id}`, window.location.origin);
+            if (row.invite_code) canonical.searchParams.set('invite', row.invite_code);
+            window.history.replaceState({}, '', canonical.pathname + canonical.search);
+            setActiveEventId(row.event_id);
+          });
+        return;
+      }
+
       const eventMatch = path.match(/^\/event\/([^/]+)$/);
       if (eventMatch) {
         setShowLanding(false);

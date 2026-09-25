@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import './index.css'
 import { Toaster } from 'react-hot-toast'
 import { RootErrorBoundary } from './components/RootErrorBoundary'
+import { InstallAppBanner } from './components/InstallAppBanner'
 
 // Surface uncaught errors + promise rejections in the console so App Store
 // review logs can be diagnosed. Without these, a bad JS eval in production
@@ -110,6 +111,7 @@ async function boot() {
     const AppTree = (
       <>
         <App />
+        <InstallAppBanner />
         <Toaster
           position="top-right"
           toastOptions={{

@@ -123,6 +123,7 @@ export interface Event {
   recurrence_group_id?: string | null;
   is_recurrence_child?: boolean;
   invite_code?: string;
+  short_code?: string | null;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   is_draft?: boolean;
   created_at: string;

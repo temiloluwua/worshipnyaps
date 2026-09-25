@@ -87,6 +87,7 @@ export const useEvents = () => {
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [drafts, setDrafts] = useState<Event[]>([]);
   const [rsvpEventIds, setRsvpEventIds] = useState<Set<string>>(new Set());
+  const [waitlistedEventIds, setWaitlistedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const capacityCacheRef = useRef<Record<string, number>>(readCapacityCache());
 
@@ -290,19 +291,21 @@ export const useEvents = () => {
   const fetchRsvpEventIds = async () => {
     if (!user) {
       setRsvpEventIds(new Set());
+      setWaitlistedEventIds(new Set());
       return;
     }
 
     try {
       const { data, error } = await supabase
         .from('event_attendees')
-        .select('event_id')
+        .select('event_id, status')
         .eq('user_id', user.id)
-        .eq('status', 'registered');
+        .in('status', ['registered', 'waitlisted']);
 
       if (error) throw error;
 
-      setRsvpEventIds(new Set((data || []).map((item) => item.event_id)));
+      setRsvpEventIds(new Set((data || []).filter((i) => i.status === 'registered').map((i) => i.event_id)));
+      setWaitlistedEventIds(new Set((data || []).filter((i) => i.status === 'waitlisted').map((i) => i.event_id)));
     } catch (error) {
       console.error('Error fetching RSVP status:', error);
     }
@@ -424,29 +427,15 @@ export const useEvents = () => {
     if (!user) return false;
 
     try {
-      const { data: existing } = await supabase
-        .from('event_attendees')
-        .select('id, status')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Claim a seat server-side: registers if there's room, otherwise joins
+      // the waitlist. The DB decides atomically so the last seat can't be
+      // double-booked. Returns the resulting status.
+      const { data: seatStatus, error: rsvpError } = await supabase
+        .rpc('claim_event_seat', { p_event_id: eventId });
 
-      const isAlreadyRegistered = existing?.status === 'registered';
+      if (rsvpError) throw rsvpError;
 
-      if (!isAlreadyRegistered) {
-        const { error: rsvpError } = await supabase
-          .from('event_attendees')
-          .upsert(
-            {
-              event_id: eventId,
-              user_id: user.id,
-              status: 'registered'
-            },
-            { onConflict: 'event_id,user_id' }
-          );
-
-        if (rsvpError) throw rsvpError;
-      }
+      const isWaitlisted = seatStatus === 'waitlisted';
 
       // Add volunteer roles if any
       if (volunteerRoles.length > 0) {
@@ -510,8 +499,13 @@ export const useEvents = () => {
         // );
       }
 
-      setRsvpEventIds(prev => new Set(prev).add(eventId));
-      toast.success(isAlreadyRegistered ? 'RSVP updated!' : 'RSVP confirmed!');
+      if (isWaitlisted) {
+        setWaitlistedEventIds(prev => new Set(prev).add(eventId));
+        toast.success("Event's full — you're on the waitlist. We'll let you know if a spot opens.");
+      } else {
+        setRsvpEventIds(prev => new Set(prev).add(eventId));
+        toast.success('RSVP confirmed!');
+      }
       await fetchEvents();
       await fetchMyEvents();
       await fetchRsvpEventIds();
@@ -541,6 +535,11 @@ export const useEvents = () => {
       if (error) throw error;
 
       setRsvpEventIds(prev => {
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
+      });
+      setWaitlistedEventIds(prev => {
         const next = new Set(prev);
         next.delete(eventId);
         return next;
@@ -634,6 +633,7 @@ export const useEvents = () => {
   }, [user]);
 
   const isEventRsvped = (eventId: string) => rsvpEventIds.has(eventId);
+  const isEventWaitlisted = (eventId: string) => waitlistedEventIds.has(eventId);
 
   return {
     events,
@@ -641,6 +641,7 @@ export const useEvents = () => {
     pastEvents,
     drafts,
     rsvpEventIds,
+    waitlistedEventIds,
     loading,
     fetchEvents,
     fetchMyEvents,
@@ -648,6 +649,7 @@ export const useEvents = () => {
     fetchRsvpEventIds,
     createEvent,
     isEventRsvped,
+    isEventWaitlisted,
     rsvpToEvent,
     cancelRsvp,
     getEventAttendees,

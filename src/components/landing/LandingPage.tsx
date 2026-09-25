@@ -10,6 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Logo } from '../ui/Logo';
 import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
+import { openAppStore } from '../../lib/appStore';
 import { Capacitor } from '@capacitor/core';
 
 interface LandingPageProps {
@@ -159,6 +160,9 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const goToApp = isNativeApp
     ? (onViewTopics ?? onEnter)
     : (onCreateAccount ?? onEnter);
+  // On the website the primary CTA sends people to install the native app;
+  // inside the app that same slot joins the community.
+  const primaryCtaAction = isNativeApp ? goToApp : openAppStore;
   const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
   // The top-right nav CTA frames the whole app as opening the digital deck:
   // it drops the visitor straight into the card feed (the Topics "deck"),
@@ -251,7 +255,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-5">
           <button
-            onClick={goToApp}
+            onClick={primaryCtaAction}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2563eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
           >
             {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
