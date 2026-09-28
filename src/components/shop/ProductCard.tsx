@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Loader2 } from 'lucide-react';
 import { StripeProduct } from '../../stripe-config';
+import { CARD_GAME_BUY_URL } from '../../lib/cardGame';
 import toast from 'react-hot-toast';
 
 interface ProductCardProps {
   product: StripeProduct;
 }
-
-const SHOP_CHECKOUT_URL = 'https://buy.stripe.com/bJeaEX7a38rZ1jv9ao0oM00';
 
 export function ProductCard({ product }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +15,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const handlePurchase = () => {
     setIsLoading(true);
     try {
-      const checkoutWindow = window.open(SHOP_CHECKOUT_URL, '_blank');
+      const checkoutWindow = window.open(CARD_GAME_BUY_URL, '_blank');
       if (!checkoutWindow) {
         toast.error('Popup blocked. Please allow pop-ups and try again.');
         setIsLoading(false);
@@ -54,9 +53,11 @@ export function ProductCard({ product }: ProductCardProps) {
         <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">{product.description}</p>
 
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            C${product.price.toFixed(2)}
-          </div>
+          {/* Price is controlled by the Amazon listing, so we don't show a
+              hardcoded figure that could drift out of sync. */}
+          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            Sold on Amazon
+          </span>
 
           <button
             type="button"
@@ -69,7 +70,7 @@ export function ProductCard({ product }: ProductCardProps) {
             ) : (
               <ShoppingCart className="w-4 h-4" />
             )}
-            {product.mode === 'subscription' ? 'Subscribe' : 'Buy Now'}
+            Buy on Amazon
           </button>
         </div>
       </div>

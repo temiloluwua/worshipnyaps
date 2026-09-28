@@ -11,6 +11,7 @@ import { Logo } from '../ui/Logo';
 import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
 import { openAppStore } from '../../lib/appStore';
+import { CARD_GAME_BUY_URL } from '../../lib/cardGame';
 import { Capacitor } from '@capacitor/core';
 
 interface LandingPageProps {
@@ -172,11 +173,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
   const seeHowToYap = () => scrollToZone('how-to-play');
-  // Direct Stripe checkout for the card game, bypasses the in-app Shop page
-  // entirely. Stays in sync with ProductCard's SHOP_CHECKOUT_URL.
-  const CARD_GAME_CHECKOUT_URL = 'https://buy.stripe.com/bJeaEX7a38rZ1jv9ao0oM00';
+  // "Buy the card game" links to the Amazon listing (physical product),
+  // bypassing the in-app Shop page. Shares CARD_GAME_BUY_URL with ProductCard.
   const openCardGameCheckout = () => {
-    window.open(CARD_GAME_CHECKOUT_URL, '_blank', 'noopener,noreferrer');
+    window.open(CARD_GAME_BUY_URL, '_blank', 'noopener,noreferrer');
   };
 
   return (
