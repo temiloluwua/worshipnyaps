@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { geocodeCity, distanceKm, Coords } from '../../lib/cityGeo';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, Spade } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, Spade, CalendarDays } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
@@ -21,6 +21,8 @@ import { CommunityPollCard } from './CommunityPollCard';
 import { EventShareChip } from './EventShareChip';
 import { RequestTopicModal } from './RequestTopicModal';
 import { AdminTopicReviewPanel } from './AdminTopicReviewPanel';
+import { DailyTopicScheduler } from './DailyTopicScheduler';
+import { useDailyTopics } from '../../hooks/useDailyTopics';
 import { AuthModal } from '../auth/AuthModal';
 import { ShareModal } from '../social/ShareModal';
 import { NearbyEventsRail } from './NearbyEventsRail';
@@ -165,6 +167,8 @@ export function TopicsView({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdminReview, setShowAdminReview] = useState(false);
+  const [showTopicScheduler, setShowTopicScheduler] = useState(false);
+  const { todayTopicId, fetchToday } = useDailyTopics();
   const [audienceFilter, setAudienceFilter] = useState<'friends' | 'local'>('friends');
   const { connections } = useConnections();
   const { followingIds } = useFollows();
@@ -239,6 +243,12 @@ export function TopicsView({
 
   const getTopicOfTheDay = () => {
     if (topicOfDaySource.length === 0) return null;
+    // An admin-scheduled pick for today wins; otherwise fall back to the
+    // deterministic date-hash so unscheduled days still auto-fill.
+    const override = todayTopicId
+      ? topicOfDaySource.find((t) => t.id === todayTopicId)
+      : null;
+    if (override) return sanitizeTopic(override) || override;
     const today = new Date().toDateString();
     const dateHash = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const selectedIndex = dateHash % topicOfDaySource.length;
@@ -616,14 +626,24 @@ export function TopicsView({
 
             <div className="flex items-center gap-2">
               {activeTab === 'topics' && isAdmin && (
-                <button
-                  onClick={() => setShowAdminReview(true)}
-                  className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
-                  aria-label={t('adminReview.title')}
-                  title={t('adminReview.title')}
-                >
-                  <ClipboardList className="w-5 h-5" />
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowTopicScheduler(true)}
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
+                    aria-label="Schedule the Topic of the Day"
+                    title="Schedule the Topic of the Day"
+                  >
+                    <CalendarDays className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setShowAdminReview(true)}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
+                    aria-label={t('adminReview.title')}
+                    title={t('adminReview.title')}
+                  >
+                    <ClipboardList className="w-5 h-5" />
+                  </button>
+                </>
               )}
               {activeTab === 'community' && (
                 <button
@@ -1070,6 +1090,12 @@ export function TopicsView({
 
       <RequestTopicModal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} />
       <AdminTopicReviewPanel isOpen={showAdminReview} onClose={() => setShowAdminReview(false)} />
+      {showTopicScheduler && (
+        <DailyTopicScheduler
+          onClose={() => setShowTopicScheduler(false)}
+          onChanged={fetchToday}
+        />
+      )}
 
       <style>{`
         @keyframes slideInUp {

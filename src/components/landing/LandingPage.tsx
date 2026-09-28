@@ -12,6 +12,7 @@ import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
 import { openAppStore } from '../../lib/appStore';
 import { CARD_GAME_BUY_URL } from '../../lib/cardGame';
+import { localDateKey } from '../../lib/topicOfDay';
 import { Capacitor } from '@capacitor/core';
 
 interface LandingPageProps {
@@ -129,6 +130,17 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     fetchTopics();
   }, []);
 
+  // Admin-scheduled Topic of the Day (if any) so the landing matches the feed.
+  const [dailyOverrideId, setDailyOverrideId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase
+      .from('daily_topics')
+      .select('topic_id')
+      .eq('date', localDateKey())
+      .maybeSingle()
+      .then(({ data }) => setDailyOverrideId((data as { topic_id: string } | null)?.topic_id ?? null));
+  }, []);
+
   // Cards for the Yaps mockup + the rotated stack in the dark explainer.
   // Pulled from real topics. Topic-of-the-Day (deterministic daily rotation
   // by date hash) goes first so a returning visitor always sees today's
@@ -140,9 +152,13 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     // doesn't apply one either, and filtering would skew the modulo.
     if (allTopics.length === 0) return YAPS_CARDS;
 
+    // An admin-scheduled pick for today wins; else the deterministic date hash.
+    const overrideIndex = dailyOverrideId
+      ? allTopics.findIndex((t) => t.id === dailyOverrideId)
+      : -1;
     const today = new Date().toDateString();
     const dateHash = today.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const todIndex = dateHash % allTopics.length;
+    const todIndex = overrideIndex >= 0 ? overrideIndex : dateHash % allTopics.length;
     const ordered = [allTopics[todIndex], ...allTopics.slice(0, todIndex), ...allTopics.slice(todIndex + 1)];
 
     return ordered.slice(0, 8).map((t) => ({
@@ -150,7 +166,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       verse: (t.bible_verse || '').split(';')[0].trim(),
       topicId: t.id,
     }));
-  }, [allTopics]);
+  }, [allTopics, dailyOverrideId]);
 
   const isNativeApp = Capacitor.isNativePlatform();
   // In the native app, the primary CTA drops the user straight into the feed
