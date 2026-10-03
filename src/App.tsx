@@ -583,6 +583,7 @@ function App() {
         <EventDetailView
           eventId={activeEventId}
           onBack={handleCloseEvent}
+          onOpenEvent={handleOpenEvent}
           onViewProfile={handleViewProfile}
           onViewTopic={(topicId) => { setActiveEventId(null); focusTopicById(topicId); }}
           onRequireAuth={() => { setAuthMode('signup'); setShowAuthModal(true); }}

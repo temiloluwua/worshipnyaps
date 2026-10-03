@@ -3,6 +3,7 @@ import { X, Search, UserCheck, Send, Clock, CheckCircle2, Copy, Check, Share2, U
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useEventInvitations } from '../../hooks/useEventInvitations';
+import { localDateKey } from '../../lib/topicOfDay';
 import toast from 'react-hot-toast';
 
 interface Friend {
@@ -15,10 +16,11 @@ interface InviteFriendsModalProps {
   eventId: string;
   eventTitle: string;
   shortCode?: string | null;
+  recurrenceGroupId?: string | null;
   onClose: () => void;
 }
 
-export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId, eventTitle, shortCode, onClose }) => {
+export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId, eventTitle, shortCode, recurrenceGroupId, onClose }) => {
   const { user } = useAuth();
   const { sendInvitation, sentInvitations } = useEventInvitations();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -39,6 +41,28 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
   // the host unchecks anyone they don't want, then invites in one tap.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSending, setBulkSending] = useState(false);
+  // Series invites: fetch the upcoming occurrences so one invite can cover the
+  // whole run. Defaults on when this event is part of a series.
+  const [seriesEventIds, setSeriesEventIds] = useState<string[]>([]);
+  const [inviteWholeSeries, setInviteWholeSeries] = useState(true);
+
+  useEffect(() => {
+    if (!recurrenceGroupId) { setSeriesEventIds([]); return; }
+    const todayKey = localDateKey();
+    supabase
+      .from('events')
+      .select('id, date')
+      .eq('recurrence_group_id', recurrenceGroupId)
+      .eq('status', 'upcoming')
+      .gte('date', todayKey)
+      .order('date', { ascending: true })
+      .then(({ data }) => setSeriesEventIds((data || []).map((r: any) => r.id)));
+  }, [recurrenceGroupId]);
+
+  // Which events an invite applies to: the whole upcoming series (when opted in
+  // and there's more than one) or just this event.
+  const targetEventIds = (): string[] =>
+    inviteWholeSeries && seriesEventIds.length > 1 ? seriesEventIds : [eventId];
 
   const shareOrigin = (() => {
     const origin = window.location.origin;
@@ -193,7 +217,9 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
 
   const handleInvite = async (friendId: string) => {
     setSending(prev => ({ ...prev, [friendId]: true }));
-    await sendInvitation(eventId, friendId, message || undefined);
+    for (const eId of targetEventIds()) {
+      await sendInvitation(eId, friendId, message || undefined);
+    }
     setSending(prev => ({ ...prev, [friendId]: false }));
   };
 
@@ -224,11 +250,16 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
     setBulkSending(true);
     let sent = 0;
     try {
+      const targets = targetEventIds();
       for (const id of ids) {
-        const ok = await sendInvitation(eventId, id, message || undefined);
+        let ok = false;
+        for (const eId of targets) {
+          const r = await sendInvitation(eId, id, message || undefined);
+          ok = ok || r;
+        }
         if (ok) sent++;
       }
-      toast.success(`Invited ${sent} ${sent === 1 ? 'person' : 'people'}`);
+      toast.success(`Invited ${sent} ${sent === 1 ? 'person' : 'people'}${targets.length > 1 ? ` to ${targets.length} sessions` : ''}`);
     } finally {
       setBulkSending(false);
     }
@@ -254,6 +285,19 @@ export const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({ eventId,
         </div>
 
         <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 space-y-3">
+          {/* Series: let one invite cover every upcoming session. */}
+          {seriesEventIds.length > 1 && (
+            <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+              <input
+                type="checkbox"
+                checked={inviteWholeSeries}
+                onChange={(e) => setInviteWholeSeries(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              />
+              <span>Invite to all <strong>{seriesEventIds.length}</strong> upcoming sessions in this series</span>
+            </label>
+          )}
+
           {/* Clear, simple invite link: show the URL, copy it, or share it. */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Invite link</label>

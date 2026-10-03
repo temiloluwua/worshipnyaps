@@ -422,6 +422,62 @@ export const useEvents = () => {
     }
   };
 
+  // Create an event as a repeating series in one step: the first date is the
+  // seed (heads the series), and one event is created per occurrence up to the
+  // end date, all sharing a recurrence_group_id. Each occurrence is its own
+  // event (own RSVPs/chat). Returns the seed event.
+  const createEventSeries = async (eventData: Partial<Event>, recurrence: Recurrence, untilISO: string) => {
+    if (!user) return null;
+    try {
+      const startISO = (eventData.date as string) || toISODate(new Date());
+      const dates = recurrenceDatesUntil(startISO, recurrence, untilISO);
+      if (dates.length === 0) return null;
+
+      const seriesId = (crypto as { randomUUID?: () => string })?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+      const needsInviteCode = eventData.visibility === 'private' || eventData.is_private;
+
+      const { data: seed, error: seedErr } = await supabase
+        .from('events')
+        .insert({
+          ...eventData,
+          date: dates[0],
+          host_id: user.id,
+          status: 'upcoming',
+          recurrence,
+          recurrence_group_id: seriesId,
+          is_recurrence_child: false,
+          invite_code: eventData.invite_code || (needsInviteCode ? generateInviteCode() : null),
+        })
+        .select()
+        .single();
+      if (seedErr) throw seedErr;
+
+      const childRows = dates.slice(1).map((date) => ({
+        ...eventData,
+        date,
+        host_id: user.id,
+        status: 'upcoming',
+        recurrence,
+        recurrence_group_id: seriesId,
+        is_recurrence_child: true,
+        invite_code: needsInviteCode ? generateInviteCode() : null,
+      }));
+      if (childRows.length > 0) {
+        const { error: insErr } = await supabase.from('events').insert(childRows);
+        if (insErr) throw insErr;
+      }
+
+      if (seed?.id && seed?.capacity) setCachedCapacity(seed.id, seed.capacity);
+      toast.success(`Series created — ${dates.length} ${dates.length === 1 ? 'session' : 'sessions'} 🔁`);
+      await fetchEvents();
+      await fetchMyEvents();
+      return seed;
+    } catch (error: any) {
+      toast.error(error.message);
+      return null;
+    }
+  };
+
   // RSVP to event
   const rsvpToEvent = async (eventId: string, volunteerRoles: string[] = [], foodItems: string[] = [], customFoodDetails?: { item: string; category: string; servingSize?: string; notes?: string }) => {
     if (!user) return false;
@@ -648,6 +704,7 @@ export const useEvents = () => {
     fetchDrafts,
     fetchRsvpEventIds,
     createEvent,
+    createEventSeries,
     isEventRsvped,
     isEventWaitlisted,
     rsvpToEvent,

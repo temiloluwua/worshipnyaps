@@ -28,12 +28,14 @@ import { shareIcs } from '../../lib/icsExport';
 import { mapLinkFor } from '../../lib/mapLink';
 import { eventShareUrl } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
+import { EventSeriesPanel } from './EventSeriesPanel';
 import { ReportButton } from '../moderation/ReportButton';
 import { TopicCard } from '../topics/TopicCard';
 
 interface EventDetailViewProps {
   eventId: string;
   onBack: () => void;
+  onOpenEvent?: (eventId: string) => void;
   onViewProfile?: (userId: string) => void;
   onViewTopic?: (topicId: string) => void;
   // Opens the auth modal (used by the team-join flow when a logged-out visitor
@@ -73,7 +75,7 @@ const setCachedEventCapacity = (eventId: string, capacity: number) => {
   }
 };
 
-export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onViewProfile, onViewTopic, onRequireAuth }) => {
+export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBack, onOpenEvent, onViewProfile, onViewTopic, onRequireAuth }) => {
   const { user, profile } = useAuth();
   const [attachedTopic, setAttachedTopic] = useState<any | null>(null);
   const [showTopicCard, setShowTopicCard] = useState(false);
@@ -1780,6 +1782,18 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </div>
           )}
 
+          {/* Other upcoming dates in this series — see them all and RSVP to
+              each (or all at once). Hidden for one-off events. */}
+          {event.recurrence_group_id && (
+            <EventSeriesPanel
+              recurrenceGroupId={event.recurrence_group_id}
+              currentEventId={eventId}
+              onOpenEvent={onOpenEvent}
+              onRequireAuth={onRequireAuth}
+              onChanged={() => checkRsvpStatus()}
+            />
+          )}
+
           {/* Capacity only "fills" when the host set a real limit (>0). At that
               point RSVPs join a waitlist instead of being turned away. */}
           {isWaitlisted && !isHost && (
@@ -2063,6 +2077,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           eventId={eventId}
           eventTitle={event.title}
           shortCode={event.short_code}
+          recurrenceGroupId={event.recurrence_group_id}
           onClose={() => setShowInviteModal(false)}
         />
       )}

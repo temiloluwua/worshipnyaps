@@ -802,9 +802,12 @@ function hostDraftHasContent(d: HostEventDraft): boolean {
 
 function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }: HostEventModalProps) {
   const { t } = useTranslation();
-  const { createEvent } = useEvents();
+  const { createEvent, createEventSeries } = useEvents();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  // Optional: make this a repeating series at creation. Empty = one-off.
+  const [repeat, setRepeat] = useState<'' | 'weekly' | 'biweekly' | 'monthly'>('');
+  const [repeatUntil, setRepeatUntil] = useState('');
 
   const [useTemplate, setUseTemplate] = useState(initialDraft?.useTemplate ?? false);
   const [descriptionTemplate, setDescriptionTemplate] = useState<DescriptionTemplate>(
@@ -982,7 +985,11 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
       eventData.description = formData.description;
     }
 
-    const result = await createEvent(eventData);
+    // A repeating series (only for real, dated events — never drafts).
+    const makeSeries = !asDraft && repeat !== '' && Boolean(formData.eventDate) && Boolean(repeatUntil);
+    const result = makeSeries
+      ? await createEventSeries(eventData, repeat as 'weekly' | 'biweekly' | 'monthly', repeatUntil)
+      : await createEvent(eventData);
     setSubmitting(false);
 
     // Convert the form's "Help Requests" list into real, claimable help
@@ -1270,6 +1277,39 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
               />
             </div>
           </div>
+
+          {/* Make this a repeating series up front. Blank = a single event.
+              Each occurrence becomes its own event (own RSVPs & chat). */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Repeat</label>
+              <select
+                value={repeat}
+                onChange={(e) => setRepeat(e.target.value as typeof repeat)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Doesn't repeat</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            {repeat !== '' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Repeat until</label>
+                <input
+                  type="date"
+                  value={repeatUntil}
+                  min={formData.eventDate || undefined}
+                  onChange={(e) => setRepeatUntil(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          </div>
+          {repeat !== '' && !repeatUntil && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 -mt-2">Pick an end date to create the series (up to 26 sessions).</p>
+          )}
 
           <div>
             <div className="flex items-center gap-2 mb-3">
