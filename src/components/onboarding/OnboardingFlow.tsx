@@ -335,9 +335,16 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
               You're all set!
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-8 text-center">
+            <p className="text-gray-600 dark:text-gray-300 mb-5 text-center">
               The community is waiting. What do you want to do first?
             </p>
+
+            {/* Quick legend so the bottom-tab names + "Yap" aren't a mystery. */}
+            <div className="mb-6 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
+              <p><span className="font-semibold text-gray-900 dark:text-white">Topics</span> — swipe a deck of conversation-starter cards.</p>
+              <p><span className="font-semibold text-gray-900 dark:text-white">Events</span> — find or host local meetups: Bible studies, hangouts, and <span className="font-semibold">Yaps</span> (casual faith chats).</p>
+              <p><span className="font-semibold text-gray-900 dark:text-white">Community</span> — connect with people. <span className="font-semibold text-gray-900 dark:text-white">Messages</span> — chat with them.</p>
+            </div>
 
             <div className="space-y-3 mb-8">
               <button

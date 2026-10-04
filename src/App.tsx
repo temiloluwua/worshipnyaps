@@ -670,8 +670,9 @@ function App() {
           />
         </main>
         <BottomNavigation
-          activeTab={activeTab}
+          activeTab="network"
           onTabChange={(tab) => {
+            if (tab === 'network') return; // already here
             setActiveTab(tab);
             setViewState({ type: 'main' });
           }}
@@ -759,6 +760,9 @@ function App() {
       <BottomNavigation
         activeTab={activeTab}
         onTabChange={(tab) => {
+          // Community lives in its own full-screen view (CommunityView), not a
+          // main-area tab, so route it through viewState instead of activeTab.
+          if (tab === 'network') { setViewState({ type: 'network' }); return; }
           setActiveTab(tab);
           if (viewState.initialChatUserId && tab !== 'messages') {
             setViewState({ type: 'main' });

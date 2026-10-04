@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Settings, User } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { SettingsModal } from './SettingsModal';
