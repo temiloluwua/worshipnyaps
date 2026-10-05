@@ -1598,7 +1598,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               );
             }
             if (event.description && event.description !== 'Event details available in the template' && event.description !== 'Event details in template') {
-              return <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{event.description}</p>;
+              return <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed whitespace-pre-wrap break-words">{event.description}</p>;
             }
             return null;
           })()}
