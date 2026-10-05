@@ -14,7 +14,6 @@ import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { geocodeAddress, reverseGeocodeArea } from '../../lib/geocode';
 import { eventShareUrl } from '../../lib/openExternal';
-import { MarkdownField } from '../ui/MarkdownField';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { createHelpRequestsFromTitles } from '../../lib/eventHelpRequests';
 import { TopicPicker } from '../events/TopicPicker';
@@ -1327,10 +1326,11 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
             {useTemplate ? (
               <EventDescriptionForm template={descriptionTemplate} onChange={setDescriptionTemplate} eventType={formData.event_type} />
             ) : (
-              <MarkdownField
+              <textarea
+                name="description"
                 value={formData.description}
-                onChange={(v) => setFormData(prev => ({ ...prev, description: v }))}
-                rows={4}
+                onChange={handleInputChange}
+                rows={3}
                 placeholder="Describe your event..."
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />

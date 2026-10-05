@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import type { Event as DbEvent, DescriptionTemplate } from '../../lib/supabase';
 import { EventDescriptionForm } from './EventDescriptionTemplate';
-import { MarkdownField } from '../ui/MarkdownField';
 import { TwelveHourTimePicker } from '../ui/TimePicker';
 import { EventImageUploader } from './EventImageUploader';
 import { TopicPicker } from './TopicPicker';
@@ -309,10 +308,11 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({ event, onClose, 
             {useTemplate ? (
               <EventDescriptionForm template={descriptionTemplate} onChange={setDescriptionTemplate} eventType={(event as { event_type?: string }).event_type} />
             ) : (
-              <MarkdownField
+              <textarea
+                name="description"
                 value={formData.description}
-                onChange={(v) => setFormData(prev => ({ ...prev, description: v }))}
-                rows={4}
+                onChange={handleInputChange}
+                rows={3}
                 placeholder="Describe your event..."
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />

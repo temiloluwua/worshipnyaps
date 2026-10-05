@@ -29,7 +29,6 @@ import { mapLinkFor } from '../../lib/mapLink';
 import { eventShareUrl } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
 import { EventSeriesPanel } from './EventSeriesPanel';
-import { RichText } from '../ui/RichText';
 import { ReportButton } from '../moderation/ReportButton';
 import { TopicCard } from '../topics/TopicCard';
 
@@ -1599,7 +1598,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               );
             }
             if (event.description && event.description !== 'Event details available in the template' && event.description !== 'Event details in template') {
-              return <RichText className="mb-6">{event.description}</RichText>;
+              return <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed whitespace-pre-wrap break-words">{event.description}</p>;
             }
             return null;
           })()}
