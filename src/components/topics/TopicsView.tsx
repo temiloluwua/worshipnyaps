@@ -601,23 +601,26 @@ export function TopicsView({
         className="sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-10"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+        {/* The title block shrinks as you scroll down (showSearch tracks
+            scroll-up/at-top) so the sticky header tucks away and gives the
+            cards more room; scrolling up brings it back. */}
+        <div className={`px-4 transition-all duration-300 ${showSearch ? 'py-4' : 'py-2'}`}>
+          <div className={`flex items-center justify-between transition-all duration-300 ${showSearch ? 'mb-4' : 'mb-2'}`}>
+            <div className="min-w-0">
+              <h1 className={`font-bold text-gray-900 dark:text-white flex items-center transition-all duration-300 ${showSearch ? 'text-2xl' : 'text-lg'}`}>
                 {activeTab === 'topics' ? (
                   <>
-                    <Spade className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
+                    <Spade className={`mr-2 text-blue-600 dark:text-blue-400 transition-all duration-300 ${showSearch ? 'w-6 h-6' : 'w-5 h-5'}`} />
                     {t('topics.theDeck')}
                   </>
                 ) : (
                   <>
-                    <Users className="w-6 h-6 mr-2 text-blue-500" />
+                    <Users className={`mr-2 text-blue-500 transition-all duration-300 ${showSearch ? 'w-6 h-6' : 'w-5 h-5'}`} />
                     {t('topics.communityFeed')}
                   </>
                 )}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
+              <p className={`text-gray-600 dark:text-gray-400 text-sm overflow-hidden transition-all duration-300 ${showSearch ? 'max-h-10 opacity-100 mt-0' : 'max-h-0 opacity-0'}`}>
                 {activeTab === 'topics'
                   ? 'Draw a card and start a real conversation'
                   : 'Share your thoughts and questions with the community'}

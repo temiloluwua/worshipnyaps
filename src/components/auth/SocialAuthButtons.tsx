@@ -9,6 +9,11 @@ import { signInWithAppleNative, isAppleCancel } from '../../lib/appleAuth';
 import { signInWithGoogleInApp } from '../../lib/googleAuth';
 import { AppleLogo, GoogleLogo } from './BrandLogos';
 
+// Phone/SMS login is hidden until an SMS provider is configured in Supabase.
+// Without one, "Send Code" always fails with "Unsupported phone provider", so
+// we don't expose a dead end. Flip to true once Twilio/MessageBird is set up.
+const PHONE_LOGIN_ENABLED = false;
+
 interface SocialAuthButtonsProps {
   onSuccess?: () => void;
   mode?: 'login' | 'signup';
@@ -173,7 +178,7 @@ export function SocialAuthButtons({ onSuccess, mode = 'login', beforeAuth }: Soc
         <span>{isLoading ? 'Signing in…' : 'Sign in with Google'}</span>
       </button>
 
-      {!showPhoneInput ? (
+      {PHONE_LOGIN_ENABLED && (!showPhoneInput ? (
         <button
           type="button"
           onClick={() => setShowPhoneInput(true)}
@@ -213,7 +218,7 @@ export function SocialAuthButtons({ onSuccess, mode = 'login', beforeAuth }: Soc
             </button>
           </div>
         </form>
-      )}
+      ))}
     </div>
 
     <PhoneVerificationModal
