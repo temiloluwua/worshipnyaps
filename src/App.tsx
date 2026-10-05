@@ -543,6 +543,10 @@ function App() {
           setActiveTab('topics');
           setShowLanding(false);
         }}
+        onViewCommunity={() => {
+          setShowLanding(false);
+          setViewState({ type: 'network' });
+        }}
         onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
         onCreateAccount={() => {
           setAuthMode('signup');

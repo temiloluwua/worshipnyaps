@@ -4,9 +4,10 @@ import {
   Globe, Smartphone, ChevronRight, ChevronLeft, Star,
   BookOpen, Users, MessageSquare, ShieldCheck,
   User as UserIcon, Search, Spade, ClipboardList, Sparkles, ShoppingBag,
-  Instagram, Youtube,
+  Instagram, Youtube, Layers, MapPin,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import { Logo } from '../ui/Logo';
 import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
@@ -20,6 +21,7 @@ interface LandingPageProps {
   onPreOrder: () => void;
   onViewEvents?: () => void;
   onViewTopics?: () => void;
+  onViewCommunity?: () => void;
   onViewTopicOfDay?: (topicId: string) => void;
   onCreateAccount?: () => void;
   onLogin?: () => void;
@@ -106,10 +108,14 @@ const WHO_FOR = [
 
 // ---------- Component ----------
 
-export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewCommunity, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
+  const { user, profile } = useAuth();
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [activeFeature, setActiveFeature] = useState(0);
+  // How-to-Play starts collapsed so the page leads with the app, not the
+  // physical card game. The hero "How to Play" button expands it.
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -168,6 +174,9 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     }));
   }, [allTopics, dailyOverrideId]);
 
+  // Today's topic question, used as a live peek on the launchpad Topics tile.
+  const todaysTopicPeek = yapsCards[0]?.question?.slice(0, 60) || '';
+
   const isNativeApp = Capacitor.isNativePlatform();
   // In the native app, the primary CTA drops the user straight into the feed
   // (no forced login) , sign-in is prompted later only when they take an
@@ -188,7 +197,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const scrollToZone = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
-  const seeHowToYap = () => scrollToZone('how-to-play');
+  const seeHowToYap = () => { setShowHowToPlay(true); setTimeout(() => scrollToZone('how-to-play'), 50); };
   // "Buy the card game" links to the Amazon listing (physical product),
   // bypassing the in-app Shop page. Shares CARD_GAME_BUY_URL with ProductCard.
   const openCardGameCheckout = () => {
@@ -251,6 +260,27 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </nav>
 
+      {/* Returning, signed-in visitors get a jump-back-in band instead of a
+          cold marketing pitch. */}
+      {user && (
+        <div className="max-w-5xl mx-auto px-6 pt-6">
+          <div className="rounded-2xl bg-[#2563eb]/10 dark:bg-[#2563eb]/20 border border-[#2563eb]/20 p-4 flex flex-wrap items-center gap-3">
+            <p className="text-sm font-semibold text-[#0F172A] dark:text-white mr-auto">
+              <T>Welcome back</T>{profile?.name ? `, ${profile.name.split(' ')[0]}` : ''} 👋
+            </p>
+            <button onClick={() => (onViewTopics ?? onEnter)()} className="text-sm font-medium px-3 py-1.5 rounded-full bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 hover:shadow-sm transition-all">
+              <T>Today's topic</T>
+            </button>
+            <button onClick={() => (onViewEvents ?? onEnter)()} className="text-sm font-medium px-3 py-1.5 rounded-full bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 hover:shadow-sm transition-all">
+              <T>Events</T>
+            </button>
+            <button onClick={() => (onViewCommunity ?? onEnter)()} className="text-sm font-medium px-3 py-1.5 rounded-full bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 hover:shadow-sm transition-all">
+              <T>Community</T>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-16 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2563eb]/15 text-[#2563eb] dark:bg-[#2563eb]/25 dark:text-blue-300 text-xs font-semibold tracking-wide mb-8">
@@ -296,6 +326,56 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
           <T>Free to download · Card deck ships to you · Built for real people</T>
         </p>
+
+        {/* Web visitors: make it clear they can try it without downloading. */}
+        {!isNativeApp && (
+          <button
+            onClick={() => (onViewTopics ?? onEnter)()}
+            className="mt-3 text-sm font-medium text-[#2563eb] dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+          >
+            <T>Prefer not to download? Explore in your browser</T>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* How it works — 3 quick steps so the model lands immediately. */}
+        <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mt-12 mb-8 text-center">
+          {[
+            { n: '1', icon: Layers, label: 'Swipe topics' },
+            { n: '2', icon: MapPin, label: 'Find or host events' },
+            { n: '3', icon: Users, label: 'Connect with people' },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.n} className="flex flex-col items-center gap-2">
+                <div className="w-11 h-11 rounded-full bg-[#2563eb]/10 dark:bg-[#2563eb]/25 flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-[#2563eb] dark:text-blue-300" />
+                </div>
+                <span className="text-xs font-medium text-[#475569] dark:text-[#CBD5E1]"><T>{s.label}</T></span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Launchpad — jump straight into the main areas (mirrors the app tabs). */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto">
+          {[
+            { label: 'Topics', sub: todaysTopicPeek || 'Swipe discussion cards', Icon: Layers, onClick: () => (onViewTopics ?? onEnter)(), tone: 'text-blue-600 dark:text-blue-400' },
+            { label: 'Events', sub: 'Find or host a gathering', Icon: MapPin, onClick: () => (onViewEvents ?? onEnter)(), tone: 'text-teal-600 dark:text-teal-400' },
+            { label: 'Community', sub: 'Meet other believers', Icon: Users, onClick: () => (onViewCommunity ?? onEnter)(), tone: 'text-amber-600 dark:text-amber-400' },
+            { label: 'Card game', sub: 'Yaps — the physical deck', Icon: ShoppingBag, onClick: openCardGameCheckout, tone: 'text-rose-600 dark:text-rose-400' },
+          ].map((tile) => (
+            <button
+              key={tile.label}
+              onClick={tile.onClick}
+              className="group text-left p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+            >
+              <tile.Icon className={`w-6 h-6 mb-2 ${tile.tone}`} />
+              <p className="font-semibold text-sm text-[#0F172A] dark:text-white">{tile.label}</p>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] line-clamp-2 mt-0.5">{tile.sub}</p>
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Yaps explainer, dark */}
@@ -474,10 +554,24 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         <h2 className="font-logo font-bold text-2xl sm:text-4xl md:text-5xl leading-tight text-center mb-4">
           <T>So, you want to host a Yap.</T>
         </h2>
-        <p className="text-center text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto mb-14 leading-relaxed">
+        <p className="text-center text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto mb-8 leading-relaxed">
           <T>Here's the same flow we use for the in-person Yaps. Print it, screenshot it, or just keep this page open while you host.</T>
         </p>
 
+        {/* Collapsed by default so the home leads with the app, not the deck. */}
+        {!showHowToPlay && (
+          <div className="text-center mb-4">
+            <button
+              onClick={() => setShowHowToPlay(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-black/15 dark:border-white/20 text-[#0F172A] dark:text-[#F8FAFC] font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
+              <T>Learn how to host a Yap</T>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {showHowToPlay && (<>
         {/* Create a vibe, vertical timeline */}
         <div className="rounded-3xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 p-7 md:p-10 mb-8 shadow-sm">
           <h3 className="font-logo font-bold text-2xl md:text-3xl mb-8"><T>How to create a vibe</T></h3>
@@ -614,6 +708,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             </p>
           </div>
         </div>
+        </>)}
       </section>
 
       {/* 8. Who it's for, dark */}
