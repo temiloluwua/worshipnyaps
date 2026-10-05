@@ -424,14 +424,14 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
                   onClick={goTopic}
                   className="w-full max-w-md rounded-3xl bg-white text-[#0F172A] p-7 sm:p-8 shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all text-left focus:outline-none focus:ring-4 focus:ring-white/30"
                 >
+                  <p className="font-logo text-2xl sm:text-3xl leading-snug mb-4">
+                    {today.question}
+                  </p>
                   {today.verse && (
-                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#2563eb]/15 text-[#2563eb] text-[11px] font-semibold mb-4">
+                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#2563eb]/15 text-[#2563eb] text-[11px] font-semibold mb-6">
                       {today.verse}
                     </span>
                   )}
-                  <p className="font-logo text-2xl sm:text-3xl leading-snug mb-6">
-                    {today.question}
-                  </p>
                   <div className="flex items-center gap-2 text-[#2563eb] font-semibold text-sm">
                     <MessageSquare className="w-4 h-4" />
                     <span><T>Join the conversation</T></span>
