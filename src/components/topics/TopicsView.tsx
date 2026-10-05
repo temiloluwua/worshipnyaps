@@ -598,7 +598,7 @@ export function TopicsView({
   return (
     <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 min-h-screen">
       <div
-        className="sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-10"
+        className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-20"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         {/* The title block shrinks as you scroll down (showSearch tracks
