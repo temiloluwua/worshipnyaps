@@ -8,7 +8,7 @@ import { useDirectMessages, Conversation, DirectMessage } from '../../hooks/useD
 import { useAuth } from '../../hooks/useAuth';
 import { useConnections } from '../../hooks/useConnections';
 import { linkifyMessage } from '../../lib/linkify';
-import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
+import { format, isToday, isYesterday, isThisYear, formatDistanceToNow } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { ReportButton } from '../moderation/ReportButton';
 
@@ -221,7 +221,15 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                       isOwn ? 'text-blue-200' : 'text-gray-400'
                     }`}>
                       <span className="text-xs">
-                        {format(new Date(message.created_at), 'h:mm a')}
+                        {(() => {
+                          const d = new Date(message.created_at);
+                          // Show the date alongside the time once a message is
+                          // older than today, so bubbles aren't ambiguous.
+                          if (isToday(d)) return format(d, 'h:mm a');
+                          if (isYesterday(d)) return `Yesterday ${format(d, 'h:mm a')}`;
+                          if (isThisYear(d)) return format(d, 'MMM d, h:mm a');
+                          return format(d, 'MMM d, yyyy, h:mm a');
+                        })()}
                       </span>
                       {isOwn && (
                         message.is_read

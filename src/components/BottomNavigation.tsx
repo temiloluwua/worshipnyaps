@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, MapPin, Search, Mail, Users } from 'lucide-react';
+import { Layers, MapPin, Search, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export type TabType = 'topics' | 'locations' | 'network' | 'shop' | 'search' | 'messages' | 'notifications';
@@ -25,7 +25,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     { id: 'topics' as const, nameKey: 'nav.topics', icon: Layers },
     { id: 'search' as const, nameKey: 'nav.search', icon: Search },
     { id: 'locations' as const, nameKey: 'nav.events', icon: MapPin },
-    { id: 'network' as const, nameKey: 'nav.community', icon: Users },
     { id: 'messages' as const, nameKey: 'nav.messages', icon: Mail, badge: unreadMessages },
   ];
 

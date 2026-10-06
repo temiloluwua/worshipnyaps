@@ -4,7 +4,7 @@ import { useNotificationSubscription } from '../../hooks/useNotificationSubscrip
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat, Paperclip, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -30,6 +30,8 @@ import { eventShareUrl } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
 import { EventSeriesPanel } from './EventSeriesPanel';
 import { EventTopicsSection } from './EventTopicsSection';
+import { linkifyMessage } from '../../lib/linkify';
+import { uploadChatAttachment } from '../../lib/chatAttachment';
 import { ReportButton } from '../moderation/ReportButton';
 import { TopicCard } from '../topics/TopicCard';
 
@@ -111,6 +113,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
   const [messageContent, setMessageContent] = useState('');
   const [orgMessageContent, setOrgMessageContent] = useState('');
+  const [orgUploading, setOrgUploading] = useState(false);
+  const orgFileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isCoHost, setIsCoHost] = useState(false);
@@ -446,15 +450,23 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     return () => { cancelled = true; };
   }, [canAccessOrganizerChat, eventId]);
 
-  const sendOrgMessage = async () => {
-    if (!user || !organizerChannel || !orgMessageContent.trim()) return;
+  const sendOrgMessage = async (attachment?: { url: string; type: 'image' | 'file'; name: string }) => {
+    if (!user || !organizerChannel) return;
     const content = orgMessageContent.trim();
+    if (!content && !attachment) return;
     setSending(true);
     try {
       const { data, error } = await supabase
         .from('chat_messages')
-        .insert({ sender_id: user.id, channel: organizerChannel, content })
-        .select('id, sender_id, recipient_id, channel, content, is_read, created_at')
+        .insert({
+          sender_id: user.id,
+          channel: organizerChannel,
+          content,
+          attachment_url: attachment?.url ?? null,
+          attachment_type: attachment?.type ?? null,
+          attachment_name: attachment?.name ?? null,
+        })
+        .select('id, sender_id, recipient_id, channel, content, is_read, created_at, attachment_url, attachment_type, attachment_name')
         .single();
 
       if (error) throw error;
@@ -474,6 +486,22 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
       toast.error('Failed to send message');
     } finally {
       setSending(false);
+    }
+  };
+
+  // Pick a picture/file, upload it, then send it as an organizer-chat message.
+  const handleOrgAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file || !user) return;
+    setOrgUploading(true);
+    try {
+      const attachment = await uploadChatAttachment(file, user.id);
+      await sendOrgMessage(attachment);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not upload that file');
+    } finally {
+      setOrgUploading(false);
     }
   };
 
@@ -1966,7 +1994,25 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                           {message.sender_id !== user?.id && (
                             <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown'}</div>
                           )}
-                          <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                          {message.attachment_url && message.attachment_type === 'image' && (
+                            <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-1">
+                              <img src={message.attachment_url} alt={message.attachment_name || 'image'} className="max-h-56 rounded-lg object-cover" loading="lazy" />
+                            </a>
+                          )}
+                          {message.attachment_url && message.attachment_type === 'file' && (
+                            <a
+                              href={message.attachment_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-2 mb-1 px-3 py-2 rounded-lg ${message.sender_id === user?.id ? 'bg-amber-700/50' : 'bg-gray-300/60 dark:bg-gray-600/60'}`}
+                            >
+                              <FileText className="w-4 h-4 shrink-0" />
+                              <span className="text-sm underline break-all">{message.attachment_name || 'Download file'}</span>
+                            </a>
+                          )}
+                          {message.content && (
+                            <div className="text-sm whitespace-pre-wrap break-words">{linkifyMessage(message.content, message.sender_id === user?.id)}</div>
+                          )}
                           <div className={`text-xs mt-1 ${message.sender_id === user?.id ? 'text-amber-200' : 'text-gray-500 dark:text-gray-400'}`}>
                             {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
@@ -1977,18 +2023,34 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                   <div ref={orgMessagesEndRef} />
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      ref={orgFileInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip"
+                      className="hidden"
+                      onChange={handleOrgAttach}
+                    />
+                    <button
+                      onClick={() => orgFileInputRef.current?.click()}
+                      disabled={orgUploading || sending}
+                      title="Attach a picture or file"
+                      aria-label="Attach a picture or file"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 disabled:opacity-50 transition-colors"
+                    >
+                      <Paperclip size={20} />
+                    </button>
                     <input
                       type="text"
                       value={orgMessageContent}
                       onChange={(e) => setOrgMessageContent(e.target.value)}
                       onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendOrgMessage(); } }}
-                      placeholder={t('chat.typePlaceholder')}
+                      placeholder={orgUploading ? 'Uploading…' : t('chat.typePlaceholder')}
                       className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                     <button
-                      onClick={sendOrgMessage}
-                      disabled={!orgMessageContent.trim() || sending}
+                      onClick={() => sendOrgMessage()}
+                      disabled={!orgMessageContent.trim() || sending || orgUploading}
                       className="p-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <Send size={20} />
