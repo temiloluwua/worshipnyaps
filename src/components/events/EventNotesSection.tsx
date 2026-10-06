@@ -132,12 +132,14 @@ export const EventNotesSection: React.FC<EventNotesSectionProps> = ({ eventId, e
           isOpen={showCreateTopic}
           onClose={() => setShowCreateTopic(false)}
           topicType="preselected"
+          allowNonAdmin
+          submitAsRequest
           initialValues={{
             title: eventTitle ? `From: ${eventTitle}` : '',
             content: notesDigest,
             category: 'community',
           }}
-          onCreated={() => { setShowCreateTopic(false); toast.success('Topic created from notes'); }}
+          onCreated={() => { setShowCreateTopic(false); }}
         />
       )}
     </div>

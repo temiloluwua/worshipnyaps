@@ -5,7 +5,7 @@ import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { useCommunityPolls } from '../../hooks/useCommunityPolls';
 import { useEvents } from '../../hooks/useEvents';
-import { CommunityCategory } from '../../lib/supabase';
+import { CommunityCategory, supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 // A community post is either a plain post, one that carries a "which day
@@ -25,6 +25,10 @@ interface CreateTopicModalProps {
   // Allow a non-admin to create a discussion topic (e.g. a host authoring the
   // topic for their own yap event). RLS already permits author_id = self.
   allowNonAdmin?: boolean;
+  // When true, a preselected-topic submission is filed as a pending
+  // topic_request (admin-approved before it goes live) instead of publishing
+  // straight to the deck. Used for topics created from within an event.
+  submitAsRequest?: boolean;
 }
 
 export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
@@ -35,6 +39,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   initialValues,
   onCreated,
   allowNonAdmin = false,
+  submitAsRequest = false,
 }) => {
   const { user, profile } = useAuth();
   const { createTopic } = useTopics();
@@ -105,6 +110,18 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
           await createPoll(postId, formData.title, cleanOptions);
         }
       }
+    } else if (submitAsRequest) {
+      // Topics created from within an event aren't published straight to the
+      // deck — they're filed as a pending request for an admin to approve.
+      const { error } = await supabase.from('topic_requests').insert({
+        title: formData.title.trim(),
+        description: formData.content.trim() || null,
+        bible_verse: formData.bibleReference || null,
+        category: formData.category,
+        requested_by: user?.id,
+        status: 'pending',
+      });
+      result = error ? null : { pending: true };
     } else {
       result = await createTopic({
         title: formData.title,
@@ -119,7 +136,8 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     }
 
     if (result) {
-      toast.success(isCommunityPost ? 'Post shared!' : 'Topic created!');
+      const wasRequest = (result as { pending?: boolean }).pending === true;
+      toast.success(wasRequest ? 'Sent to admins for review 🙌' : isCommunityPost ? 'Post shared!' : 'Topic created!');
       onCreated?.(result);
       onClose();
       setFormData({
