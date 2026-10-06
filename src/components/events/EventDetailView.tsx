@@ -29,6 +29,7 @@ import { mapLinkFor } from '../../lib/mapLink';
 import { eventShareUrl } from '../../lib/openExternal';
 import { TeamBoard } from './TeamBoard';
 import { EventSeriesPanel } from './EventSeriesPanel';
+import { EventTopicsSection } from './EventTopicsSection';
 import { ReportButton } from '../moderation/ReportButton';
 import { TopicCard } from '../topics/TopicCard';
 
@@ -1912,6 +1913,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 canUpload={Boolean(isHost || isRsvped)}
               />
             )}
+
+            {/* Topics created inside this event (approved + the viewer's own
+                pending ones), badged until an admin/mod approves them. */}
+            <EventTopicsSection eventId={eventId} onViewTopic={onViewTopic} />
 
             {/* Event notes — write during/after; organizers & admins see all,
                 admins can curate them into a new discussion topic. */}

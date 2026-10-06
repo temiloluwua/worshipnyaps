@@ -167,6 +167,8 @@ export interface Topic {
   questions?: string[];
   bibleReference?: string;
   bible_verse?: string;
+  event_id?: string | null;
+  moderation_status?: 'pending' | 'approved' | 'rejected';
   users?: {
     id: string;
     name: string;

@@ -133,7 +133,7 @@ export const EventNotesSection: React.FC<EventNotesSectionProps> = ({ eventId, e
           onClose={() => setShowCreateTopic(false)}
           topicType="preselected"
           allowNonAdmin
-          submitAsRequest
+          eventId={eventId}
           initialValues={{
             title: eventTitle ? `From: ${eventTitle}` : '',
             content: notesDigest,

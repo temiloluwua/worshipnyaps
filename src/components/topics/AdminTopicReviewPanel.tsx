@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, Clock, Book, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { supabase, TopicRequest } from '../../lib/supabase';
+import { supabase, TopicRequest, Topic } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 interface AdminTopicReviewPanelProps {
@@ -12,22 +12,47 @@ interface AdminTopicReviewPanelProps {
 export const AdminTopicReviewPanel: React.FC<AdminTopicReviewPanelProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const [requests, setRequests] = useState<TopicRequest[]>([]);
+  const [pendingTopics, setPendingTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = async () => {
     try {
-      const { data, error } = await supabase
-        .from('topic_requests')
-        .select('*, requester:users!topic_requests_requested_by_users_fkey(name, avatar_url)')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setRequests(data || []);
+      const [reqRes, topicRes] = await Promise.all([
+        supabase
+          .from('topic_requests')
+          .select('*, requester:users!topic_requests_requested_by_users_fkey(name, avatar_url)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: true }),
+        // Topics created inside an event, awaiting approval before going public.
+        supabase
+          .from('topics')
+          .select('*, users!topics_author_id_fkey(name), events(title)')
+          .eq('moderation_status', 'pending')
+          .order('created_at', { ascending: true }),
+      ]);
+      if (reqRes.error) throw reqRes.error;
+      setRequests(reqRes.data || []);
+      setPendingTopics((topicRes.data || []) as unknown as Topic[]);
     } catch (err) {
       console.error('Error fetching topic requests:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Approve/reject an event-created pending topic. The topic row already
+  // exists (visible in its event); approving flips it onto the public deck.
+  const moderateTopic = async (topicId: string, action: 'approved' | 'rejected') => {
+    try {
+      const { error } = await supabase
+        .from('topics')
+        .update({ moderation_status: action })
+        .eq('id', topicId);
+      if (error) throw error;
+      toast.success(action === 'approved' ? 'Topic approved — now on the deck!' : 'Topic rejected');
+      await fetchRequests();
+    } catch (err: any) {
+      toast.error(err.message || `Failed to ${action} topic`);
     }
   };
 
@@ -91,13 +116,45 @@ export const AdminTopicReviewPanel: React.FC<AdminTopicReviewPanelProps> = ({ is
         <div className="overflow-y-auto max-h-[calc(85vh-80px)]">
           {loading ? (
             <div className="p-12 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
-          ) : requests.length === 0 ? (
+          ) : requests.length === 0 && pendingTopics.length === 0 ? (
             <div className="p-12 text-center">
               <Clock className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
               <p className="text-gray-500 dark:text-gray-400">{t('adminReview.noRequests')}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {pendingTopics.length > 0 && (
+                <div className="p-4 bg-amber-50/60 dark:bg-amber-900/10">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300 mb-3">
+                    From events · awaiting approval ({pendingTopics.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {pendingTopics.map((tp) => (
+                      <div key={tp.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-amber-200 dark:border-amber-800/50">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{tp.title}</h4>
+                        {tp.content && <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 whitespace-pre-wrap break-words line-clamp-4">{tp.content}</p>}
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                          {tp.bible_verse && (
+                            <span className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full">
+                              <Book className="w-3 h-3" />{tp.bible_verse}
+                            </span>
+                          )}
+                          {(tp as any).events?.title && <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">Event: {(tp as any).events.title}</span>}
+                          <span className="flex items-center gap-1"><User className="w-3 h-3" />{(tp as any).users?.name || 'Unknown'}</span>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => moderateTopic(tp.id, 'rejected')} className="px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium flex items-center gap-1">
+                            <X className="w-4 h-4" />{t('adminReview.reject')}
+                          </button>
+                          <button onClick={() => moderateTopic(tp.id, 'approved')} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-1">
+                            <Check className="w-4 h-4" />{t('adminReview.approve')}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {requests.map((req) => (
                 <div key={req.id} className="p-6">
                   <div className="flex items-start justify-between mb-3">

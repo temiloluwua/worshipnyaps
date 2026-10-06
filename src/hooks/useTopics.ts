@@ -22,6 +22,9 @@ export const useTopics = () => {
             city
           )
         `)
+        // The public deck shows only approved topics. Pending event topics are
+        // visible inside their event (fetched separately), never here.
+        .eq('moderation_status', 'approved')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -67,6 +70,9 @@ export const useTopics = () => {
     topic_type?: 'preselected' | 'community';
     bible_verse?: string;
     questions?: string[];
+    // When set, the topic is tied to an event; non-staff authors are forced to
+    // 'pending' by a DB trigger so it stays off the public deck until approved.
+    event_id?: string | null;
   }) => {
     if (!user) return null;
 

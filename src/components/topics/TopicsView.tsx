@@ -629,24 +629,24 @@ export function TopicsView({
 
             <div className="flex items-center gap-2">
               {activeTab === 'topics' && isAdmin && (
-                <>
-                  <button
-                    onClick={() => setShowTopicScheduler(true)}
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
-                    aria-label="Schedule the Topic of the Day"
-                    title="Schedule the Topic of the Day"
-                  >
-                    <CalendarDays className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setShowAdminReview(true)}
-                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
-                    aria-label={t('adminReview.title')}
-                    title={t('adminReview.title')}
-                  >
-                    <ClipboardList className="w-5 h-5" />
-                  </button>
-                </>
+                <button
+                  onClick={() => setShowTopicScheduler(true)}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-2 rounded-full hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
+                  aria-label="Schedule the Topic of the Day"
+                  title="Schedule the Topic of the Day"
+                >
+                  <CalendarDays className="w-5 h-5" />
+                </button>
+              )}
+              {activeTab === 'topics' && isStaff && (
+                <button
+                  onClick={() => setShowAdminReview(true)}
+                  className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-2 rounded-full hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg"
+                  aria-label={t('adminReview.title')}
+                  title={t('adminReview.title')}
+                >
+                  <ClipboardList className="w-5 h-5" />
+                </button>
               )}
               {activeTab === 'community' && (
                 <button
