@@ -1916,7 +1916,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
             {/* Topics created inside this event (approved + the viewer's own
                 pending ones), badged until an admin/mod approves them. */}
-            <EventTopicsSection eventId={eventId} onViewTopic={onViewTopic} />
+            <EventTopicsSection eventId={eventId} eventTitle={event?.title} onViewTopic={onViewTopic} onRequireAuth={onRequireAuth} />
 
             {/* Event notes — write during/after; organizers & admins see all,
                 admins can curate them into a new discussion topic. */}
