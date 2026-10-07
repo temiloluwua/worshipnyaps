@@ -4,7 +4,7 @@ import { useNotificationSubscription } from '../../hooks/useNotificationSubscrip
 import { useTranslation } from 'react-i18next';
 import { supabase, ChatMessage, DescriptionTemplate } from '../../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat, Paperclip, FileText } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Share2, ArrowLeft, MessageCircle, Send, Lock, HeartHandshake, Shield, Copy, Edit3, UserPlus, XCircle, CalendarPlus, CalendarClock, ChevronDown, AlertTriangle, Trash2, Bell, BellOff, BookOpen, ChevronRight, Repeat, Paperclip } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
@@ -32,6 +32,7 @@ import { EventSeriesPanel } from './EventSeriesPanel';
 import { EventTopicsSection } from './EventTopicsSection';
 import { linkifyMessage } from '../../lib/linkify';
 import { uploadChatAttachment } from '../../lib/chatAttachment';
+import { ChatAttachment } from './ChatAttachment';
 import { ReportButton } from '../moderation/ReportButton';
 import { TopicCard } from '../topics/TopicCard';
 
@@ -450,7 +451,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     return () => { cancelled = true; };
   }, [canAccessOrganizerChat, eventId]);
 
-  const sendOrgMessage = async (attachment?: { url: string; type: 'image' | 'file'; name: string }) => {
+  const sendOrgMessage = async (attachment?: { path: string; type: 'image' | 'file'; name: string }) => {
     if (!user || !organizerChannel) return;
     const content = orgMessageContent.trim();
     if (!content && !attachment) return;
@@ -462,7 +463,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
           sender_id: user.id,
           channel: organizerChannel,
           content,
-          attachment_url: attachment?.url ?? null,
+          // Private bucket: we store the storage path, not a public URL.
+          attachment_url: attachment?.path ?? null,
           attachment_type: attachment?.type ?? null,
           attachment_name: attachment?.name ?? null,
         })
@@ -1994,21 +1996,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                           {message.sender_id !== user?.id && (
                             <div className="font-semibold text-sm mb-1">{message.sender?.name || 'Unknown'}</div>
                           )}
-                          {message.attachment_url && message.attachment_type === 'image' && (
-                            <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-1">
-                              <img src={message.attachment_url} alt={message.attachment_name || 'image'} className="max-h-56 rounded-lg object-cover" loading="lazy" />
-                            </a>
-                          )}
-                          {message.attachment_url && message.attachment_type === 'file' && (
-                            <a
-                              href={message.attachment_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`flex items-center gap-2 mb-1 px-3 py-2 rounded-lg ${message.sender_id === user?.id ? 'bg-amber-700/50' : 'bg-gray-300/60 dark:bg-gray-600/60'}`}
-                            >
-                              <FileText className="w-4 h-4 shrink-0" />
-                              <span className="text-sm underline break-all">{message.attachment_name || 'Download file'}</span>
-                            </a>
+                          {message.attachment_url && (
+                            <ChatAttachment
+                              path={message.attachment_url}
+                              type={message.attachment_type}
+                              name={message.attachment_name}
+                              isOwn={message.sender_id === user?.id}
+                            />
                           )}
                           {message.content && (
                             <div className="text-sm whitespace-pre-wrap break-words">{linkifyMessage(message.content, message.sender_id === user?.id)}</div>
