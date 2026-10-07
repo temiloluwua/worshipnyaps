@@ -177,6 +177,21 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   // Today's topic question, used as a live peek on the launchpad Topics tile.
   const todaysTopicPeek = yapsCards[0]?.question?.slice(0, 60) || '';
 
+  // The full raw topic for today (for the hero phone-mockup card). Same index
+  // logic as yapsCards; null until topics load (we fall back to sample copy).
+  const todayTopic = useMemo(() => {
+    if (allTopics.length === 0) return null;
+    const overrideIndex = dailyOverrideId ? allTopics.findIndex((t) => t.id === dailyOverrideId) : -1;
+    const dateHash = new Date().toDateString().split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const idx = overrideIndex >= 0 ? overrideIndex : dateHash % allTopics.length;
+    return allTopics[idx] || null;
+  }, [allTopics, dailyOverrideId]);
+
+  const openTodayTopic = () => {
+    if (todayTopic?.id && onViewTopicOfDay) onViewTopicOfDay(todayTopic.id);
+    else (onViewTopics ?? onEnter)();
+  };
+
   const isNativeApp = Capacitor.isNativePlatform();
   // In the native app, the primary CTA drops the user straight into the feed
   // (no forced login) , sign-in is prompted later only when they take an
@@ -194,10 +209,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   // it drops the visitor straight into the card feed (the Topics "deck"),
   // where sign-in is only prompted when they take an action that needs it.
   const navCtaAction = onViewTopics ?? onLogin ?? onCreateAccount ?? onEnter;
-  const scrollToZone = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
-  const seeHowToYap = () => { setShowHowToPlay(true); setTimeout(() => scrollToZone('how-to-play'), 50); };
   // "Buy the card game" links to the Amazon listing (physical product),
   // bypassing the in-app Shop page. Shares CARD_GAME_BUY_URL with ProductCard.
   const openCardGameCheckout = () => {
@@ -281,63 +292,85 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       )}
 
-      {/* 2. Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-16 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2563eb]/15 text-[#2563eb] dark:bg-[#2563eb]/25 dark:text-blue-300 text-xs font-semibold tracking-wide mb-8">
-          <Globe className="w-3.5 h-3.5" />
-          <span><T>Join the conversation</T></span>
+      {/* 2. Hero — blue band with a live Topic-of-the-Day phone mockup. Shows
+          the product immediately; the rest of the story unfolds on scroll. */}
+      <section className="bg-[#2650eb] text-white rounded-b-[2.5rem]">
+        <div className="max-w-5xl mx-auto px-6 pt-14 pb-16 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold tracking-wide mb-6">
+            <Globe className="w-3.5 h-3.5" />
+            <span><T>A Christian community</T></span>
+          </div>
+
+          <h1 className="font-logo font-bold text-[clamp(2.25rem,6.5vw,4rem)] leading-[1.08] tracking-tight mb-5">
+            <T>The Christian community app</T>{' '}
+            <span className="text-amber-300"><T>you’ve been praying for.</T></span>
+          </h1>
+
+          <p className="text-base md:text-lg text-white/85 max-w-2xl mx-auto leading-relaxed mb-8">
+            <T>Daily discussions, local Bible studies and events, and real people — all in one place.</T>
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <button
+              onClick={primaryCtaAction}
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#2650eb] font-semibold shadow-md hover:bg-white/90 transition-all hover:translate-y-[-1px]"
+            >
+              {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+              <span>{primaryCtaLabel}</span>
+            </button>
+            {!isNativeApp && (
+              <button
+                onClick={() => (onViewTopics ?? onEnter)()}
+                className="inline-flex items-center gap-1 text-sm font-medium text-white/90 hover:text-white underline"
+              >
+                <T>Explore in your browser</T>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Live Topic of the Day, framed as a phone. */}
+          <div className="mt-12 flex justify-center">
+            <div className="w-[300px] max-w-full rounded-[2rem] border-[8px] border-[#0F172A] bg-white shadow-2xl overflow-hidden">
+              <div className="px-4 pt-4 pb-5 text-left">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span className="font-logo font-bold text-[#2650eb]"><T>Topic of the Day</T></span>
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                </div>
+                <button
+                  type="button"
+                  onClick={openTodayTopic}
+                  className="block w-full text-left rounded-2xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                      <Star className="w-3 h-3 fill-amber-500" /> {todayTopic?.category || 'Lifestyle'}
+                    </span>
+                    <MessageSquare className="w-4 h-4 text-gray-300" />
+                  </div>
+                  <h3 className="font-logo font-bold text-lg text-[#2650eb] leading-snug mb-2">
+                    {todayTopic?.title || 'Discipline over motivation: How to shift?'}
+                  </h3>
+                  <p className="text-xs italic text-gray-500 border-l-2 border-amber-300 pl-2 mb-3">
+                    {todayTopic?.bible_verse?.split(';')[0] || '1 Corinthians 9:27'}
+                  </p>
+                  <p className="text-sm text-gray-600 line-clamp-3 mb-4">
+                    {todayTopic?.content || 'What spiritual habit do you neglect when unmotivated? How can you build a non-negotiable routine?'}
+                  </p>
+                  <span className="flex items-center justify-center gap-1 w-full py-2.5 rounded-xl bg-[#2650eb] text-white text-sm font-semibold">
+                    <T>Join Discussion</T> <ArrowRight className="w-4 h-4" />
+                  </span>
+                </button>
+                <p className="text-center text-[11px] text-gray-400 mt-3"><T>This topic changes daily at midnight UTC</T></p>
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <h1 className="font-logo font-bold text-[clamp(2.5rem,7vw,5rem)] leading-[1.05] tracking-tight mb-8">
-          <span className="block"><T>Because community</T></span>
-          <span className="block">
-            <T>is more than just</T> <span className="text-[#2563eb]"><T>Sunday.</T></span>
-          </span>
-        </h1>
-
-        <p className="text-lg md:text-xl text-[#64748B] dark:text-[#CBD5E1] max-w-2xl mx-auto leading-relaxed mb-10">
-          <T>Worship N Yaps helps you organize Bible studies, worship nights, casual hangouts, and faith conversations, and connects you with believers asking the same questions you are, anywhere in the world.</T>
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-5">
-          <button
-            onClick={primaryCtaAction}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2563eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
-          >
-            {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
-            <span>{primaryCtaLabel}</span>
-          </button>
-          <button
-            onClick={openCardGameCheckout}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#0F172A] text-white dark:bg-white dark:text-[#0F172A] font-semibold shadow-md hover:bg-black dark:hover:bg-white/90 transition-all hover:translate-y-[-1px]"
-          >
-            <Spade className="w-5 h-5" />
-            <span><T>Buy the card game</T></span>
-          </button>
-          <button
-            onClick={seeHowToYap}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-black/15 dark:border-white/20 text-[#0F172A] dark:text-[#F8FAFC] font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-          >
-            <span><T>How to Play</T></span>
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-
-        <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-          <T>Free to download · Card deck ships to you · Built for real people</T>
-        </p>
-
-        {/* Web visitors: make it clear they can try it without downloading. */}
-        {!isNativeApp && (
-          <button
-            onClick={() => (onViewTopics ?? onEnter)()}
-            className="mt-3 text-sm font-medium text-[#2563eb] dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-          >
-            <T>Prefer not to download? Explore in your browser</T>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
-
+      {/* How it works + launchpad */}
+      <section className="max-w-5xl mx-auto px-6 py-14 text-center">
         {/* How it works — 3 quick steps so the model lands immediately. */}
         <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mt-12 mb-8 text-center">
           {[
