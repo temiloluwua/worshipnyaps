@@ -1,9 +1,9 @@
-// Local YYYY-MM-DD for a date (NOT UTC). The admin Topic-of-the-Day schedule
-// is keyed to the viewer's calendar day, matching the date-hash fallback used
-// by the Topics feed and landing page.
+// UTC YYYY-MM-DD. The Topic-of-the-Day rolls over at midnight UTC — the admin
+// schedule (daily_topics.date) and the get_topic_of_the_day() RPC both key off
+// the UTC date, so every surface agrees on "today".
 export function localDateKey(d: Date = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }

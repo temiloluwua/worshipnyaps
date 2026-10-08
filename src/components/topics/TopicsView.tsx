@@ -168,7 +168,7 @@ export function TopicsView({
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdminReview, setShowAdminReview] = useState(false);
   const [showTopicScheduler, setShowTopicScheduler] = useState(false);
-  const { todayTopicId, fetchToday } = useDailyTopics();
+  const { todayTopicId, canonicalTotdId, fetchToday } = useDailyTopics();
   const [audienceFilter, setAudienceFilter] = useState<'friends' | 'local'>('friends');
   const { connections } = useConnections();
   const { followingIds } = useFollows();
@@ -243,8 +243,13 @@ export function TopicsView({
 
   const getTopicOfTheDay = () => {
     if (topicOfDaySource.length === 0) return null;
-    // An admin-scheduled pick for today wins; otherwise fall back to the
-    // deterministic date-hash so unscheduled days still auto-fill.
+    // The canonical server pick (get_topic_of_the_day) is the source of truth —
+    // same topic on the home page and here. Match it in the loaded list.
+    const canonical = canonicalTotdId
+      ? topicOfDaySource.find((t) => t.id === canonicalTotdId)
+      : null;
+    if (canonical) return sanitizeTopic(canonical) || canonical;
+    // Fallbacks until the RPC resolves: admin override, then date-hash.
     const override = todayTopicId
       ? topicOfDaySource.find((t) => t.id === todayTopicId)
       : null;

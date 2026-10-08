@@ -14,16 +14,21 @@ export interface DailyTopicRow {
 export function useDailyTopics() {
   const [schedule, setSchedule] = useState<Record<string, DailyTopicRow>>({});
   const [todayTopicId, setTodayTopicId] = useState<string | null>(null);
+  // The canonical Topic-of-the-Day id from get_topic_of_the_day() — the single
+  // source of truth the feed and landing both use so they always match.
+  const [canonicalTotdId, setCanonicalTotdId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Today's override — cheap query used by the feed/landing to resolve the pick.
+  // Resolve the canonical pick (admin override or daily rotation) + today's raw
+  // override id. The RPC is the authority; todayTopicId is kept for the
+  // scheduler UI.
   const fetchToday = useCallback(async () => {
-    const { data } = await supabase
-      .from('daily_topics')
-      .select('topic_id')
-      .eq('date', localDateKey())
-      .maybeSingle();
-    setTodayTopicId((data as { topic_id: string } | null)?.topic_id ?? null);
+    const [overrideRes, canonicalRes] = await Promise.all([
+      supabase.from('daily_topics').select('topic_id').eq('date', localDateKey()).maybeSingle(),
+      supabase.rpc('get_topic_of_the_day'),
+    ]);
+    setTodayTopicId((overrideRes.data as { topic_id: string } | null)?.topic_id ?? null);
+    setCanonicalTotdId((canonicalRes.data as { id: string } | null)?.id ?? null);
   }, []);
 
   // A date range for the admin scheduler, joined to topic titles for display.
@@ -66,5 +71,5 @@ export function useDailyTopics() {
 
   useEffect(() => { fetchToday(); }, [fetchToday]);
 
-  return { schedule, todayTopicId, loading, fetchToday, fetchSchedule, setDailyTopic, clearDailyTopic };
+  return { schedule, todayTopicId, canonicalTotdId, loading, fetchToday, fetchSchedule, setDailyTopic, clearDailyTopic };
 }

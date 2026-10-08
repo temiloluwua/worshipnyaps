@@ -7,13 +7,11 @@ import {
   Instagram, Youtube, Layers, MapPin,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
-import { useAuth } from '../../hooks/useAuth';
 import { Logo } from '../ui/Logo';
 import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
 import { openAppStore } from '../../lib/appStore';
 import { CARD_GAME_BUY_URL } from '../../lib/cardGame';
-import { localDateKey } from '../../lib/topicOfDay';
 import { Capacitor } from '@capacitor/core';
 
 interface LandingPageProps {
@@ -110,7 +108,6 @@ const WHO_FOR = [
 
 export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewCommunity, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
-  const { user, profile } = useAuth();
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [activeFeature, setActiveFeature] = useState(0);
   // How-to-Play starts collapsed so the page leads with the app, not the
@@ -126,6 +123,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         const { data, error } = await supabase
           .from('topics')
           .select('id, title, category, bible_verse, tags, content, created_at, users!topics_author_id_fkey(name, city)')
+          // Match the feed exactly: only approved topics, same created_at DESC
+          // order. Without this the landing counts pending event topics too and
+          // the date-hash lands on a different row than the app's Topic of Day.
+          .eq('moderation_status', 'approved')
           .order('created_at', { ascending: false });
         if (error) throw error;
         setAllTopics((data || []) as Topic[]);
@@ -136,59 +137,31 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
     fetchTopics();
   }, []);
 
-  // Admin-scheduled Topic of the Day (if any) so the landing matches the feed.
-  const [dailyOverrideId, setDailyOverrideId] = useState<string | null>(null);
+  // Canonical Topic of the Day — one server-side source (get_topic_of_the_day)
+  // so the home page and the in-app feed always show the exact same topic.
+  const [canonicalTotd, setCanonicalTotd] = useState<Topic | null>(null);
   useEffect(() => {
-    supabase
-      .from('daily_topics')
-      .select('topic_id')
-      .eq('date', localDateKey())
-      .maybeSingle()
-      .then(({ data }) => setDailyOverrideId((data as { topic_id: string } | null)?.topic_id ?? null));
+    supabase.rpc('get_topic_of_the_day').then(({ data }) => {
+      if (data) setCanonicalTotd(data as Topic);
+    });
   }, []);
 
-  // Cards for the Yaps mockup + the rotated stack in the dark explainer.
-  // Pulled from real topics. Topic-of-the-Day (deterministic daily rotation
-  // by date hash) goes first so a returning visitor always sees today's
-  // featured prompt. Falls back to the curated YAPS_CARDS if the table is
-  // empty or hasn't loaded yet.
+  // Decorative card stack for the dark explainer. Falls back to curated
+  // YAPS_CARDS until real topics load.
   const yapsCards = useMemo(() => {
-    // Same source + same hash as TopicsView.getTopicOfTheDay so both pages
-    // pick the same row for "today". No bible_verse filter, TopicsView
-    // doesn't apply one either, and filtering would skew the modulo.
     if (allTopics.length === 0) return YAPS_CARDS;
-
-    // An admin-scheduled pick for today wins; else the deterministic date hash.
-    const overrideIndex = dailyOverrideId
-      ? allTopics.findIndex((t) => t.id === dailyOverrideId)
-      : -1;
-    const today = new Date().toDateString();
-    const dateHash = today.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const todIndex = overrideIndex >= 0 ? overrideIndex : dateHash % allTopics.length;
-    const ordered = [allTopics[todIndex], ...allTopics.slice(0, todIndex), ...allTopics.slice(todIndex + 1)];
-
-    return ordered.slice(0, 8).map((t) => ({
+    return allTopics.slice(0, 8).map((t) => ({
       question: (t.title || t.content || '').trim().replace(/\s+/g, ' ').slice(0, 140),
       verse: (t.bible_verse || '').split(';')[0].trim(),
       topicId: t.id,
     }));
-  }, [allTopics, dailyOverrideId]);
+  }, [allTopics]);
 
-  // Today's topic question, used as a live peek on the launchpad Topics tile.
-  const todaysTopicPeek = yapsCards[0]?.question?.slice(0, 60) || '';
-
-  // The full raw topic for today (for the hero phone-mockup card). Same index
-  // logic as yapsCards; null until topics load (we fall back to sample copy).
-  const todayTopic = useMemo(() => {
-    if (allTopics.length === 0) return null;
-    const overrideIndex = dailyOverrideId ? allTopics.findIndex((t) => t.id === dailyOverrideId) : -1;
-    const dateHash = new Date().toDateString().split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const idx = overrideIndex >= 0 ? overrideIndex : dateHash % allTopics.length;
-    return allTopics[idx] || null;
-  }, [allTopics, dailyOverrideId]);
+  const todayTopic = canonicalTotd;
+  const todaysTopicPeek = (canonicalTotd?.title || '').slice(0, 60);
 
   const openTodayTopic = () => {
-    if (todayTopic?.id && onViewTopicOfDay) onViewTopicOfDay(todayTopic.id);
+    if (canonicalTotd?.id && onViewTopicOfDay) onViewTopicOfDay(canonicalTotd.id);
     else (onViewTopics ?? onEnter)();
   };
 
@@ -271,27 +244,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </nav>
 
-      {/* Returning, signed-in visitors get a jump-back-in band instead of a
-          cold marketing pitch. */}
-      {user && (
-        <div className="max-w-5xl mx-auto px-6 pt-6">
-          <div className="rounded-2xl bg-[#2563eb]/10 dark:bg-[#2563eb]/20 border border-[#2563eb]/20 p-4 flex flex-wrap items-center gap-3">
-            <p className="text-sm font-semibold text-[#0F172A] dark:text-white mr-auto">
-              <T>Welcome back</T>{profile?.name ? `, ${profile.name.split(' ')[0]}` : ''} 👋
-            </p>
-            <button onClick={() => (onViewTopics ?? onEnter)()} className="text-sm font-medium px-3 py-1.5 rounded-full bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 hover:shadow-sm transition-all">
-              <T>Today's topic</T>
-            </button>
-            <button onClick={() => (onViewEvents ?? onEnter)()} className="text-sm font-medium px-3 py-1.5 rounded-full bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 hover:shadow-sm transition-all">
-              <T>Events</T>
-            </button>
-            <button onClick={() => (onViewCommunity ?? onEnter)()} className="text-sm font-medium px-3 py-1.5 rounded-full bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 hover:shadow-sm transition-all">
-              <T>Community</T>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 2. Hero — blue band with a live Topic-of-the-Day phone mockup. Shows
           the product immediately; the rest of the story unfolds on scroll. */}
       <section className="bg-[#2650eb] text-white rounded-b-[2.5rem]">
@@ -331,7 +283,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
 
           {/* Live Topic of the Day, framed as a phone. */}
           <div className="mt-12 flex justify-center">
-            <div className="w-[300px] max-w-full rounded-[2rem] border-[8px] border-[#0F172A] bg-white shadow-2xl overflow-hidden">
+            <div className="w-[300px] max-w-full rounded-[2rem] bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
               <div className="px-4 pt-4 pb-5 text-left">
                 <div className="flex items-center justify-center gap-2 mb-3">
                   <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -369,26 +321,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* How it works + launchpad */}
+      {/* What's inside the app — the 4 boxes — then an invite to join. */}
       <section className="max-w-5xl mx-auto px-6 py-14 text-center">
-        {/* How it works — 3 quick steps so the model lands immediately. */}
-        <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mt-12 mb-8 text-center">
-          {[
-            { n: '1', icon: Layers, label: 'Swipe topics' },
-            { n: '2', icon: MapPin, label: 'Find or host events' },
-            { n: '3', icon: Users, label: 'Connect with people' },
-          ].map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.n} className="flex flex-col items-center gap-2">
-                <div className="w-11 h-11 rounded-full bg-[#2563eb]/10 dark:bg-[#2563eb]/25 flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-[#2563eb] dark:text-blue-300" />
-                </div>
-                <span className="text-xs font-medium text-[#475569] dark:text-[#CBD5E1]"><T>{s.label}</T></span>
-              </div>
-            );
-          })}
-        </div>
+        <h2 className="font-logo font-bold text-2xl sm:text-3xl text-[#0F172A] dark:text-white mb-2"><T>What's inside</T></h2>
+        <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-8"><T>Tap in to explore.</T></p>
 
         {/* Launchpad — jump straight into the main areas (mirrors the app tabs). */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto">
@@ -408,6 +344,18 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               <p className="text-xs text-[#64748B] dark:text-[#94A3B8] line-clamp-2 mt-0.5">{tile.sub}</p>
             </button>
           ))}
+        </div>
+
+        {/* Join the community */}
+        <div className="mt-12">
+          <h3 className="font-logo font-bold text-xl sm:text-2xl text-[#0F172A] dark:text-white mb-3"><T>Join the community</T></h3>
+          <button
+            onClick={primaryCtaAction}
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
+          >
+            {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+            <span>{primaryCtaLabel}</span>
+          </button>
         </div>
       </section>
 
@@ -437,15 +385,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             </ul>
           </div>
 
-          {/* Topic of the Day, yapsCards is already date-hash-rotated so
-              index 0 is today's featured prompt. */}
+          {/* Topic of the Day — the canonical pick (same everywhere). */}
           {(() => {
-            const today = yapsCards[0];
-            const todayTopicId = (today as { topicId?: string }).topicId;
-            const goTopic = () => {
-              if (todayTopicId && onViewTopicOfDay) onViewTopicOfDay(todayTopicId);
-              else onEnter();
-            };
+            const title = todayTopic?.title || yapsCards[0]?.question || '';
+            const verse = (todayTopic?.bible_verse || yapsCards[0]?.verse || '').split(';')[0].trim();
             return (
               <div className="flex flex-col items-center">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-[10px] font-bold uppercase tracking-[0.18em] mb-4">
@@ -454,15 +397,15 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
                 </span>
                 <button
                   type="button"
-                  onClick={goTopic}
+                  onClick={openTodayTopic}
                   className="w-full max-w-md rounded-3xl bg-white text-[#0F172A] p-7 sm:p-8 shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all text-left focus:outline-none focus:ring-4 focus:ring-white/30"
                 >
                   <p className="font-logo text-2xl sm:text-3xl leading-snug mb-4">
-                    {today.question}
+                    {title}
                   </p>
-                  {today.verse && (
+                  {verse && (
                     <span className="inline-block px-2.5 py-1 rounded-full bg-[#2563eb]/15 text-[#2563eb] text-[11px] font-semibold mb-6">
-                      {today.verse}
+                      {verse}
                     </span>
                   )}
                   <div className="flex items-center gap-2 text-[#2563eb] font-semibold text-sm">
