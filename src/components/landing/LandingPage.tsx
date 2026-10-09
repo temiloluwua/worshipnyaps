@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowRight, Sun, Moon,
-  Globe, Smartphone, ChevronRight, ChevronLeft, Star,
-  BookOpen, Users, MessageSquare, ShieldCheck,
-  User as UserIcon, Search, Spade, ClipboardList, Sparkles, ShoppingBag,
+  Smartphone, ChevronRight, Star,
+  BookOpen, Users, MessageSquare,
+  User as UserIcon, Spade, ClipboardList, Sparkles, ShoppingBag,
   Instagram, Youtube, Layers, MapPin,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
@@ -44,59 +44,6 @@ const YAPS_CARDS = [
   { question: "What's a question about the Bible you've been afraid to ask out loud?", verse: 'James 1:5' },
 ];
 
-const FEATURES = [
-  {
-    key: 'topics',
-    emoji: '📖',
-    label: 'Topics',
-    title: 'A global conversation about faith and life',
-    description:
-      "Join real discussions about scripture, doubt, and everyday faith. Share what God is teaching you. Comment, like, and discover what others are studying, across every timezone.",
-    pills: ['Scripture Q&A', 'Share reflections', 'Comment & like', 'Discover believers'],
-    gradient: 'from-gray-100 to-gray-200',
-  },
-  {
-    key: 'events',
-    emoji: '⛪',
-    label: 'Events',
-    title: 'Find or host any kind of gathering',
-    description:
-      'Bible studies, worship nights, church hangouts, sports yaps, food yaps, and casual meetups, all in one place.',
-    pills: ['Bible study', 'Worship night', 'Sports yap', 'Food yap', 'Prayer group'],
-    gradient: 'from-gray-100 to-gray-200',
-  },
-  {
-    key: 'cohost',
-    emoji: '🤝',
-    label: 'Cohost',
-    title: 'Hosting alone is hard. We fixed that.',
-    description:
-      'Invite cohosts and assign roles, worship, discussion, prayer, hospitality, tech. The app writes the invite message for you.',
-    pills: ['Assign roles', 'Prewritten invites', 'Worship lead', 'Prayer lead'],
-    gradient: 'from-gray-100 to-gray-200',
-  },
-  {
-    key: 'messages',
-    emoji: '💬',
-    label: 'Messages',
-    title: 'Everyone in one chat, automatically',
-    description:
-      "RSVP to an event and you're instantly added to the event group chat. Direct messages and group threads keep conversation going.",
-    pills: ['Auto added on RSVP', 'Event group chats', 'Direct messages', 'No extra apps'],
-    gradient: 'from-gray-100 to-gray-200',
-  },
-  {
-    key: 'privacy',
-    emoji: '🛡️',
-    label: 'Privacy',
-    title: 'Show up without oversharing',
-    description:
-      'Friends only events stay invisible to strangers. Share your general area without revealing your exact address. RSVP first to see who\'s attending.',
-    pills: ['Friends only events', 'Fuzzy location', 'RSVP gated attendees'],
-    gradient: 'from-gray-100 to-gray-200',
-  },
-];
-
 const WHO_FOR = [
   { icon: BookOpen, title: 'Bible study seekers', body: 'Looking for a study group, prayer circle, or worship night near you.' },
   { icon: UserIcon, title: 'Hosts & leaders', body: 'Make leading less lonely. Delegate roles, coordinate RSVPs, keep everyone in one chat.' },
@@ -109,7 +56,6 @@ const WHO_FOR = [
 export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewCommunity, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
-  const [activeFeature, setActiveFeature] = useState(0);
   // How-to-Play starts collapsed so the page leads with the app, not the
   // physical card game. The hero "How to Play" button expands it.
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -247,42 +193,9 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       {/* 2. Hero — blue band with a live Topic-of-the-Day phone mockup. Shows
           the product immediately; the rest of the story unfolds on scroll. */}
       <section className="bg-[#2650eb] text-white rounded-b-[2.5rem]">
-        <div className="max-w-5xl mx-auto px-6 pt-14 pb-16 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold tracking-wide mb-6">
-            <Globe className="w-3.5 h-3.5" />
-            <span><T>A Christian community</T></span>
-          </div>
-
-          <h1 className="font-logo font-bold text-[clamp(2.25rem,6.5vw,4rem)] leading-[1.08] tracking-tight mb-5">
-            <T>The Christian community app</T>{' '}
-            <span className="text-amber-300"><T>you’ve been praying for.</T></span>
-          </h1>
-
-          <p className="text-base md:text-lg text-white/85 max-w-2xl mx-auto leading-relaxed mb-8">
-            <T>Daily discussions, local Bible studies and events, and real people — all in one place.</T>
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <button
-              onClick={primaryCtaAction}
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#2650eb] font-semibold shadow-md hover:bg-white/90 transition-all hover:translate-y-[-1px]"
-            >
-              {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
-              <span>{primaryCtaLabel}</span>
-            </button>
-            {!isNativeApp && (
-              <button
-                onClick={() => (onViewTopics ?? onEnter)()}
-                className="inline-flex items-center gap-1 text-sm font-medium text-white/90 hover:text-white underline"
-              >
-                <T>Explore in your browser</T>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
+        <div className="max-w-5xl mx-auto px-6 pt-10 pb-16 text-center">
           {/* Live Topic of the Day, framed as a phone. */}
-          <div className="mt-12 flex justify-center">
+          <div className="flex justify-center">
             <div className="w-[300px] max-w-full rounded-[2rem] bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
               <div className="px-4 pt-4 pb-5 text-left">
                 <div className="flex items-center justify-center gap-2 mb-3">
@@ -420,50 +333,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               </div>
             );
           })()}
-        </div>
-      </section>
-
-      {/* 5. Features, tab switcher */}
-      <section className="max-w-6xl mx-auto px-6 py-20">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center"><T>Everything you need</T></p>
-        <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight text-center mb-12">
-          <T>For your community</T>
-        </h2>
-
-        <div className="flex flex-wrap gap-2 justify-center mb-10">
-          {FEATURES.map((f, i) => (
-            <button
-              key={f.key}
-              onClick={() => setActiveFeature(i)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
-                i === activeFeature
-                  ? 'bg-[#2563eb] text-white border-[#2563eb] shadow-sm'
-                  : 'bg-white dark:bg-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] border-black/10 dark:border-white/15 hover:border-[#2563eb]/40'
-              }`}
-            >
-              <span className="mr-1.5">{f.emoji}</span>
-              <T>{f.label}</T>
-            </button>
-          ))}
-        </div>
-
-        <div className={`rounded-3xl p-8 md:p-12 bg-gradient-to-br ${FEATURES[activeFeature].gradient} border border-black/5 shadow-sm`}>
-          <h3 className="font-logo font-bold text-2xl md:text-3xl text-[#0F172A] mb-4 leading-tight">
-            <T>{FEATURES[activeFeature].title}</T>
-          </h3>
-          <p className="text-[#0F172A]/80 leading-relaxed mb-6 max-w-2xl">
-            <T>{FEATURES[activeFeature].description}</T>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {FEATURES[activeFeature].pills.map((p) => (
-              <span
-                key={p}
-                className="px-3 py-1.5 rounded-full bg-white/80 text-[#0F172A] text-xs font-medium border border-black/5"
-              >
-                <T>{p}</T>
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
