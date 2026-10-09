@@ -120,10 +120,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const goToApp = isNativeApp
     ? (onViewTopics ?? onEnter)
     : (onCreateAccount ?? onEnter);
-  // On the website the primary CTA sends people to install the native app;
-  // inside the app that same slot joins the community.
-  const primaryCtaAction = isNativeApp ? goToApp : openAppStore;
-  const primaryCtaLabel = isNativeApp ? 'Join the community' : 'Download on App Store';
   // The top-right nav CTA frames the whole app as opening the digital deck:
   // it drops the visitor straight into the card feed (the Topics "deck"),
   // where sign-in is only prompted when they take an action that needs it.
@@ -231,6 +227,26 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               </div>
             </div>
           </div>
+
+          {/* Web visitors: bring the app download back under the card. */}
+          {!isNativeApp && (
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <button
+                onClick={openAppStore}
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#2650eb] font-semibold shadow-md hover:bg-white/90 transition-all hover:translate-y-[-1px]"
+              >
+                <Smartphone className="w-5 h-5" />
+                <span><T>Download on App Store</T></span>
+              </button>
+              <button
+                onClick={() => (onViewTopics ?? onEnter)()}
+                className="inline-flex items-center gap-1 text-sm font-medium text-white/90 hover:text-white underline"
+              >
+                <T>Explore in your browser</T>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -259,15 +275,15 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           ))}
         </div>
 
-        {/* Join the community */}
+        {/* Physical card deck */}
         <div className="mt-12">
-          <h3 className="font-logo font-bold text-xl sm:text-2xl text-[#0F172A] dark:text-white mb-3"><T>Join the community</T></h3>
+          <h3 className="font-logo font-bold text-xl sm:text-2xl text-[#0F172A] dark:text-white mb-3"><T>Want the physical cards?</T></h3>
           <button
-            onClick={primaryCtaAction}
+            onClick={openCardGameCheckout}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
           >
-            {isNativeApp ? <Users className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
-            <span>{primaryCtaLabel}</span>
+            <ShoppingBag className="w-5 h-5" />
+            <span><T>Buy here</T></span>
           </button>
         </div>
       </section>
