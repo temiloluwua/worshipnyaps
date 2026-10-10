@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowRight, Sun, Moon,
   Smartphone, ChevronRight, Star,
   BookOpen, Users, MessageSquare,
-  User as UserIcon, Spade, ClipboardList, Sparkles, ShoppingBag,
+  User as UserIcon, Spade, ClipboardList, ShoppingBag,
   Instagram, Youtube, Layers, MapPin,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
@@ -37,13 +37,6 @@ interface Topic {
 
 // ---------- Static content ----------
 
-const YAPS_CARDS = [
-  { question: 'What does your faith look like on a Tuesday afternoon?', verse: 'Colossians 3:17' },
-  { question: "What's something God has been teaching you through an ordinary moment?", verse: 'Psalm 46:10' },
-  { question: 'When did community last surprise you with kindness?', verse: 'Hebrews 10:24 to 25' },
-  { question: "What's a question about the Bible you've been afraid to ask out loud?", verse: 'James 1:5' },
-];
-
 const WHO_FOR = [
   { icon: BookOpen, title: 'Bible study seekers', body: 'Looking for a study group, prayer circle, or worship night near you.' },
   { icon: UserIcon, title: 'Hosts & leaders', body: 'Make leading less lonely. Delegate roles, coordinate RSVPs, keep everyone in one chat.' },
@@ -55,33 +48,9 @@ const WHO_FOR = [
 
 export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewCommunity, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
-  const [allTopics, setAllTopics] = useState<Topic[]>([]);
   // How-to-Play starts collapsed so the page leads with the app, not the
   // physical card game. The hero "How to Play" button expands it.
   const [showHowToPlay, setShowHowToPlay] = useState(false);
-
-  useEffect(() => {
-    const fetchTopics = async () => {
-      try {
-        // Matches the source TopicsView uses for its Topic of the Day pick.
-        // Same row set + same created_at DESC sort + same date hash modulo
-        // means both pages always agree on today's topic.
-        const { data, error } = await supabase
-          .from('topics')
-          .select('id, title, category, bible_verse, tags, content, created_at, users!topics_author_id_fkey(name, city)')
-          // Match the feed exactly: only approved topics, same created_at DESC
-          // order. Without this the landing counts pending event topics too and
-          // the date-hash lands on a different row than the app's Topic of Day.
-          .eq('moderation_status', 'approved')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        setAllTopics((data || []) as Topic[]);
-      } catch (e) {
-        console.error('Error fetching topics:', e);
-      }
-    };
-    fetchTopics();
-  }, []);
 
   // Canonical Topic of the Day — one server-side source (get_topic_of_the_day)
   // so the home page and the in-app feed always show the exact same topic.
@@ -91,17 +60,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       if (data) setCanonicalTotd(data as Topic);
     });
   }, []);
-
-  // Decorative card stack for the dark explainer. Falls back to curated
-  // YAPS_CARDS until real topics load.
-  const yapsCards = useMemo(() => {
-    if (allTopics.length === 0) return YAPS_CARDS;
-    return allTopics.slice(0, 8).map((t) => ({
-      question: (t.title || t.content || '').trim().replace(/\s+/g, ' ').slice(0, 140),
-      verse: (t.bible_verse || '').split(';')[0].trim(),
-      topicId: t.id,
-    }));
-  }, [allTopics]);
 
   const todayTopic = canonicalTotd;
   const todaysTopicPeek = (canonicalTotd?.title || '').slice(0, 60);
@@ -129,6 +87,28 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   const openCardGameCheckout = () => {
     window.open(CARD_GAME_BUY_URL, '_blank', 'noopener,noreferrer');
   };
+
+  // Scroll-reveal: fade/slide each `.reveal` section in as it enters view.
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll('.reveal')) as HTMLElement[];
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-visible');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] text-[#0F172A] dark:text-[#F8FAFC] transition-colors font-sans">
@@ -250,18 +230,17 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* What's inside the app — the 4 boxes — then an invite to join. */}
-      <section className="max-w-5xl mx-auto px-6 py-14 text-center">
+      {/* What's inside the app — the 3 boxes — then an invite to buy the deck. */}
+      <section className="reveal max-w-5xl mx-auto px-6 py-14 text-center">
         <h2 className="font-logo font-bold text-2xl sm:text-3xl text-[#0F172A] dark:text-white mb-2"><T>What's inside</T></h2>
         <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-8"><T>Tap in to explore.</T></p>
 
         {/* Launchpad — jump straight into the main areas (mirrors the app tabs). */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto">
+        <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto">
           {[
             { label: 'Topics', sub: todaysTopicPeek || 'Swipe discussion cards', Icon: Layers, onClick: () => (onViewTopics ?? onEnter)(), tone: 'text-blue-600 dark:text-blue-400' },
             { label: 'Events', sub: 'Find or host a gathering', Icon: MapPin, onClick: () => (onViewEvents ?? onEnter)(), tone: 'text-teal-600 dark:text-teal-400' },
             { label: 'Community', sub: 'Meet other believers', Icon: Users, onClick: () => (onViewCommunity ?? onEnter)(), tone: 'text-amber-600 dark:text-amber-400' },
-            { label: 'Card game', sub: 'Yaps — the physical deck', Icon: ShoppingBag, onClick: openCardGameCheckout, tone: 'text-rose-600 dark:text-rose-400' },
           ].map((tile) => (
             <button
               key={tile.label}
@@ -288,72 +267,8 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* Yaps explainer, dark */}
-      <section id="the-app" className="bg-[#0F172A] text-[#F8FAFC] scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-4"><T>The Signature Feature</T></p>
-            <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-6">
-              <T>Yaps, a card game for real conversations.</T>
-            </h2>
-            <p className="text-[#CBD5E1] mb-8 leading-relaxed">
-              <T>Not every gathering needs a lesson plan. Yaps are casual, a potluck, a game night, a sports afternoon. Shuffle the cards, draw a question, and let the Bible guide the conversation.</T>
-            </p>
-            <ul className="space-y-3">
-              {[
-                'Questions designed to spark honest, grounded conversation',
-                'Each card ties back to a scripture for deeper reflection',
-                'Works for any size group, 3 people or 30',
-                'No prep required. Just show up and yap.',
-              ].map((bullet) => (
-                <li key={bullet} className="flex items-start gap-3">
-                  <Star className="w-4 h-4 mt-1 text-[#2563eb] fill-[#2563eb] flex-shrink-0" />
-                  <span className="text-sm text-[#F8FAFC]/90"><T>{bullet}</T></span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Topic of the Day — the canonical pick (same everywhere). */}
-          {(() => {
-            const title = todayTopic?.title || yapsCards[0]?.question || '';
-            const verse = (todayTopic?.bible_verse || yapsCards[0]?.verse || '').split(';')[0].trim();
-            return (
-              <div className="flex flex-col items-center">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-[10px] font-bold uppercase tracking-[0.18em] mb-4">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <T>Topic of the Day</T>
-                </span>
-                <button
-                  type="button"
-                  onClick={openTodayTopic}
-                  className="w-full max-w-md rounded-3xl bg-white text-[#0F172A] p-7 sm:p-8 shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all text-left focus:outline-none focus:ring-4 focus:ring-white/30"
-                >
-                  <p className="font-logo text-2xl sm:text-3xl leading-snug mb-4">
-                    {title}
-                  </p>
-                  {verse && (
-                    <span className="inline-block px-2.5 py-1 rounded-full bg-[#2563eb]/15 text-[#2563eb] text-[11px] font-semibold mb-6">
-                      {verse}
-                    </span>
-                  )}
-                  <div className="flex items-center gap-2 text-[#2563eb] font-semibold text-sm">
-                    <MessageSquare className="w-4 h-4" />
-                    <span><T>Join the conversation</T></span>
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </button>
-                <p className="text-white/80 text-sm mt-5 max-w-md text-center leading-relaxed">
-                  <T>A new prompt every day. Drop your reflection, ask a question, or read what believers from anywhere on the map are saying.</T>
-                </p>
-              </div>
-            );
-          })()}
-        </div>
-      </section>
-
       {/* 6. Topics, real DB data */}
-      <section className="bg-[#EFF6FF] dark:bg-[#1E293B]">
+      <section className="reveal bg-[#EFF6FF] dark:bg-[#1E293B]">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3"><T>Global Groupchat</T></p>
           <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-6 max-w-3xl">
@@ -410,7 +325,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       </section>
 
       {/* 6.5 How to Play, pulled from the WnY card-game instruction sheets */}
-      <section id="how-to-play" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
+      <section id="how-to-play" className="reveal max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3 text-center"><T>How to Play</T></p>
         <h2 className="font-logo font-bold text-2xl sm:text-4xl md:text-5xl leading-tight text-center mb-4">
           <T>So, you want to host a Yap.</T>
@@ -573,7 +488,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       </section>
 
       {/* 8. Who it's for, dark */}
-      <section className="bg-[#0F172A] text-[#F8FAFC]">
+      <section className="reveal bg-[#0F172A] text-[#F8FAFC]">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#2563eb] mb-3"><T>Who It's For</T></p>
           <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-12 max-w-3xl">
@@ -595,7 +510,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       </section>
 
       {/* 9. Final CTA, "Get the Deck" zone */}
-      <section id="get-the-deck" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
+      <section id="get-the-deck" className="reveal max-w-6xl mx-auto px-6 py-20 scroll-mt-16">
         <div className="rounded-3xl bg-[#2563eb] text-white p-10 md:p-16 text-center shadow-xl">
           <div className="text-5xl mb-5">🃏</div>
           <h2 className="font-logo font-bold text-3xl md:text-4xl leading-tight mb-5">
