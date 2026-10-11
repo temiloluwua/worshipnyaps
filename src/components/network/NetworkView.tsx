@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MessageCircle, UserPlus, Search, CheckCircle, X, UserMinus, Send, Calendar, Clock, MapPin, Bell, ChevronRight } from 'lucide-react';
+import { Users, UserPlus, Search, CheckCircle, X, UserMinus, Send, Calendar, Clock, MapPin, Bell, ChevronRight, Mail } from 'lucide-react';
 import { useConnections } from '../../hooks/useConnections';
 import { useAuth } from '../../hooks/useAuth';
 import { useEventInvitations } from '../../hooks/useEventInvitations';
 import { useEvents } from '../../hooks/useEvents';
-import { CommunityChat } from '../community/CommunityChat';
+import { MessagesView } from '../messages/MessagesView';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { supabase, UserProfile } from '../../lib/supabase';
 import { fetchBlockedIds } from '../../lib/blocking';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-type TabType = 'discover' | 'friends' | 'chat' | 'invitations';
+type TabType = 'messages' | 'invitations' | 'discover';
 
 interface CommunityViewProps {
   onViewProfile?: (userId: string) => void;
@@ -19,12 +19,12 @@ interface CommunityViewProps {
   onViewGroups?: () => void;
 }
 
-export function CommunityView({ onViewProfile, onStartChat, onViewGroups }: CommunityViewProps = {}) {
+export function CommunityView({ onViewProfile, onViewGroups }: CommunityViewProps = {}) {
   const { user, profile } = useAuth();
   const { connections, connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, loading: connectionsLoading } = useConnections();
   const { invitations, sentInvitations, respondToInvitation, cancelInvitation } = useEventInvitations();
   const { events } = useEvents();
-  const [activeTab, setActiveTab] = useState<TabType>('discover');
+  const [activeTab, setActiveTab] = useState<TabType>('messages');
   const [searchQuery, setSearchQuery] = useState('');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -100,10 +100,9 @@ export function CommunityView({ onViewProfile, onStartChat, onViewGroups }: Comm
   };
 
   const tabs: Array<{ id: TabType; label: string; icon: typeof Search; count?: number }> = [
-    { id: 'discover', label: 'Discover', icon: Search, count: discoverUsers.length },
-    { id: 'friends', label: 'Friends', icon: Users, count: friendsList.length },
-    { id: 'chat', label: 'Chat', icon: MessageCircle },
-    { id: 'invitations', label: 'Invitations', icon: Bell, count: invitations.length + pendingIncoming.length }
+    { id: 'messages', label: 'Messages', icon: Mail },
+    { id: 'invitations', label: 'Invitations', icon: Bell, count: invitations.length + pendingIncoming.length },
+    { id: 'discover', label: 'Discover', icon: Search },
   ];
 
   const upcomingEvents = events.filter(e => new Date(e.date) >= new Date());
@@ -293,70 +292,9 @@ export function CommunityView({ onViewProfile, onStartChat, onViewGroups }: Comm
           </div>
         )}
 
-        {activeTab === 'friends' && (
-          <div className="space-y-4">
-            {friendsList.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-xl">
-                <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-600 mb-2">No friends yet</p>
-                <p className="text-sm text-gray-500">Discover and connect with people in the community</p>
-                <button
-                  onClick={() => setActiveTab('discover')}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Find People
-                </button>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {friendsList.map((friend) => (
-                  <div key={friend.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center overflow-hidden">
-                        {friend.avatar_url ? (
-                          <img src={friend.avatar_url} alt={friend.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-white text-lg font-medium">{friend.name[0].toUpperCase()}</span>
-                        )}
-                      </div>
-
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1">
-                          <span>{friend.name}</span>
-                          <VerifiedBadge verified={(friend as any).is_verified} size={18} />
-                        </h3>
-                        <p className="text-green-600 text-sm font-medium capitalize">{friend.role}</p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setShowInviteModal(friend.id)}
-                          className="flex items-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-                        >
-                          <Calendar className="w-4 h-4" />
-                          Invite
-                        </button>
-                        <button
-                          onClick={() => {
-                            const conn = connections.find(c => c.connected_user_id === friend.id);
-                            if (conn) removeConnection(conn.id);
-                          }}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <UserMinus className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'chat' && (
-          <div>
-            <CommunityChat />
+        {activeTab === 'messages' && (
+          <div className="h-[70vh] -mx-4 border-t border-gray-200 dark:border-gray-700 overflow-hidden rounded-xl">
+            <MessagesView />
           </div>
         )}
 
