@@ -26,7 +26,7 @@ interface LocationsViewProps {
   onOpenEvent?: (eventId: string) => void;
 }
 
-type CombinedFilter = 'all' | 'today' | 'bible_study_yaps' | 'evangelism' | 'church' | 'other';
+type CombinedFilter = 'all' | 'today' | 'this_week' | 'this_weekend' | 'bible_study_yaps' | 'evangelism' | 'church' | 'other';
 type EventTab = 'discover' | 'my-events';
 
 // Local-time YYYY-MM-DD key. events.date is already date-only, but building
@@ -36,6 +36,18 @@ const toDateKey = (d: Date): string => {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+};
+
+// Rough great-circle distance in km. Events only expose city-fuzzed coords
+// (~11 km), so this is an approximate "how far away" — not navigation-grade.
+const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number): number => {
+  const R = 6371;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const lat1 = (aLat * Math.PI) / 180;
+  const lat2 = (bLat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(h));
 };
 
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
@@ -50,6 +62,11 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const todayKey = toDateKey(new Date());
   const [calendarCursor, setCalendarCursor] = useState<Date>(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
+  // "Near me" distance sort. We only ask the OS for a fix when the viewer opts
+  // in, then keep it for the session.
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [sortByDistance, setSortByDistance] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DbEvent | null>(null);
@@ -95,6 +112,8 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const combinedOptions: { value: CombinedFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'today', label: 'Today' },
+    { value: 'this_week', label: 'This week' },
+    { value: 'this_weekend', label: 'This weekend' },
     { value: 'bible_study_yaps', label: '📖 Bible Study / Yaps' },
     { value: 'evangelism', label: '📣 Evangelism' },
     { value: 'church', label: '✨ Yap' },
@@ -103,14 +122,31 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
   const matchesCategory = (event: DbEvent, filter: CombinedFilter): boolean => {
     if (filter === 'all') return true;
-    if (filter === 'today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const end = new Date(today);
-      end.setHours(23, 59, 59, 999);
+    if (filter === 'today' || filter === 'this_week' || filter === 'this_weekend') {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
       const eventDate = new Date(event.date);
       eventDate.setHours(0, 0, 0, 0);
-      return eventDate >= today && eventDate <= end;
+
+      if (filter === 'today') {
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        return eventDate >= start && eventDate <= end;
+      }
+      if (filter === 'this_week') {
+        // Today through the end of this week (week ends Saturday).
+        const end = new Date(start);
+        end.setDate(start.getDate() + (6 - start.getDay()));
+        end.setHours(23, 59, 59, 999);
+        return eventDate >= start && eventDate <= end;
+      }
+      // this_weekend — the coming Saturday + Sunday.
+      const sat = new Date(start);
+      sat.setDate(start.getDate() + ((6 - start.getDay() + 7) % 7));
+      const sun = new Date(sat);
+      sun.setDate(sat.getDate() + 1);
+      sun.setHours(23, 59, 59, 999);
+      return eventDate >= sat && eventDate <= sun;
     }
     const evType = (event as { event_type?: string }).event_type;
     if (filter === 'bible_study_yaps') {
@@ -308,12 +344,68 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   }
   const monthLabel = calendarCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
-  // In calendar mode the list under the grid is scoped to the selected day;
-  // list mode shows the full filtered set.
+  // Ask for a location fix the first time "Near me" is tapped; afterwards the
+  // toggle just flips the sort without re-prompting.
+  const toggleNearMe = () => {
+    if (sortByDistance) { setSortByDistance(false); return; }
+    if (userCoords) { setSortByDistance(true); return; }
+    if (!('geolocation' in navigator)) { toast.error('Location isn’t available on this device'); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setSortByDistance(true);
+        setLocating(false);
+      },
+      () => { toast.error('Couldn’t get your location'); setLocating(false); },
+      { timeout: 8000 }
+    );
+  };
+
+  // How far an event is from the viewer, or null when we can't tell.
+  const eventDistance = (ev: DbEvent): number | null => {
+    if (!userCoords || typeof ev.area_lat !== 'number' || typeof ev.area_lng !== 'number') return null;
+    return distanceKm(userCoords.lat, userCoords.lng, ev.area_lat, ev.area_lng);
+  };
+
+  // Collapse a recurring series (same recurrence_group_id) down to its soonest
+  // occurrence so the list shows one row per gathering, not every date.
+  // `sourceEvents` is already sorted date-ascending, so the first hit wins.
+  const collapseRecurring = (list: DbEvent[]): DbEvent[] => {
+    const seen = new Set<string>();
+    const out: DbEvent[] = [];
+    for (const ev of list) {
+      const groupId = ev.recurrence_group_id;
+      if (groupId) {
+        if (seen.has(groupId)) continue;
+        seen.add(groupId);
+      }
+      out.push(ev);
+    }
+    return out;
+  };
+
+  // List view: collapse recurring, then (optionally) order by distance with
+  // unknown-location events last.
+  let listEvents = collapseRecurring(sourceEvents);
+  if (sortByDistance && userCoords) {
+    listEvents = [...listEvents].sort((a, b) => {
+      const da = eventDistance(a);
+      const db = eventDistance(b);
+      if (da === null && db === null) return 0;
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    });
+  }
+
+  // In calendar mode the list under the grid is scoped to the selected day
+  // (uncollapsed, so each occurrence lands on its own date); list mode shows
+  // the collapsed/sorted set.
   const displayEvents =
     viewMode === 'calendar' && activeTab === 'discover'
       ? (eventsByDay[selectedDay] ?? [])
-      : sourceEvents;
+      : listEvents;
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen pb-24">
@@ -433,6 +525,17 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2">
+              <button
+                onClick={toggleNearMe}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors inline-flex items-center gap-1 ${
+                  sortByDistance
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <Navigation className={`w-3 h-3 ${locating ? 'animate-pulse' : ''}`} />
+                {locating ? 'Locating…' : 'Near me'}
+              </button>
               {combinedOptions.map((opt) => (
                 <button
                   key={opt.value}
@@ -611,6 +714,11 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
             const isRsvped = rsvpEventIds.has(event.id);
             const isWaitlisted = waitlistedEventIds.has(event.id);
             const isHosting = user && event.host_id === user.id;
+            const dist = eventDistance(event);
+            const distLabel = dist === null ? null : dist < 1 ? '< 1 km away' : `${Math.round(dist)} km away`;
+            const recurrenceLabel = event.recurrence
+              ? { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' }[event.recurrence]
+              : null;
 
             return (
               <div
@@ -647,8 +755,15 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                           You're hosting
                         </div>
                       )}
-                      <div className="absolute top-2 left-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow-sm text-xs font-medium text-gray-700 dark:text-gray-200">
-                        {formatEventTypeLabel(event as any)}
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                        <div className="bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow-sm text-xs font-medium text-gray-700 dark:text-gray-200">
+                          {formatEventTypeLabel(event as any)}
+                        </div>
+                        {recurrenceLabel && (
+                          <div className="bg-blue-600/95 backdrop-blur px-2.5 py-1 rounded-full shadow-sm text-xs font-medium text-white">
+                            🔁 {recurrenceLabel}
+                          </div>
+                        )}
                       </div>
                       <div className="absolute top-2 right-2 bg-white/95 dark:bg-gray-900/90 backdrop-blur px-2.5 py-1 rounded-full shadow-sm text-xs font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-gray-400" />
@@ -704,6 +819,12 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                       {event.locations?.name && event.location_type && (
                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex-shrink-0">
                           {formatLocationType(event.location_type)}
+                        </span>
+                      )}
+                      {distLabel && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 flex-shrink-0">
+                          <Navigation className="w-3 h-3" />
+                          {distLabel}
                         </span>
                       )}
                     </div>
