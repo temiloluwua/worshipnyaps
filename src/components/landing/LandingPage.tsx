@@ -166,13 +166,13 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </nav>
 
-      {/* 2. Hero — blue band with a live Topic-of-the-Day phone mockup. Shows
-          the product immediately; the rest of the story unfolds on scroll. */}
-      <section className="bg-[#2650eb] text-white rounded-b-[2.5rem]">
-        <div className="max-w-5xl mx-auto px-6 pt-10 pb-16 text-center">
+      {/* 2. Hero — the live Topic-of-the-Day card standing on its own, gently
+          floating. No band, so the "Want the physical cards?" CTA sits higher. */}
+      <section>
+        <div className="max-w-5xl mx-auto px-6 pt-6 pb-10 text-center">
           {/* Live Topic of the Day, framed as a phone. */}
           <div className="flex justify-center">
-            <div className="w-[300px] max-w-full rounded-[2rem] bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+            <div className="animate-float w-[300px] max-w-full rounded-[2rem] bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
               <div className="px-4 pt-4 pb-5 text-left">
                 <div className="flex items-center justify-center gap-2 mb-3">
                   <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -213,14 +213,14 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
               <button
                 onClick={openAppStore}
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#2650eb] font-semibold shadow-md hover:bg-white/90 transition-all hover:translate-y-[-1px]"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
               >
                 <Smartphone className="w-5 h-5" />
                 <span><T>Download on App Store</T></span>
               </button>
               <button
                 onClick={() => (onViewTopics ?? onEnter)()}
-                className="inline-flex items-center gap-1 text-sm font-medium text-white/90 hover:text-white underline"
+                className="inline-flex items-center gap-1 text-sm font-medium text-[#2650eb] hover:text-[#1d4ed8] underline"
               >
                 <T>Explore in your browser</T>
                 <ChevronRight className="w-4 h-4" />

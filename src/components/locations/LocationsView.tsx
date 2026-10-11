@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2, Copy } from 'lucide-react';
+import { MapPin, Users, Heart, Share2, EyeOff, Map, Plus, X, Lock, UserCheck, MessageCircle, Search, Calendar, Navigation, Clock, AlertCircle, FileEdit, Trash2, Copy, ChevronLeft, ChevronRight, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useEvents } from '../../hooks/useEvents';
 import { useAuth } from '../../hooks/useAuth';
@@ -29,12 +29,27 @@ interface LocationsViewProps {
 type CombinedFilter = 'all' | 'today' | 'bible_study_yaps' | 'evangelism' | 'church' | 'other';
 type EventTab = 'discover' | 'my-events';
 
+// Local-time YYYY-MM-DD key. events.date is already date-only, but building
+// keys from Date objects (for the calendar grid) needs the same local format.
+const toDateKey = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
   const { events, loading, rsvpEventIds, waitlistedEventIds, rsvpToEvent, cancelRsvp, drafts, deleteEvent, fetchDrafts, pastEvents } = useEvents();
   const [combinedFilter, setCombinedFilter] = useState<CombinedFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  // List vs. month-calendar view for the Discover feed.
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  // The month shown in the calendar, and the day the viewer has tapped.
+  const todayKey = toDateKey(new Date());
+  const [calendarCursor, setCalendarCursor] = useState<Date>(() => new Date());
+  const [selectedDay, setSelectedDay] = useState<string>(todayKey);
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DbEvent | null>(null);
@@ -120,11 +135,21 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(event =>
-        event.title.toLowerCase().includes(query) ||
-        event.description?.toLowerCase().includes(query) ||
-        event.locations?.name?.toLowerCase().includes(query)
-      );
+      result = result.filter(event => {
+        const haystack = [
+          event.title,
+          event.description,
+          event.locations?.name,
+          event.locations?.address,
+          (event as { study_topic?: string }).study_topic,
+          (event as { users?: { name?: string } }).users?.name,
+          formatEventTypeLabel(event),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      });
     }
 
     return result.sort((a, b) => {
@@ -262,7 +287,33 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
     );
   }
 
-  const displayEvents = activeTab === 'my-events' ? myCombinedEvents : filteredEvents;
+  const sourceEvents = activeTab === 'my-events' ? myCombinedEvents : filteredEvents;
+
+  // Group events by their date key so the calendar can mark busy days and the
+  // day-list under the grid can pull just that day's gatherings.
+  const eventsByDay: Record<string, DbEvent[]> = {};
+  for (const ev of sourceEvents) {
+    (eventsByDay[ev.date] ??= []).push(ev);
+  }
+
+  // Build the 6-week grid for the month the cursor points at.
+  const calendarCells: (Date | null)[] = [];
+  {
+    const y = calendarCursor.getFullYear();
+    const m = calendarCursor.getMonth();
+    const firstWeekday = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    for (let i = 0; i < firstWeekday; i++) calendarCells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) calendarCells.push(new Date(y, m, d));
+  }
+  const monthLabel = calendarCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  // In calendar mode the list under the grid is scoped to the selected day;
+  // list mode shows the full filtered set.
+  const displayEvents =
+    viewMode === 'calendar' && activeTab === 'discover'
+      ? (eventsByDay[selectedDay] ?? [])
+      : sourceEvents;
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen pb-24">
@@ -347,6 +398,31 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              {/* List / Calendar view switch. */}
+              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode('list')}
+                  title="List view"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  title="Calendar view"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewMode === 'calendar'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4" />
+                </button>
+              </div>
               <button
                 onClick={() => setShowMap(!showMap)}
                 className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -373,6 +449,78 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
             </div>
           </div>
         </>
+      )}
+
+      {viewMode === 'calendar' && activeTab === 'discover' && (
+        <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={() => setCalendarCursor(new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1))}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Previous month"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{monthLabel}</h3>
+            <button
+              onClick={() => setCalendarCursor(new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1))}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Next month"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-1">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <div key={i}>{d}</div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {calendarCells.map((cell, i) => {
+              if (!cell) return <div key={`b-${i}`} />;
+              const key = toDateKey(cell);
+              const count = eventsByDay[key]?.length ?? 0;
+              const isSelected = key === selectedDay;
+              const isToday = key === todayKey;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedDay(key)}
+                  className={`relative aspect-square rounded-lg flex flex-col items-center justify-center text-sm transition-colors ${
+                    isSelected
+                      ? 'bg-blue-600 text-white font-semibold'
+                      : count > 0
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-900/40'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  } ${isToday && !isSelected ? 'ring-1 ring-blue-400' : ''}`}
+                >
+                  <span>{cell.getDate()}</span>
+                  {count > 0 && (
+                    <span
+                      className={`mt-0.5 w-1.5 h-1.5 rounded-full ${
+                        isSelected ? 'bg-white' : 'bg-blue-500'
+                      }`}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+            {new Date(`${selectedDay}T00:00`).toLocaleDateString(undefined, {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+            {' · '}
+            {(eventsByDay[selectedDay]?.length ?? 0) === 0
+              ? 'No events'
+              : `${eventsByDay[selectedDay]!.length} event${eventsByDay[selectedDay]!.length === 1 ? '' : 's'}`}
+          </p>
+        </div>
       )}
 
       <div className="p-4 space-y-4">
