@@ -443,7 +443,7 @@ export function TopicsView({
       const raw = sessionStorage.getItem('wny_initial_community_sub');
       if (!raw) return;
       sessionStorage.removeItem('wny_initial_community_sub');
-      const valid: CommunitySub[] = ['all', 'prayer_point', 'testimony', 'bible_study', 'question', 'general'];
+      const valid: CommunitySub[] = ['all', 'prayer_point', 'testimony', 'bible_study', 'question', 'general', 'meme'];
       if ((valid as string[]).includes(raw)) {
         setActiveTab('community');
         setCommunitySub(raw as CommunitySub);
@@ -587,6 +587,7 @@ export function TopicsView({
     { key: 'bible_study', label: t('communityTabs.bibleStudy') },
     { key: 'question', label: t('communityTabs.questions') },
     { key: 'general', label: t('communityTabs.general') },
+    { key: 'meme', label: t('communityTabs.meme') },
   ];
 
   if (loading) {

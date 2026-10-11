@@ -150,7 +150,7 @@ export interface EventAttendee {
   registered_at: string;
 }
 
-export type CommunityCategory = 'prayer_point' | 'testimony' | 'bible_study' | 'question' | 'general';
+export type CommunityCategory = 'prayer_point' | 'testimony' | 'bible_study' | 'question' | 'general' | 'meme';
 
 export interface Topic {
   id: string;

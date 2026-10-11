@@ -230,11 +230,9 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         </div>
       </section>
 
-      {/* What's inside the app — the 3 boxes — then an invite to buy the deck. */}
-      <section className="reveal max-w-5xl mx-auto px-6 py-14 text-center">
-        <h2 className="font-logo font-bold text-2xl sm:text-3xl text-[#0F172A] dark:text-white mb-2"><T>What's inside</T></h2>
-        <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-8"><T>Tap in to explore.</T></p>
-
+      {/* The 3 boxes + an invite to buy the deck (kept tight so "Want the
+          physical cards?" lands high / above the fold). */}
+      <section className="reveal max-w-5xl mx-auto px-6 py-10 text-center">
         {/* Launchpad — jump straight into the main areas (mirrors the app tabs). */}
         <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto">
           {[
@@ -281,13 +279,14 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             <T>No algorithm. No engagement bait. Just real questions and reflections from believers wrestling with the same things you are, anywhere on the map.</T>
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
               { key: 'prayer_point', emoji: '🙏', label: 'Prayer Point',  blurb: 'Share what you need prayer for.' },
               { key: 'testimony',    emoji: '✨', label: 'Testimony',     blurb: 'What God is doing in your life.' },
               { key: 'bible_study',  emoji: '📖', label: 'Bible Study',   blurb: 'Scripture you’re wrestling with.' },
               { key: 'question',     emoji: '❓', label: 'Question',      blurb: 'Ask the community anything.' },
               { key: 'general',      emoji: '💬', label: 'General',       blurb: 'Anything on your mind.' },
+              { key: 'meme',         emoji: '😂', label: 'Meme',          blurb: 'Share a clean, funny faith meme.' },
             ].map((cat) => (
               <button
                 key={cat.key}

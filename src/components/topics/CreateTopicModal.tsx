@@ -4,14 +4,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { useCommunityPolls } from '../../hooks/useCommunityPolls';
-import { useEvents } from '../../hooks/useEvents';
 import { CommunityCategory } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 // A community post is either a plain post, one that carries a "which day
 // works?" scheduling poll the host can later turn into an event, or one that
 // shares an existing event the host needs help with.
-type PostKind = 'plain' | 'poll' | 'event';
+type PostKind = 'plain' | 'poll';
 
 interface CreateTopicModalProps {
   isOpen: boolean;
@@ -45,7 +44,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
   const { createTopic } = useTopics();
   const { createPost } = useCommunityPosts();
   const { createPoll } = useCommunityPolls();
-  const { myEvents, fetchMyEvents } = useEvents();
   const [formData, setFormData] = useState({
     title: '',
     category: 'life-questions',
@@ -62,11 +60,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     { date: '', time: '18:00' },
     { date: '', time: '18:00' },
   ]);
-  // Share-an-event composer state (community posts only).
-  const [sharedEventId, setSharedEventId] = useState('');
-  const [needsHelp, setNeedsHelp] = useState(true);
-  // Only the host's own events can be shared as "I'm doing this / need help".
-  const hostedEvents = myEvents.filter((e: any) => e.role === 'host' || e.host_id === user?.id);
   const [newTag, setNewTag] = useState('');
   // True the moment the user hits Submit while logged-out — we then wait
   // for them to authenticate and auto-fire the post.
@@ -95,8 +88,8 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         bible_verse: formData.bibleReference || undefined,
         community_category: formData.communityCategory,
         visibility: formData.visibility,
-        event_id: postKind === 'event' ? sharedEventId : null,
-        needs_help: postKind === 'event' ? needsHelp : false,
+        event_id: null,
+        needs_help: false,
       });
 
       // Attach the scheduling poll once the post exists. If it fails the post
@@ -142,8 +135,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
       });
       setPostKind('plain');
       setPollOptions([{ date: '', time: '18:00' }, { date: '', time: '18:00' }]);
-      setSharedEventId('');
-      setNeedsHelp(true);
     }
   };
 
@@ -182,13 +173,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  // Load the user's events so they can share one. Fetch on open (cheap; the
-  // hook caches into myEvents).
-  useEffect(() => {
-    if (isOpen && user && isCommunityPost) fetchMyEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, user?.id]);
 
   if (!isOpen) return null;
 
@@ -263,11 +247,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
       }
     }
 
-    if (isCommunityPost && postKind === 'event' && !sharedEventId) {
-      toast.error('Pick one of your events to share.');
-      return;
-    }
-
     if (!user) {
       if (!formHasContent()) {
         toast.error('Add a title or content first.');
@@ -312,11 +291,10 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   What kind of post?
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {([
                     { value: 'plain', label: 'Post', desc: 'Share a thought or question' },
-                    { value: 'poll', label: 'Schedule a day', desc: 'Vote on a day, then make it an event' },
-                    { value: 'event', label: 'Share an event', desc: 'Promote your event / ask for help' },
+                    { value: 'poll', label: 'Plan an event', desc: 'Vote on a day, then make it an event' },
                   ] as { value: PostKind; label: string; desc: string }[]).map((opt) => (
                     <button
                       key={opt.value}
@@ -330,7 +308,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                     >
                       <div className="flex items-center gap-1.5">
                         {opt.value === 'poll' && <CalendarClock className="w-4 h-4" />}
-                        {opt.value === 'event' && <CalendarClock className="w-4 h-4" />}
                         {opt.label}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">{opt.desc}</div>
@@ -416,46 +393,6 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
               </div>
             )}
 
-            {isCommunityPost && postKind === 'event' && (
-              <div>
-                <label htmlFor="share-event" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Which event?
-                </label>
-                {hostedEvents.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 px-3 py-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
-                    You're not hosting any events yet. Create one from the Locations tab first.
-                  </p>
-                ) : (
-                  <>
-                    <select
-                      id="share-event"
-                      value={sharedEventId}
-                      onChange={(e) => setSharedEventId(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="">Select one of your events…</option>
-                      {hostedEvents.map((e: any) => (
-                        <option key={e.id} value={e.id}>
-                          {e.title}{e.date ? ` — ${new Date(`${e.date}T00:00`).toLocaleDateString()}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={needsHelp}
-                        onChange={(e) => setNeedsHelp(e.target.checked)}
-                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                      />
-                      I need help with this event (volunteers, setup, food…)
-                    </label>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Readers can tap through to your event and its Help tab to pitch in.
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
 
             {!isCommunityPost && (
               <div>
@@ -496,6 +433,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                     { value: 'bible_study', label: 'Bible Study', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700' },
                     { value: 'question', label: 'Question', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700' },
                     { value: 'general', label: 'General', color: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600' },
+                    { value: 'meme', label: '😂 Meme', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700' },
                   ] as { value: CommunityCategory; label: string; color: string }[]).map((opt) => (
                     <button
                       key={opt.value}
