@@ -1840,6 +1840,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             // Viewers never see the headcount or capacity — only whether the
             // event is full, so they can choose to join the waitlist.
             const isFull = (event.capacity || 0) > 0 && attendeeCount >= (event.capacity || 0);
+            // Hosts can turn off guest RSVPs (allow_guest_rsvp). When off, a
+            // signed-out viewer must create an account first — so prompt sign-in
+            // instead of opening the guest form that the backend would reject.
+            const guestsBlocked = isGuest && event.allow_guest_rsvp === false;
             return (
               <>
                 {isFull && (
@@ -1847,11 +1851,22 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                     This event is full — join the waitlist and we'll notify you if a spot opens.
                   </p>
                 )}
+                {guestsBlocked && (
+                  <p className="mb-2 text-sm text-center text-gray-500 dark:text-gray-400">
+                    The host asks that you sign in to RSVP for this event.
+                  </p>
+                )}
                 <button
-                  onClick={() => (isGuest ? setShowGuestRsvp(true) : setShowRsvpDisclaimer(true))}
+                  onClick={() =>
+                    guestsBlocked
+                      ? onRequireAuth?.()
+                      : isGuest
+                        ? setShowGuestRsvp(true)
+                        : setShowRsvpDisclaimer(true)
+                  }
                   className="w-full py-4 rounded-lg font-semibold text-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                 >
-                  {isFull ? 'Join the waitlist' : t('events.rsvpNow')}
+                  {guestsBlocked ? 'Sign in to RSVP' : isFull ? 'Join the waitlist' : t('events.rsvpNow')}
                 </button>
               </>
             );
