@@ -13,6 +13,10 @@ import toast from 'react-hot-toast';
 // shares an existing event the host needs help with.
 type PostKind = 'plain' | 'poll';
 
+// Photo attachments on community posts are built but hidden for now. Flip to
+// true to re-enable the picker (display + storage are already wired up).
+const PHOTO_SHARING_ENABLED = false;
+
 interface CreateTopicModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -508,7 +512,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
               />
             </div>
 
-            {isCommunityPost && postKind === 'plain' && (
+            {PHOTO_SHARING_ENABLED && isCommunityPost && postKind === 'plain' && (
               <EventImageUploader value={imageUrl} onChange={setImageUrl} label="Photo (optional)" />
             )}
 
