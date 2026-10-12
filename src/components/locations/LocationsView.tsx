@@ -1039,6 +1039,7 @@ const DEFAULT_HOST_FORM = {
   location_type: '' as '' | 'home' | 'church' | 'park' | 'cafe' | 'online',
   yap_vibe: '',
   bring_note: '',
+  allowGuestRsvp: true,
 };
 
 const DEFAULT_TEMPLATE: DescriptionTemplate = {
@@ -1209,6 +1210,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
       image_url: imageUrl,
       visibility: formData.visibility,
       is_private: formData.visibility === 'private',
+      allow_guest_rsvp: formData.allowGuestRsvp,
       // Address is always gated behind RSVP now — the public only ever sees the
       // general area name. No per-event address-privacy choice.
       address_visibility: 'attendees_only',
@@ -1651,6 +1653,23 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
               Your exact address stays private. Only people who RSVP can see it — everyone else just sees the general area.
             </p>
           </div>
+
+          {/* Guest RSVP toggle — people with the link can RSVP without an account
+              and unlock the location. Off means only signed-in people can RSVP. */}
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.allowGuestRsvp}
+              onChange={(e) => setFormData({ ...formData, allowGuestRsvp: e.target.checked })}
+              className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <div className="font-medium text-gray-900 dark:text-white text-sm">Allow guest RSVPs</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Anyone with the link can RSVP (name + email, no account) and see the location. Turn off to require sign-in.
+              </div>
+            </div>
+          </label>
 
           <div className="grid grid-cols-2 gap-3">
             <button
