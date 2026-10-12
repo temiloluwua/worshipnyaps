@@ -471,7 +471,7 @@ export function LocationsView({ onOpenEvent }: LocationsViewProps = {}) {
       )}
 
       {showMap && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 isolate">
           <InteractiveMap events={mapEvents} onEventClick={handleMapEventClick} />
         </div>
       )}

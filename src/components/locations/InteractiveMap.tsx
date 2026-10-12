@@ -86,12 +86,32 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ events, onEventC
   const { t } = useTranslation();
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
 
+  // On unmount, nudge WKWebView into a repaint so any Leaflet compositing layer
+  // that lingered doesn't ghost over the next screen on iOS.
+  useEffect(() => {
+    return () => {
+      requestAnimationFrame(() => {
+        const prev = document.body.style.transform;
+        document.body.style.transform = 'translateZ(0)';
+        // Read back to force a reflow, then restore.
+        void document.body.offsetHeight;
+        document.body.style.transform = prev;
+      });
+    };
+  }, []);
+
   const validEvents = events.filter(
     e => e.coordinates && e.coordinates.lat !== 0 && e.coordinates.lng !== 0
   );
 
   return (
-    <div className="relative w-full h-80 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
+    <div
+      className="relative w-full h-80 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm isolate"
+      // Promote the whole map to a single compositing layer so WKWebView tears
+      // it down atomically on unmount — otherwise Leaflet's translate3d tile
+      // layers can orphan and "ghost" over the next screen on iOS.
+      style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', contain: 'layout paint' }}
+    >
       <MapContainer
         center={[20, 0]}
         zoom={2}
