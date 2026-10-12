@@ -5,6 +5,7 @@ import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
 import { useCommunityPolls } from '../../hooks/useCommunityPolls';
 import { CommunityCategory } from '../../lib/supabase';
+import { EventImageUploader } from '../events/EventImageUploader';
 import toast from 'react-hot-toast';
 
 // A community post is either a plain post, one that carries a "which day
@@ -54,6 +55,8 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
     questions: [''],
     visibility: 'public' as 'public' | 'friends_only',
   });
+  // One optional photo per community post (public event-images bucket).
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Scheduling-poll composer state (community posts only).
   const [postKind, setPostKind] = useState<PostKind>('plain');
   const [pollOptions, setPollOptions] = useState<{ date: string; time: string }[]>([
@@ -85,6 +88,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         title: formData.title,
         content: formData.content,
         tags: formData.tags,
+        image_url: imageUrl || undefined,
         bible_verse: formData.bibleReference || undefined,
         community_category: formData.communityCategory,
         visibility: formData.visibility,
@@ -134,6 +138,7 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
         visibility: 'public',
       });
       setPostKind('plain');
+      setImageUrl(null);
       setPollOptions([{ date: '', time: '18:00' }, { date: '', time: '18:00' }]);
     }
   };
@@ -502,6 +507,10 @@ export const CreateTopicModal: React.FC<CreateTopicModalProps> = ({
                 required={!isCommunityPost}
               />
             </div>
+
+            {isCommunityPost && postKind === 'plain' && (
+              <EventImageUploader value={imageUrl} onChange={setImageUrl} label="Photo (optional)" />
+            )}
 
             <div>
               <label

@@ -277,6 +277,15 @@ export const TopicDetailModal: React.FC<TopicDetailModalProps> = ({
               </div>
             )}
 
+            {topic.image_url && (
+              <img
+                src={topic.image_url}
+                alt=""
+                loading="lazy"
+                className="w-full max-h-[32rem] object-contain rounded-xl border border-gray-200 dark:border-gray-700 mb-6 bg-gray-50 dark:bg-gray-900"
+              />
+            )}
+
             {hasQuestions && (
               <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                 <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3">Discussion Questions</h3>
