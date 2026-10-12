@@ -1384,7 +1384,6 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
                 { value: 'volunteering', label: '🤝 Volunteering',  eventType: 'volunteering', vibe: '', tone: 'emerald' },
                 { value: 'sports',       label: '🏅 Sports',        eventType: 'yap',          vibe: 'sports', tone: 'amber' },
                 { value: 'music',        label: '🎶 Music / Worship', eventType: 'yap',        vibe: 'music', tone: 'amber' },
-                { value: 'hanging',      label: '🗣️ Just hanging',  eventType: 'yap',          vibe: 'hanging', tone: 'amber' },
               ] as Array<{ value: string; label: string; eventType: 'bible_study' | 'yap' | 'church' | 'evangelism' | 'volunteering'; vibe: string; tone: 'blue' | 'violet' | 'amber' | 'emerald' }>).map(opt => {
                 const selected = opt.eventType === 'yap'
                   ? formData.event_type === 'yap' && formData.yap_vibe === opt.vibe
