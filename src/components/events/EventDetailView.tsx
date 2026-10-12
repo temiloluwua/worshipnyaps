@@ -1649,7 +1649,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                 </span>
                 {event.location_type && (
                   <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {({ home: '🏠 Home', church: '⛪ Church', park: '🌿 Park / Outdoors', cafe: '☕ Café', online: '💻 Online' } as Record<string, string>)[event.location_type] || event.location_type}
+                    {({ home: '🏠 Home', church: '⛪ Church', park: '🌿 Outdoors', cafe: '☕ Café', online: '💻 Online' } as Record<string, string>)[event.location_type] || event.location_type}
                   </span>
                 )}
                 {event.yap_vibe && (

@@ -12,7 +12,7 @@ interface RSVPDisclaimerModalProps {
 const LOCATION_TYPE_DISPLAY: Record<string, string> = {
   home: '🏠 Home',
   church: '⛪ Church',
-  park: '🌿 Park / Outdoors',
+  park: '🌿 Outdoors',
   cafe: '☕ Café',
   online: '💻 Online',
 };

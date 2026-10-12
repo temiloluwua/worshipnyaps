@@ -1462,7 +1462,7 @@ function HostEventModal({ onClose, onEventCreated, onRequireAuth, initialDraft }
               {[
                 { value: 'home', label: '🏠 Home' },
                 { value: 'church', label: '⛪ Church' },
-                { value: 'park', label: '🌿 Park / Outdoors' },
+                { value: 'park', label: '🌿 Outdoors' },
                 { value: 'cafe', label: '☕ Café' },
                 { value: 'online', label: '💻 Online' },
               ].map(opt => (
