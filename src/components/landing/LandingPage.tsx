@@ -11,7 +11,7 @@ import { Logo } from '../ui/Logo';
 import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
 import { openAppStore } from '../../lib/appStore';
-import { CARD_GAME_BUY_URL } from '../../lib/cardGame';
+import { BuyCardGameModal } from '../shop/BuyCardGameModal';
 import { Capacitor } from '@capacitor/core';
 
 interface LandingPageProps {
@@ -82,11 +82,10 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
   // it drops the visitor straight into the card feed (the Topics "deck"),
   // where sign-in is only prompted when they take an action that needs it.
   const navCtaAction = onViewTopics ?? onLogin ?? onCreateAccount ?? onEnter;
-  // "Buy the card game" links to the Amazon listing (physical product),
-  // bypassing the in-app Shop page. Shares CARD_GAME_BUY_URL with ProductCard.
-  const openCardGameCheckout = () => {
-    window.open(CARD_GAME_BUY_URL, '_blank', 'noopener,noreferrer');
-  };
+  // "Buy the card game" opens a region chooser (Amazon ships to Canada only;
+  // international orders go to Stripe). Shared with the in-app Shop card.
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const openCardGameCheckout = () => setShowBuyModal(true);
 
   // Scroll-reveal: fade/slide each `.reveal` section in as it enters view.
   useEffect(() => {
@@ -580,6 +579,8 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
         // Hidden helper, keeps the prop interface stable for callers that pass it.
         <span hidden onClick={onViewEvents} />
       )}
+
+      <BuyCardGameModal isOpen={showBuyModal} onClose={() => setShowBuyModal(false)} />
     </div>
   );
 }

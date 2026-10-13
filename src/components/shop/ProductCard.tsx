@@ -1,35 +1,15 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Loader2 } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { StripeProduct } from '../../stripe-config';
-import { CARD_GAME_BUY_URL } from '../../lib/cardGame';
-import toast from 'react-hot-toast';
+import { BuyCardGameModal } from './BuyCardGameModal';
 
 interface ProductCardProps {
   product: StripeProduct;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
-
-  const handlePurchase = () => {
-    setIsLoading(true);
-    try {
-      const checkoutWindow = window.open(CARD_GAME_BUY_URL, '_blank');
-      if (!checkoutWindow) {
-        toast.error('Popup blocked. Please allow pop-ups and try again.');
-        setIsLoading(false);
-        return;
-      }
-      checkoutWindow.opener = null;
-      checkoutWindow.focus();
-    } catch (error) {
-      console.error('Checkout error:', error);
-      toast.error('Failed to redirect to checkout');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [showBuyModal, setShowBuyModal] = useState(false);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700">
@@ -53,27 +33,24 @@ export function ProductCard({ product }: ProductCardProps) {
         <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">{product.description}</p>
 
         <div className="flex items-center justify-between">
-          {/* Price is controlled by the Amazon listing, so we don't show a
+          {/* Price lives on the store (Amazon/Stripe), so we don't show a
               hardcoded figure that could drift out of sync. */}
           <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Sold on Amazon
+            Ships to Canada & worldwide
           </span>
 
           <button
             type="button"
-            onClick={handlePurchase}
-            disabled={isLoading}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setShowBuyModal(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <ShoppingCart className="w-4 h-4" />
-            )}
-            Buy on Amazon
+            <ShoppingCart className="w-4 h-4" />
+            Buy now
           </button>
         </div>
       </div>
+
+      <BuyCardGameModal isOpen={showBuyModal} onClose={() => setShowBuyModal(false)} />
     </div>
   );
 }
