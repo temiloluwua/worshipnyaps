@@ -2,7 +2,7 @@
 // product). Amazon only ships within Canada, so buyers pick their region and
 // international orders go to the Stripe checkout instead.
 export const CARD_GAME_BUY_URL = 'https://www.amazon.ca/dp/B0HHBW23VR';          // Canada — Amazon.ca
-export const CARD_GAME_BUY_URL_INTL = 'https://buy.stripe.com/28E14neCvcIfe6h4U80oM01'; // Outside Canada — Stripe
+export const CARD_GAME_BUY_URL_INTL = 'https://buy.stripe.com/bJedR9fGzdMj0fr9ao0oM02'; // Outside Canada — Stripe
 
 export type CardGameRegion = 'canada' | 'intl';
 
