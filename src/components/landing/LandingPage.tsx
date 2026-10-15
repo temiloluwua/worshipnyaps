@@ -212,6 +212,18 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
       {/* The 3 boxes + an invite to buy the deck (kept tight so "Want the
           physical cards?" lands high / above the fold). */}
       <section className="reveal max-w-5xl mx-auto px-6 py-10 text-center">
+        {/* Physical card deck — lead with the deck, above the launchpad tiles. */}
+        <div className="mb-12">
+          <h3 className="font-logo font-bold text-xl sm:text-2xl text-[#0F172A] dark:text-white mb-3"><T>Want the physical cards?</T></h3>
+          <button
+            onClick={openCardGameCheckout}
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span><T>Buy here</T></span>
+          </button>
+        </div>
+
         {/* Launchpad — jump straight into the main areas (mirrors the app tabs). */}
         <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto">
           {[
@@ -229,18 +241,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
               <p className="text-xs text-[#64748B] dark:text-[#94A3B8] line-clamp-2 mt-0.5">{tile.sub}</p>
             </button>
           ))}
-        </div>
-
-        {/* Physical card deck */}
-        <div className="mt-12">
-          <h3 className="font-logo font-bold text-xl sm:text-2xl text-[#0F172A] dark:text-white mb-3"><T>Want the physical cards?</T></h3>
-          <button
-            onClick={openCardGameCheckout}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
-          >
-            <ShoppingBag className="w-5 h-5" />
-            <span><T>Buy here</T></span>
-          </button>
         </div>
       </section>
 
