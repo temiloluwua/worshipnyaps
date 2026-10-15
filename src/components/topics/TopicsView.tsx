@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { geocodeCity, distanceKm, Coords } from '../../lib/cityGeo';
-import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, Spade, CalendarDays } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Search, Plus, Sparkles, Users, Star, Shuffle, Lightbulb, ClipboardList, Spade, CalendarDays, ShoppingCart } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTopics } from '../../hooks/useTopics';
 import { useCommunityPosts } from '../../hooks/useCommunityPosts';
@@ -26,6 +26,7 @@ import { useDailyTopics } from '../../hooks/useDailyTopics';
 import { AuthModal } from '../auth/AuthModal';
 import { ShareModal } from '../social/ShareModal';
 import { NearbyEventsRail } from './NearbyEventsRail';
+import { BuyCardGameModal } from '../shop/BuyCardGameModal';
 import { Topic, CommunityCategory } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -168,6 +169,7 @@ export function TopicsView({
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdminReview, setShowAdminReview] = useState(false);
   const [showTopicScheduler, setShowTopicScheduler] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
   const { todayTopicId, canonicalTotdId, fetchToday } = useDailyTopics();
   const [audienceFilter, setAudienceFilter] = useState<'friends' | 'local'>('friends');
   const { connections } = useConnections();
@@ -815,6 +817,33 @@ export function TopicsView({
               />
             </div>
           )}
+
+          {/* Physical card deck promo — sits right under the Topic of the Day
+              so the home page nudges people toward the printed game. */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={() => setShowBuyModal(true)}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl border border-blue-200 dark:border-blue-800/60 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:shadow-md transition-shadow text-left"
+            >
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                <Spade className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                  Get the physical card game
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Bring the questions to your table — ships to Canada &amp; worldwide.
+                </div>
+              </div>
+              <span className="flex-shrink-0 inline-flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium">
+                <ShoppingCart className="w-4 h-4" />
+                Buy now
+              </span>
+            </button>
+          </div>
+
           {visibleTopics.length > 0 ? (
             <div className="grid gap-6">
               {visibleTopics.map((topic, index) => {
@@ -1106,6 +1135,7 @@ export function TopicsView({
       })()}
 
       <RequestTopicModal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} />
+      <BuyCardGameModal isOpen={showBuyModal} onClose={() => setShowBuyModal(false)} />
       <AdminTopicReviewPanel isOpen={showAdminReview} onClose={() => setShowAdminReview(false)} />
       {showTopicScheduler && (
         <DailyTopicScheduler

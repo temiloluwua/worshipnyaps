@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowRight, Sun, Moon,
-  Smartphone, ChevronRight, Star,
+  ChevronRight, Star,
   BookOpen, Users, MessageSquare,
   User as UserIcon, Spade, ClipboardList, ShoppingBag,
   Instagram, Youtube, Layers, MapPin,
@@ -10,7 +10,6 @@ import { useTheme } from '../../hooks/useTheme';
 import { Logo } from '../ui/Logo';
 import { T } from '../ui/T';
 import { supabase } from '../../lib/supabase';
-import { openAppStore } from '../../lib/appStore';
 import { BuyCardGameModal } from '../shop/BuyCardGameModal';
 import { Capacitor } from '@capacitor/core';
 
@@ -207,25 +206,6 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
             </div>
           </div>
 
-          {/* Web visitors: bring the app download back under the card. */}
-          {!isNativeApp && (
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
-              <button
-                onClick={openAppStore}
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
-              >
-                <Smartphone className="w-5 h-5" />
-                <span><T>Download on App Store</T></span>
-              </button>
-              <button
-                onClick={() => (onViewTopics ?? onEnter)()}
-                className="inline-flex items-center gap-1 text-sm font-medium text-[#2650eb] hover:text-[#1d4ed8] underline"
-              >
-                <T>Explore in your browser</T>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
         </div>
       </section>
 
