@@ -5,6 +5,7 @@ import { TopicsView } from './components/topics/TopicsView';
 import { CommunityView } from './components/network/NetworkView';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
+import { InstallAppBanner } from './components/InstallAppBanner';
 import { SkipLinks } from './components/ui/SkipLinks';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { SearchPage } from './components/search/SearchPage';
@@ -535,6 +536,7 @@ function App() {
 
   if (showLanding) {
     return (
+      <>
       <LandingPage
         onEnter={handleEnterApp}
         onPreOrder={handlePreOrder}
@@ -559,6 +561,10 @@ function App() {
           setShowAuthModal(true);
         }}
       />
+      {/* Install nudge lives only on the landing page — there's no bottom tab
+          bar here, so nothing to overlap. */}
+      <InstallAppBanner />
+      </>
     );
   }
 
