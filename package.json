@@ -14,12 +14,15 @@
     "build:check": "tsc --noEmit && vite build",
     "build:ios": "npm run build && npx cap sync ios",
     "open:ios": "npx cap open ios",
+    "build:android": "npm run build && npx cap sync android",
+    "open:android": "npx cap open android",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
     "preview": "vite preview",
     "deploy": "npm run build && echo 'Build complete! Upload dist/ folder to your hosting provider.'"
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^7.1.0",
+    "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.0.1",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.1.0",

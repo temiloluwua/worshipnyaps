@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Worship and Yapps</string>
+    <string name="title_activity_main">Worship and Yapps</string>
+    <string name="package_name">com.worshipnyapps.app</string>
+    <string name="custom_url_scheme">com.worshipnyapps.app</string>
+</resources>
