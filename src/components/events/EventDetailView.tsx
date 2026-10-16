@@ -10,7 +10,7 @@ import type { Event as DbEvent } from '../../lib/supabase';
 import { EventHelpRequests } from './EventHelpRequests';
 import { PollsSection } from '../polls/PollsSection';
 import { EventNotesSection } from './EventNotesSection';
-import { recurrenceDatesUntil, type Recurrence } from '../../hooks/useEvents';
+import { recurrenceDatesUntil, isEventPast, type Recurrence } from '../../hooks/useEvents';
 import { EventRecapPhotos } from './EventRecapPhotos';
 import { EventDescriptionDisplay } from './EventDescriptionTemplate';
 import { CheckInButton } from './CheckInButton';
@@ -1836,7 +1836,14 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             </div>
           )}
 
-          {!isRsvped && !isWaitlisted && !isHost && !isGuestRsvped && (() => {
+          {/* Once an event is over, RSVPs are closed (the DB rejects them too). */}
+          {!isRsvped && !isWaitlisted && !isHost && !isGuestRsvped && isEventPast(event) && (
+            <p className="w-full py-4 rounded-lg font-semibold text-lg text-center bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+              This event has ended
+            </p>
+          )}
+
+          {!isRsvped && !isWaitlisted && !isHost && !isGuestRsvped && !isEventPast(event) && (() => {
             // Viewers never see the headcount or capacity — only whether the
             // event is full, so they can choose to join the waitlist.
             const isFull = (event.capacity || 0) > 0 && attendeeCount >= (event.capacity || 0);
@@ -2075,7 +2082,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
               eventId={eventId}
               isHost={isHost}
               isRsvped={isRsvped}
-              onRsvp={() => setShowRsvpDisclaimer(true)}
+              onRsvp={isEventPast(event) ? undefined : () => setShowRsvpDisclaimer(true)}
             />
           </div>
         ) : (
