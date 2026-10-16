@@ -217,7 +217,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           <h3 className="font-logo font-bold text-xl sm:text-2xl text-[#0F172A] dark:text-white mb-3"><T>Want the physical cards?</T></h3>
           <button
             onClick={openCardGameCheckout}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2650eb] text-white font-semibold shadow-md hover:bg-[#1d4ed8] transition-all hover:translate-y-[-1px]"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-amber-400 text-[#0F172A] font-semibold shadow-md hover:bg-amber-500 transition-all hover:translate-y-[-1px]"
           >
             <ShoppingBag className="w-5 h-5" />
             <span><T>Buy here</T></span>
