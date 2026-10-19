@@ -29,6 +29,7 @@
 		"deploymentTarget": "14.0"
 	},
 	"packageClassList": [
+		"AdMobPlugin",
 		"SignInWithApple",
 		"AppPlugin",
 		"CAPBrowserPlugin",

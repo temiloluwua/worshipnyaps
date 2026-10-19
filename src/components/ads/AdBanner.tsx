@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import {
   AdMob,
+  AdmobConsentStatus,
   BannerAdPosition,
   BannerAdSize,
   type BannerAdOptions,
@@ -21,14 +22,24 @@ let initPromise: Promise<void> | null = null;
 async function ensureInitialized(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    // iOS: ask for tracking permission first (needs NSUserTrackingUsageDescription
-    // in Info.plist). Declining just yields non-personalized ads.
+    // 1. UMP consent (GDPR/EEA). Harmless elsewhere — status comes back
+    //    NOT_REQUIRED and no form shows. Failures are non-fatal: fall through
+    //    to non-personalized ads rather than blocking the app.
+    try {
+      const info = await AdMob.requestConsentInfo();
+      if (info.isConsentFormAvailable && info.status === AdmobConsentStatus.REQUIRED) {
+        await AdMob.showConsentForm();
+      }
+    } catch { /* consent unavailable — continue with limited ads */ }
+
+    // 2. iOS App Tracking Transparency prompt (needs NSUserTrackingUsageDescription
+    //    in Info.plist). Declining just yields non-personalized ads.
     if (Capacitor.getPlatform() === 'ios') {
       try { await AdMob.requestTrackingAuthorization(); } catch { /* user dismissed */ }
     }
+
+    // 3. Initialize the SDK.
     await AdMob.initialize({ initializeForTesting: usingTestAds() });
-    // TODO(before launch): add the UMP consent flow (requestConsentInfo /
-    // showConsentForm) for GDPR regions, and gate ads for child-directed users.
   })();
   return initPromise;
 }
