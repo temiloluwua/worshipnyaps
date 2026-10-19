@@ -6,7 +6,7 @@ import {
   BannerAdSize,
   type BannerAdOptions,
 } from '@capacitor-community/admob';
-import { adsEnabled, bannerAdUnitId, USING_TEST_ADS } from '../../lib/ads';
+import { adsEnabled, bannerAdUnitId, usingTestAds } from '../../lib/ads';
 
 // Renders a native AdMob banner pinned above the bottom tab bar. It draws no
 // DOM — the banner is a native view the plugin overlays on the webview — so
@@ -26,7 +26,7 @@ async function ensureInitialized(): Promise<void> {
     if (Capacitor.getPlatform() === 'ios') {
       try { await AdMob.requestTrackingAuthorization(); } catch { /* user dismissed */ }
     }
-    await AdMob.initialize({ initializeForTesting: USING_TEST_ADS });
+    await AdMob.initialize({ initializeForTesting: usingTestAds() });
     // TODO(before launch): add the UMP consent flow (requestConsentInfo /
     // showConsentForm) for GDPR regions, and gate ads for child-directed users.
   })();
@@ -48,7 +48,7 @@ export function AdBanner() {
           position: BannerAdPosition.BOTTOM_CENTER,
           // Clear the ~56px bottom tab bar so the banner sits just above it.
           margin: 56,
-          isTesting: USING_TEST_ADS,
+          isTesting: usingTestAds(),
         };
         await AdMob.showBanner(options);
       } catch (e) {

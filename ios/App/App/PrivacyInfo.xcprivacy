@@ -3,10 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>NSPrivacyTracking</key>
-    <false/>
+    <true/>
 
     <key>NSPrivacyTrackingDomains</key>
-    <array/>
+    <array>
+        <string>googleads.g.doubleclick.net</string>
+        <string>pagead2.googlesyndication.com</string>
+    </array>
 
     <key>NSPrivacyCollectedDataTypes</key>
     <array>
@@ -114,11 +117,13 @@
             <string>NSPrivacyCollectedDataTypeDeviceID</string>
             <key>NSPrivacyCollectedDataTypeLinked</key>
             <true/>
+            <!-- Used by AdMob for advertising; counts as tracking under ATT. -->
             <key>NSPrivacyCollectedDataTypeTracking</key>
-            <false/>
+            <true/>
             <key>NSPrivacyCollectedDataTypePurposes</key>
             <array>
                 <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+                <string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
             </array>
         </dict>
         <dict>

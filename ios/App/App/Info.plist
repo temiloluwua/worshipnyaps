@@ -89,10 +89,9 @@
 			</array>
 		</dict>
 	</array>
-	<!-- AdMob. GADApplicationIdentifier is Google's TEST app ID — replace with
-	     your real AdMob iOS app ID before a production release. -->
+	<!-- AdMob iOS app ID (real). Must match IOS.appId in src/lib/ads.ts. -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-2186861379596825~7473094000</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Worship and Yapps uses this to show you more relevant ads. You can decline and still use the app.</string>
 	<!-- SKAdNetwork IDs let ad attribution work. Google's recommended starter
