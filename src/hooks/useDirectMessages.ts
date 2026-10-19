@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, UserProfile } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { containsProfanity } from '../lib/contentFilter';
 import toast from 'react-hot-toast';
 
 export interface Conversation {
@@ -185,6 +186,11 @@ export const useDirectMessages = () => {
     sharedTopicId?: string
   ) => {
     if (!user) return null;
+
+    if (containsProfanity(content)) {
+      toast.error("Let's keep it respectful — please reword that message.");
+      return null;
+    }
 
     try {
       const { data, error } = await supabase

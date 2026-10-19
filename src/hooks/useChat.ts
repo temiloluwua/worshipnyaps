@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, ChatMessage } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { containsProfanity } from '../lib/contentFilter';
 import toast from 'react-hot-toast';
 
 export const useChat = (channel: string = 'community') => {
@@ -67,6 +68,11 @@ export const useChat = (channel: string = 'community') => {
 
   const sendMessage = async (content: string, recipientId?: string) => {
     if (!user || !content.trim()) return false;
+
+    if (containsProfanity(content)) {
+      toast.error("Let's keep it respectful — please reword that message.");
+      return false;
+    }
 
     setSending(true);
     try {

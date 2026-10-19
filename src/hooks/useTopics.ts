@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, Topic, Comment } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { fetchBlockedIds } from '../lib/blocking';
+import { containsProfanity } from '../lib/contentFilter';
 import toast from 'react-hot-toast';
 
 export const useTopics = () => {
@@ -76,6 +77,11 @@ export const useTopics = () => {
   }) => {
     if (!user) return null;
 
+    if (containsProfanity(`${topicData.title} ${topicData.content}`)) {
+      toast.error("Let's keep it respectful — please reword your post.");
+      return null;
+    }
+
     try {
       const { data, error } = await supabase
         .from('topics')
@@ -135,6 +141,11 @@ export const useTopics = () => {
   // Add comment to topic
   const addComment = useCallback(async (topicId: string, content: string, parentId?: string) => {
     if (!user) return null;
+
+    if (containsProfanity(content)) {
+      toast.error("Let's keep it respectful — please reword your comment.");
+      return null;
+    }
 
     try {
       const { data, error } = await supabase
