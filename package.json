@@ -21,6 +21,7 @@
     "deploy": "npm run build && echo 'Build complete! Upload dist/ folder to your hosting provider.'"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.2.1",
     "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.0.1",

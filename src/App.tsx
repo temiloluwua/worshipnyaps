@@ -35,6 +35,7 @@ const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDet
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { WelcomeModal } from './components/WelcomeModal';
+import { AdBanner } from './components/ads/AdBanner';
 import { AgeGate, GUEST_ADULT_KEY } from './components/auth/AgeGate';
 import { CityGate } from './components/auth/CityGate';
 import { SettingsModal } from './components/SettingsModal';
@@ -817,6 +818,10 @@ function App() {
         unreadMessages={unreadMessages}
         unreadNotifications={unreadNotifications}
       />
+
+      {/* Native AdMob banner, pinned above the tab bar (no-ops on web; only
+          adults reach this view — minors early-return above). */}
+      <AdBanner />
 
       <AuthModal
         isOpen={showAuthModal}
