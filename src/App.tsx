@@ -34,6 +34,7 @@ const GroupsView = lazyWithRetry(() => import('./components/groups/GroupsView').
 const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { WelcomeModal } from './components/WelcomeModal';
 import { AgeGate, GUEST_ADULT_KEY } from './components/auth/AgeGate';
 import { CityGate } from './components/auth/CityGate';
 import { SettingsModal } from './components/SettingsModal';
@@ -94,6 +95,9 @@ function App() {
   const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
   const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  // Quick one-time app intro shown on the landing page to first-time visitors.
+  const WELCOME_SEEN_KEY = 'wny_welcome_seen';
+  const [showWelcome, setShowWelcome] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   // Age bucket the signed-in user just chose in the gate, used to route minors
   // immediately (before the profile row refetches). null = not answered yet.
@@ -174,6 +178,22 @@ function App() {
       setShowOnboarding(false);
     }
   }, [user, profile]);
+
+  // Show the quick app intro once, right after a first-time visitor enters the
+  // app from the landing page (so it greets them inside, not over the landing).
+  useEffect(() => {
+    if (showLanding) return;
+    let seen = false;
+    try { seen = localStorage.getItem(WELCOME_SEEN_KEY) === '1'; } catch { seen = false; }
+    if (seen) return;
+    const t = window.setTimeout(() => setShowWelcome(true), 400);
+    return () => window.clearTimeout(t);
+  }, [showLanding]);
+
+  const dismissWelcome = () => {
+    setShowWelcome(false);
+    try { localStorage.setItem(WELCOME_SEEN_KEY, '1'); } catch { /* storage blocked */ }
+  };
 
   useEffect(() => {
     const applyPathState = () => {
@@ -537,33 +557,49 @@ function App() {
   if (showLanding) {
     return (
       <>
-      <LandingPage
-        onEnter={handleEnterApp}
-        onPreOrder={handlePreOrder}
-        onViewEvents={handleViewEvents}
-        onViewTopics={() => {
-          setActiveTab('topics');
+      {/* Pad the bottom so the fixed tab bar never covers the last section. */}
+      <div style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <LandingPage
+          onEnter={handleEnterApp}
+          onPreOrder={handlePreOrder}
+          onViewEvents={handleViewEvents}
+          onViewTopics={() => {
+            setActiveTab('topics');
+            setShowLanding(false);
+          }}
+          onViewCommunity={() => {
+            setShowLanding(false);
+            setViewState({ type: 'network' });
+          }}
+          onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
+          onCreateAccount={() => {
+            setAuthMode('signup');
+            setShowLanding(false);
+            setShowAuthModal(true);
+          }}
+          onLogin={() => {
+            setAuthMode('login');
+            setShowLanding(false);
+            setShowAuthModal(true);
+          }}
+        />
+      </div>
+
+      {/* Tab bar on the landing/home page too, so the main areas are one tap
+          away. Nothing is highlighted since the landing isn't itself a tab. */}
+      <BottomNavigation
+        activeTab={'notifications'}
+        onTabChange={(tab) => {
+          if (tab === 'network') { setShowLanding(false); setViewState({ type: 'network' }); return; }
+          setActiveTab(tab);
           setShowLanding(false);
         }}
-        onViewCommunity={() => {
-          setShowLanding(false);
-          setViewState({ type: 'network' });
-        }}
-        onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
-        onCreateAccount={() => {
-          setAuthMode('signup');
-          setShowLanding(false);
-          setShowAuthModal(true);
-        }}
-        onLogin={() => {
-          setAuthMode('login');
-          setShowLanding(false);
-          setShowAuthModal(true);
-        }}
+        unreadMessages={unreadMessages}
+        unreadNotifications={unreadNotifications}
       />
-      {/* Install nudge lives only on the landing page — there's no bottom tab
-          bar here, so nothing to overlap. */}
-      <InstallAppBanner />
+
+      {/* Install nudge sits just above the tab bar so they don't overlap. */}
+      <InstallAppBanner raised />
       </>
     );
   }
@@ -787,6 +823,8 @@ function App() {
         onClose={() => { setShowAuthModal(false); setAuthMode('login'); }}
         initialMode={authMode}
       />
+
+      <WelcomeModal isOpen={showWelcome} onClose={dismissWelcome} />
 
       {showOnboarding && (
         <OnboardingFlow

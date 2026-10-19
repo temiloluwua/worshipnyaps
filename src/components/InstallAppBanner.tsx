@@ -11,7 +11,7 @@ import { T } from './ui/T';
 const DISMISS_KEY = 'wny_install_banner_dismissed_at';
 const COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // reappear 3 days after a dismissal
 
-export const InstallAppBanner: React.FC = () => {
+export const InstallAppBanner: React.FC<{ raised?: boolean }> = ({ raised = false }) => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -44,6 +44,9 @@ export const InstallAppBanner: React.FC = () => {
     <div
       role="region"
       aria-label="Get the Worship N Yaps app"
+      // `raised` lifts the banner above the bottom tab bar (used on the landing
+      // page, which now shows the nav) so the two fixed strips never overlap.
+      style={raised ? { bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' } : undefined}
       className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
     >
       <div className="max-w-2xl mx-auto flex items-center gap-3">
