@@ -141,6 +141,17 @@ function App() {
     }
   }, [loading, user]);
 
+  // Deep link: /delete-account opens the in-app Settings (where account & data
+  // deletion lives), so the store "delete your data" URL points straight at the
+  // feature. Signed-out visitors land in the app and can sign in to proceed.
+  useEffect(() => {
+    if (loading) return;
+    if (window.location.pathname.replace(/\/$/, '') === '/delete-account') {
+      setShowLanding(false);
+      setShowSettings(true);
+    }
+  }, [loading]);
+
   // On sign-out (was signed in → now null), send the user back to the welcome
   // page and reset navigation, rather than leaving them on a now-empty logged-in
   // screen. Guard on the transition so guest browsing (never signed in) is
