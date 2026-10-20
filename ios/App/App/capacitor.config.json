@@ -1,6 +1,6 @@
 {
 	"appId": "com.worshipnyapps.app",
-	"appName": "Worship and Yapps",
+	"appName": "Yaps",
 	"webDir": "dist",
 	"plugins": {
 		"SplashScreen": {
