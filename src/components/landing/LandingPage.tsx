@@ -531,6 +531,7 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           <div className="flex items-center gap-5 text-[#64748B] dark:text-[#CBD5E1]">
             <a href="/privacy.html" className="hover:text-[#2563eb]"><T>Privacy</T></a>
             <a href="/terms.html" className="hover:text-[#2563eb]"><T>Terms</T></a>
+            <a href="/child-safety.html" className="hover:text-[#2563eb]"><T>Child Safety</T></a>
             <a href="/support.html" className="hover:text-[#2563eb]"><T>Contact</T></a>
             {/* Update these hrefs to the real channel URLs. */}
             <a

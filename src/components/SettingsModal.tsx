@@ -303,6 +303,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 <AlertTriangle size={16} className="text-blue-500" />
                 <span className="flex-1">Support &amp; report abuse</span>
               </button>
+              <button
+                type="button"
+                onClick={() => openExternal('/child-safety.html')}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+              >
+                <Shield size={16} className="text-blue-500" />
+                <span className="flex-1">Child Safety Standards</span>
+              </button>
             </div>
           </div>
 
