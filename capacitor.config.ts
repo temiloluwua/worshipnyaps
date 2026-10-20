@@ -7,7 +7,7 @@ const liveReloadUrl = process.env.CAP_LIVE_RELOAD_URL;
 
 const config: CapacitorConfig = {
   appId: 'com.worshipnyapps.app',
-  appName: 'Worship and Yapps',
+  appName: 'Yaps',
   webDir: 'dist',
   ...(liveReloadUrl && {
     server: {
