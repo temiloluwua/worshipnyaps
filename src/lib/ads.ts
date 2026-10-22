@@ -2,12 +2,12 @@ import { Capacitor } from '@capacitor/core';
 
 // Single source of truth for AdMob configuration.
 //
-// iOS uses the real AdMob app/ad-unit IDs. Android is still on Google's TEST
-// ad unit until an Android AdMob app is created — create it, then replace the
-// Android banner ID below and the APPLICATION_ID in AndroidManifest.xml.
+// Both iOS and Android use real AdMob app/ad-unit IDs (publisher
+// pub-2186861379596825). AdMob IDs are per-platform, so each OS has its own
+// app ID + banner unit.
 //
 // Policy: never serve real ads on your own test/dev builds. So dev builds
-// request test ads even on the real iOS unit (see usingTestAds); production
+// request test ads even on the real units (see usingTestAds); production
 // builds serve real ads. Ads only run inside the native apps (no-op on web).
 
 const IOS = {
@@ -16,20 +16,18 @@ const IOS = {
   banner: 'ca-app-pub-2186861379596825/4974089025',
 };
 
-// TODO: replace with the real Android AdMob app + banner IDs once created.
-const ANDROID_TEST = {
-  banner: 'ca-app-pub-3940256099942544/6300978111',
+const ANDROID = {
+  // android/app/src/main/AndroidManifest.xml → APPLICATION_ID must match this.
+  appId: 'ca-app-pub-2186861379596825~2840919702',
+  banner: 'ca-app-pub-2186861379596825/9056586065',
 };
 
 export const adsEnabled = (): boolean => Capacitor.isNativePlatform();
 
 export const bannerAdUnitId = (): string =>
-  Capacitor.getPlatform() === 'ios' ? IOS.banner : ANDROID_TEST.banner;
+  Capacitor.getPlatform() === 'ios' ? IOS.banner : ANDROID.banner;
 
 // Whether this platform/build should request *test* ads.
-// - Android: always (still on Google's test unit).
-// - iOS: only in dev builds; production serves real ads on the real unit.
-export const usingTestAds = (): boolean => {
-  if (Capacitor.getPlatform() !== 'ios') return true;
-  return !import.meta.env.PROD;
-};
+// Both platforms are on real units now: only dev builds request test ads;
+// production serves real ads.
+export const usingTestAds = (): boolean => !import.meta.env.PROD;

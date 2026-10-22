@@ -351,6 +351,9 @@ function App() {
 
   const handleViewEvents = () => {
     setShowLanding(false);
+    // Clear any lingering viewState (e.g. 'network' after visiting Community),
+    // otherwise its render guard intercepts and the tab switch is ignored.
+    setViewState({ type: 'main' });
     setActiveTab('locations');
   };
 
@@ -577,6 +580,9 @@ function App() {
           onViewEvents={handleViewEvents}
           onViewTopics={() => {
             setActiveTab('topics');
+            // Reset viewState so a prior 'network'/'groups' guard doesn't keep
+            // rendering that view instead of the Topics feed.
+            setViewState({ type: 'main' });
             setShowLanding(false);
           }}
           onViewCommunity={() => {

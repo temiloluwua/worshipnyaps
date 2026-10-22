@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "756478838861",
+    "project_id": "worship-n-yaps-856b9",
+    "storage_bucket": "worship-n-yaps-856b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:756478838861:android:d8746e19a14bee78d77404",
+        "android_client_info": {
+          "package_name": "com.worshipnyapps.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwTz7kK6hIMfGb-CsMQS_kwH3iugcJk8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
