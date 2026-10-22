@@ -3,6 +3,7 @@ import { X, Camera, Plus, Check, Sparkles, User, FileText, Image, ChevronRight, 
 import { useProfile, ExtendedProfile } from '../../hooks/useProfile';
 import { supabase } from '../../lib/supabase';
 import { EVENT_GIFTS } from '../../lib/giftMatching';
+import { FAITH_STAGES } from '../../lib/faithStages';
 import toast from 'react-hot-toast';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
@@ -53,6 +54,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
   const [interests, setInterests] = useState<string[]>(profile.interests || []);
   const [newInterest, setNewInterest] = useState('');
   const [spiritualGifts, setSpiritualGifts] = useState<string[]>(profile.spiritual_gifts || []);
+  const [faithStage, setFaithStage] = useState<string | null>(
+    (profile as { faith_stage?: string | null }).faith_stage ?? null
+  );
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(profile.avatar_url || '');
   const [coverPreview, setCoverPreview] = useState(profile.cover_photo_url || '');
@@ -154,6 +158,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
         age: verifiedAge,
         interests,
         spiritual_gifts: spiritualGifts,
+        faith_stage: faithStage,
         avatar_url: avatarUrl,
         cover_photo_url: coverUrl,
       };
@@ -485,6 +490,28 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ profile, onC
                         <Check className="w-3 h-3 text-white" />
                       </span>
                     )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-7 mb-4">
+              Where are you in your faith? (optional — tap again to clear)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {FAITH_STAGES.map((stage) => {
+                const selected = faithStage === stage.value;
+                return (
+                  <button
+                    key={stage.value}
+                    onClick={() => setFaithStage(selected ? null : stage.value)}
+                    className={`px-4 py-2 rounded-full border-2 text-sm font-semibold transition-all ${
+                      selected
+                        ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    {stage.emoji} {stage.label}
                   </button>
                 );
               })}
