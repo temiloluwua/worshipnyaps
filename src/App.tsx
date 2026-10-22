@@ -34,7 +34,6 @@ const GroupsView = lazyWithRetry(() => import('./components/groups/GroupsView').
 const GroupDetailView = lazyWithRetry(() => import('./components/groups/GroupDetailView').then(m => ({ default: m.GroupDetailView })));
 
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
-import { WelcomeModal } from './components/WelcomeModal';
 import { AdBanner } from './components/ads/AdBanner';
 import { AgeGate, GUEST_ADULT_KEY } from './components/auth/AgeGate';
 import { CityGate } from './components/auth/CityGate';
@@ -96,9 +95,6 @@ function App() {
   const [viewState, setViewState] = useState<ViewState>({ type: 'main' });
   const [focusedTopicId, setFocusedTopicId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  // Quick one-time app intro shown on the landing page to first-time visitors.
-  const WELCOME_SEEN_KEY = 'wny_welcome_seen';
-  const [showWelcome, setShowWelcome] = useState(false);
   const [openCreatePostRequest, setOpenCreatePostRequest] = useState(0);
   // Age bucket the signed-in user just chose in the gate, used to route minors
   // immediately (before the profile row refetches). null = not answered yet.
@@ -190,22 +186,6 @@ function App() {
       setShowOnboarding(false);
     }
   }, [user, profile]);
-
-  // Show the quick app intro once, right after a first-time visitor enters the
-  // app from the landing page (so it greets them inside, not over the landing).
-  useEffect(() => {
-    if (showLanding) return;
-    let seen = false;
-    try { seen = localStorage.getItem(WELCOME_SEEN_KEY) === '1'; } catch { seen = false; }
-    if (seen) return;
-    const t = window.setTimeout(() => setShowWelcome(true), 400);
-    return () => window.clearTimeout(t);
-  }, [showLanding]);
-
-  const dismissWelcome = () => {
-    setShowWelcome(false);
-    try { localStorage.setItem(WELCOME_SEEN_KEY, '1'); } catch { /* storage blocked */ }
-  };
 
   useEffect(() => {
     const applyPathState = () => {
@@ -845,8 +825,6 @@ function App() {
         onClose={() => { setShowAuthModal(false); setAuthMode('login'); }}
         initialMode={authMode}
       />
-
-      <WelcomeModal isOpen={showWelcome} onClose={dismissWelcome} />
 
       {showOnboarding && (
         <OnboardingFlow

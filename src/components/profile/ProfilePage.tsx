@@ -14,6 +14,7 @@ import { useFollows } from '../../hooks/useFollows';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useLikes } from '../../hooks/useLikes';
 import { Topic, supabase } from '../../lib/supabase';
+import { faithStageInfo } from '../../lib/faithStages';
 import toast from 'react-hot-toast';
 import { TopicCard } from '../topics/TopicCard';
 import { EditProfileModal } from './EditProfileModal';
@@ -474,6 +475,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   {interest}
                 </span>
               ))}
+            </div>
+          )}
+
+          {faithStageInfo((viewingProfile as { faith_stage?: string | null }).faith_stage) && (
+            <div className="mb-5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-full text-xs font-semibold border border-blue-100 dark:border-blue-800/30">
+                {faithStageInfo((viewingProfile as { faith_stage?: string | null }).faith_stage)!.emoji}
+                {faithStageInfo((viewingProfile as { faith_stage?: string | null }).faith_stage)!.label}
+              </span>
             </div>
           )}
 

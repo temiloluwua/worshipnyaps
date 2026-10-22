@@ -72,6 +72,8 @@ export interface UserProfile {
   relationship_status?: 'single' | 'married' | 'in_a_relationship' | 'engaged' | 'prefer_not_to_say';
   interests?: string[];
   spiritual_gifts?: string[];
+  // Optional self-described point in their faith journey. See src/lib/faithStages.ts.
+  faith_stage?: 'curious' | 'new' | 'growing' | 'mature' | null;
   created_at: string;
   updated_at: string;
 }

@@ -27,6 +27,7 @@ const EDITABLE_PROFILE_FIELDS = [
   'relationship_status',
   'interests',
   'spiritual_gifts',
+  'faith_stage',
   'avatar_url',
   'cover_photo_url',
   'location_text',

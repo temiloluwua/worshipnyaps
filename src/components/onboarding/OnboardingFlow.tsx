@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useProfile } from '../../hooks/useProfile';
 import { supabase } from '../../lib/supabase';
 import { EVENT_GIFTS } from '../../lib/giftMatching';
+import { FAITH_STAGES } from '../../lib/faithStages';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -32,6 +33,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bio, setBio] = useState(profile?.bio || '');
   const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
+  const [faithStage, setFaithStage] = useState<string | null>(
+    (profile as { faith_stage?: string | null })?.faith_stage ?? null
+  );
   const [saving, setSaving] = useState(false);
   const [username, setUsername] = useState(initialUsername);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
@@ -116,13 +120,14 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   };
 
   const handleNextFromStep2 = async () => {
-    if (bio.trim() || selectedGifts.length > 0) {
+    if (bio.trim() || selectedGifts.length > 0 || faithStage) {
       setSaving(true);
       try {
         await updateProfile({
           bio: bio.trim() || undefined,
           spiritual_gifts: selectedGifts.length > 0 ? selectedGifts : undefined,
-        });
+          faith_stage: faithStage || undefined,
+        } as Record<string, unknown>);
       } finally {
         setSaving(false);
       }
@@ -306,6 +311,31 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   >
                     {selected && <Check className="w-3 h-3 inline mr-1" />}
                     {gift.emoji} {gift.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Where are you in your faith?
+            </label>
+            <div className="flex flex-wrap gap-2 mb-8">
+              {FAITH_STAGES.map(stage => {
+                const selected = faithStage === stage.value;
+                return (
+                  <button
+                    key={stage.value}
+                    type="button"
+                    // Tap again to clear — keeps it fully optional.
+                    onClick={() => setFaithStage(selected ? null : stage.value)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                      selected
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {selected && <Check className="w-3 h-3 inline mr-1" />}
+                    {stage.emoji} {stage.label}
                   </button>
                 );
               })}
