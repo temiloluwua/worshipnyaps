@@ -24,7 +24,12 @@ const APNS_KEY_ID = Deno.env.get('APNS_KEY_ID');
 const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID');
 const APNS_BUNDLE_ID = Deno.env.get('APNS_BUNDLE_ID');
 const APNS_AUTH_KEY = Deno.env.get('APNS_AUTH_KEY');
-const APNS_HOST = Deno.env.get('APNS_HOST') ?? 'https://api.push.apple.com';
+const APNS_PROD_HOST = 'https://api.push.apple.com';
+const APNS_SANDBOX_HOST = 'https://api.sandbox.push.apple.com';
+// If APNS_HOST is explicitly set, use only that. Otherwise try production and
+// fall back to sandbox on BadDeviceToken, so dev (development aps-environment)
+// and release (production) builds both receive pushes from one function.
+const APNS_HOST_OVERRIDE = Deno.env.get('APNS_HOST');
 
 function b64url(input: ArrayBuffer | string): string {
   const bytes = typeof input === 'string'
@@ -82,10 +87,10 @@ async function getApnsJwt(): Promise<string> {
 
 interface ApnsResult { status: number; body: string }
 
-async function sendOne(token: string, payload: unknown): Promise<ApnsResult> {
+async function sendToHost(host: string, token: string, payload: unknown): Promise<ApnsResult> {
   if (!APNS_BUNDLE_ID) throw new Error('APNS_BUNDLE_ID secret is not set');
   const jwt = await getApnsJwt();
-  const res = await fetch(`${APNS_HOST}/3/device/${token}`, {
+  const res = await fetch(`${host}/3/device/${token}`, {
     method: 'POST',
     headers: {
       'authorization': `bearer ${jwt}`,
@@ -97,6 +102,20 @@ async function sendOne(token: string, payload: unknown): Promise<ApnsResult> {
     body: JSON.stringify(payload),
   });
   return { status: res.status, body: await res.text() };
+}
+
+// Deliver one token, transparently handling the sandbox/production split.
+async function sendOne(token: string, payload: unknown): Promise<ApnsResult> {
+  // Explicit override: respect it, no fallback.
+  if (APNS_HOST_OVERRIDE) {
+    return sendToHost(APNS_HOST_OVERRIDE, token, payload);
+  }
+  // Default: try production, then retry sandbox if the token is from a dev build.
+  const prod = await sendToHost(APNS_PROD_HOST, token, payload);
+  if (prod.status === 400 && prod.body.includes('BadDeviceToken')) {
+    return sendToHost(APNS_SANDBOX_HOST, token, payload);
+  }
+  return prod;
 }
 
 Deno.serve(async (req) => {
