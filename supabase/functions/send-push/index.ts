@@ -118,6 +118,84 @@ async function sendOne(token: string, payload: unknown): Promise<ApnsResult> {
   return prod;
 }
 
+// ---------------------------------------------------------------------------
+// FCM (Android) — Firebase Cloud Messaging HTTP v1.
+// Needs the FCM_SERVICE_ACCOUNT secret: the full service-account JSON from
+// Firebase console → Project settings → Service accounts → Generate new key.
+// ---------------------------------------------------------------------------
+const FCM_SERVICE_ACCOUNT = Deno.env.get('FCM_SERVICE_ACCOUNT');
+
+interface ServiceAccount { client_email: string; private_key: string; project_id: string }
+
+function getServiceAccount(): ServiceAccount | null {
+  if (!FCM_SERVICE_ACCOUNT) return null;
+  try { return JSON.parse(FCM_SERVICE_ACCOUNT) as ServiceAccount; }
+  catch { throw new Error('FCM_SERVICE_ACCOUNT is not valid JSON'); }
+}
+
+let fcmRsaKey: Promise<CryptoKey> | null = null;
+function getFcmSigningKey(pem: string): Promise<CryptoKey> {
+  if (fcmRsaKey) return fcmRsaKey;
+  const body = pem
+    .replace(/-----BEGIN [^-]+-----/, '')
+    .replace(/-----END [^-]+-----/, '')
+    .replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(body), (c) => c.charCodeAt(0));
+  fcmRsaKey = crypto.subtle.importKey(
+    'pkcs8', der,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false, ['sign'],
+  );
+  return fcmRsaKey;
+}
+
+let fcmAccessToken: { token: string; exp: number } | null = null;
+async function getFcmAccessToken(sa: ServiceAccount): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  if (fcmAccessToken && now < fcmAccessToken.exp - 120) return fcmAccessToken.token;
+
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claims = b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }));
+  const signingInput = `${header}.${claims}`;
+  const key = await getFcmSigningKey(sa.private_key);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(signingInput));
+  const assertion = `${signingInput}.${b64url(sig)}`;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${assertion}`,
+  });
+  const json = await res.json();
+  if (!res.ok || !json.access_token) throw new Error(`FCM token exchange failed: ${JSON.stringify(json)}`);
+  fcmAccessToken = { token: json.access_token, exp: now + (json.expires_in ?? 3600) };
+  return fcmAccessToken.token;
+}
+
+async function sendFcm(sa: ServiceAccount, token: string, n: { title: string; body: string; n_id: string; type: string; payload: unknown }): Promise<ApnsResult> {
+  const accessToken = await getFcmAccessToken(sa);
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      message: {
+        token,
+        notification: { title: n.title, body: n.body },
+        // FCM data values must be strings.
+        data: { n_id: n.n_id, type: n.type, payload: JSON.stringify(n.payload ?? {}) },
+        android: { priority: 'high' },
+      },
+    }),
+  });
+  return { status: res.status, body: await res.text() };
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') {
@@ -143,9 +221,9 @@ Deno.serve(async (req) => {
 
     const { data: devices, error: dErr } = await supabase
       .from('user_devices')
-      .select('token')
+      .select('token, platform')
       .eq('user_id', notification.user_id)
-      .eq('platform', 'ios')
+      .in('platform', ['ios', 'android'])
       .eq('notifications_enabled', true);
     if (dErr) throw dErr;
 
@@ -153,12 +231,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ sent: 0, reason: 'no_devices' }), { status: 200 });
     }
 
+    const title = notification.title || 'Worship N Yaps';
+    const bodyText = notification.body || '';
+
     const apnsPayload = {
       aps: {
-        alert: {
-          title: notification.title || 'Worship N Yaps',
-          body: notification.body || '',
-        },
+        alert: { title, body: bodyText },
         sound: 'default',
         'mutable-content': 1,
       },
@@ -167,16 +245,28 @@ Deno.serve(async (req) => {
       payload: notification.payload,
     };
 
+    const serviceAccount = getServiceAccount();
+
     let sent = 0;
     const expired: string[] = [];
     for (const d of devices) {
-      const r = await sendOne(d.token, apnsPayload);
-      if (r.status >= 200 && r.status < 300) {
-        sent++;
-      } else if (r.status === 410) {
-        expired.push(d.token);
-      } else {
-        console.warn(`APNs ${r.status} for ${d.token.slice(0, 8)}…: ${r.body}`);
+      if (d.platform === 'ios') {
+        const r = await sendOne(d.token, apnsPayload);
+        if (r.status >= 200 && r.status < 300) sent++;
+        else if (r.status === 410) expired.push(d.token);
+        else console.warn(`APNs ${r.status} for ${d.token.slice(0, 8)}…: ${r.body}`);
+      } else if (d.platform === 'android') {
+        if (!serviceAccount) {
+          console.warn('Android token but FCM_SERVICE_ACCOUNT is not set — skipping');
+          continue;
+        }
+        const r = await sendFcm(serviceAccount, d.token, {
+          title, body: bodyText, n_id: notification.id, type: notification.type, payload: notification.payload,
+        });
+        if (r.status >= 200 && r.status < 300) sent++;
+        // FCM reports a dead token as 404 UNREGISTERED / INVALID_ARGUMENT.
+        else if (r.status === 404 || r.body.includes('UNREGISTERED')) expired.push(d.token);
+        else console.warn(`FCM ${r.status} for ${d.token.slice(0, 8)}…: ${r.body}`);
       }
     }
 
