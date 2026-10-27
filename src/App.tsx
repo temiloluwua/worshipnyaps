@@ -569,6 +569,11 @@ function App() {
             setShowLanding(false);
             setViewState({ type: 'network' });
           }}
+          onViewGroups={() => {
+            setShowLanding(false);
+            setActiveGroupId(null);
+            setViewState({ type: 'groups' });
+          }}
           onViewTopicOfDay={(topicId) => focusTopicById(topicId)}
           onCreateAccount={() => {
             setAuthMode('signup');
@@ -784,6 +789,7 @@ function App() {
             <MessagesView
               onBack={() => setActiveTab('topics')}
               initialUserId={viewState.initialChatUserId}
+              onViewProfile={handleViewProfile}
             />
           </div>
         )}

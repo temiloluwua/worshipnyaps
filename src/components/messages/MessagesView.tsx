@@ -15,11 +15,13 @@ import { ReportButton } from '../moderation/ReportButton';
 interface MessagesViewProps {
   onBack?: () => void;
   initialUserId?: string;
+  onViewProfile?: (userId: string) => void;
 }
 
 export const MessagesView: React.FC<MessagesViewProps> = ({
   onBack,
-  initialUserId
+  initialUserId,
+  onViewProfile
 }) => {
   const { user } = useAuth();
   const {
@@ -130,8 +132,18 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           >
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
-          <div className="flex items-center flex-1">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 mr-3">
+          {/* Tapping the header opens the other person's profile (1:1 only). */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!activeConversation.is_group && otherUserId && onViewProfile) {
+                onViewProfile(otherUserId);
+              }
+            }}
+            disabled={activeConversation.is_group || !otherUserId || !onViewProfile}
+            className="flex items-center flex-1 text-left min-w-0 rounded-lg disabled:cursor-default enabled:hover:opacity-80 transition-opacity"
+          >
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 mr-3 flex-shrink-0">
               {otherUser?.avatar_url ? (
                 <img
                   src={otherUser.avatar_url}
@@ -144,14 +156,14 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 </div>
               )}
             </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">
+            <div className="min-w-0">
+              <h2 className="font-semibold text-gray-900 dark:text-white truncate">
                 {activeConversation.is_group
                   ? activeConversation.name
                   : otherUser?.name || 'Unknown'}
               </h2>
             </div>
-          </div>
+          </button>
           {!activeConversation.is_group && otherUserId && (
             <div className="relative">
               <button

@@ -432,46 +432,70 @@ const PrefToggle: React.FC<{ checked: boolean; onChange: () => void; label: stri
 
 // Per-type push preferences. Persisted on the users row (read by the server
 // triggers/cron that decide who to notify).
+// Each toggle maps 1:1 to a notify_* boolean column on the users row, read by
+// the server triggers/dispatcher that decide who to push.
+const NOTIFY_PREFS: { key: string; label: string; hint: string; default: boolean }[] = [
+  { key: 'notify_dm',             label: 'Direct messages',        hint: 'When someone sends you a message',              default: true },
+  { key: 'notify_comments',       label: 'Comments on your posts', hint: 'When someone replies to your post',             default: true },
+  { key: 'notify_reactions',      label: 'Likes',                  hint: 'When someone likes your post or comment',       default: true },
+  { key: 'notify_reposts',        label: 'Reposts',                hint: 'When someone reposts your post',                default: true },
+  { key: 'notify_follows',        label: 'New followers',          hint: 'When someone follows you',                      default: true },
+  { key: 'notify_connections',    label: 'Connections',            hint: 'Connection requests and accepts',               default: true },
+  { key: 'notify_rsvps',          label: 'Event RSVPs',            hint: "When someone RSVPs to an event you're hosting",  default: true },
+  { key: 'notify_events',         label: 'Event updates',          hint: 'Reminders, changes, and co-host invites',       default: true },
+  { key: 'notify_followed_posts', label: 'Posts from people you follow', hint: 'When someone you follow shares a post',   default: true },
+  { key: 'notify_daily_topic',    label: 'Topic of the Day',       hint: 'A daily verse/topic to reflect on',             default: false },
+];
+
 const NotificationPrefsSection: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   const { user } = useAuth();
-  const [dailyTopic, setDailyTopic] = useState(false);
-  const [followedPosts, setFollowedPosts] = useState(true);
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(NOTIFY_PREFS.map((p) => [p.key, p.default]))
+  );
 
   useEffect(() => {
     if (!isOpen || !user) return;
     supabase
       .from('users')
-      .select('notify_daily_topic, notify_followed_posts')
+      .select(NOTIFY_PREFS.map((p) => p.key).join(', '))
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
-        if (data) {
-          setDailyTopic(!!(data as any).notify_daily_topic);
-          setFollowedPosts((data as any).notify_followed_posts ?? true);
-        }
+        if (!data) return;
+        const row = data as unknown as Record<string, boolean | null>;
+        setPrefs((prev) => {
+          const next = { ...prev };
+          for (const p of NOTIFY_PREFS) {
+            const v = row[p.key];
+            next[p.key] = v ?? p.default;
+          }
+          return next;
+        });
       });
   }, [isOpen, user]);
 
-  const save = async (patch: Record<string, boolean>) => {
+  const toggle = async (key: string) => {
     if (!user) return;
-    const { error } = await supabase.from('users').update(patch).eq('id', user.id);
-    if (error) toast.error(error.message);
+    const v = !prefs[key];
+    setPrefs((prev) => ({ ...prev, [key]: v })); // optimistic
+    const { error } = await supabase.from('users').update({ [key]: v }).eq('id', user.id);
+    if (error) {
+      toast.error(error.message);
+      setPrefs((prev) => ({ ...prev, [key]: !v })); // revert on failure
+    }
   };
 
   return (
     <div className="space-y-2">
-      <PrefToggle
-        checked={dailyTopic}
-        onChange={() => { const v = !dailyTopic; setDailyTopic(v); save({ notify_daily_topic: v }); }}
-        label="Topic of the Day"
-        hint="A daily verse/topic to reflect on"
-      />
-      <PrefToggle
-        checked={followedPosts}
-        onChange={() => { const v = !followedPosts; setFollowedPosts(v); save({ notify_followed_posts: v }); }}
-        label="Posts from people you follow"
-        hint="Get notified when someone you follow shares a post"
-      />
+      {NOTIFY_PREFS.map((p) => (
+        <PrefToggle
+          key={p.key}
+          checked={prefs[p.key]}
+          onChange={() => toggle(p.key)}
+          label={p.label}
+          hint={p.hint}
+        />
+      ))}
     </div>
   );
 };

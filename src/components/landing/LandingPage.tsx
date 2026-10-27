@@ -19,6 +19,7 @@ interface LandingPageProps {
   onViewEvents?: () => void;
   onViewTopics?: () => void;
   onViewCommunity?: () => void;
+  onViewGroups?: () => void;
   onViewTopicOfDay?: (topicId: string) => void;
   onCreateAccount?: () => void;
   onLogin?: () => void;
@@ -37,15 +38,15 @@ interface Topic {
 // ---------- Static content ----------
 
 const WHO_FOR = [
+  { icon: ClipboardList, title: 'Pastors & small group leads', body: "Spin up a group for your church or ministry in seconds — one hub for chat, announcements, and events. Not a spreadsheet.", cta: 'Set up your church' },
   { icon: BookOpen, title: 'Bible study seekers', body: 'Looking for a study group, prayer circle, or worship night near you.' },
   { icon: UserIcon, title: 'Hosts & leaders', body: 'Make leading less lonely. Delegate roles, coordinate RSVPs, keep everyone in one chat.' },
   { icon: MessageSquare, title: 'Faith conversation starters', body: 'Tired of impersonal apps. Ready to ask real questions grounded in scripture.' },
-  { icon: ClipboardList, title: 'Pastors & small group leads', body: "A coordination tool that doesn't feel like a spreadsheet." },
 ];
 
 // ---------- Component ----------
 
-export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewCommunity, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
+export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, onViewCommunity, onViewGroups, onViewTopicOfDay, onCreateAccount, onLogin }: LandingPageProps) {
   const { isDark, toggleTheme } = useTheme();
   // How-to-Play starts collapsed so the page leads with the app, not the
   // physical card game. The hero "How to Play" button expands it.
@@ -474,15 +475,38 @@ export function LandingPage({ onEnter, onPreOrder, onViewEvents, onViewTopics, o
           </h2>
 
           <div className="grid sm:grid-cols-2 gap-5">
-            {WHO_FOR.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="rounded-2xl bg-white/5 border border-white/10 p-7">
-                <div className="w-11 h-11 rounded-xl bg-[#2563eb]/20 text-[#2563eb] flex items-center justify-center mb-4">
-                  <Icon className="w-5 h-5" />
+            {WHO_FOR.map(({ icon: Icon, title, body, cta }) => {
+              // The leader card (has a cta) drops pastors/small-group leads
+              // straight into the group-creation hub — the one place to set up
+              // chat + events for their church.
+              const content = (
+                <>
+                  <div className="w-11 h-11 rounded-xl bg-[#2563eb]/20 text-[#2563eb] flex items-center justify-center mb-4">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-logo font-bold text-xl mb-2"><T>{title}</T></h3>
+                  <p className="text-sm text-[#CBD5E1] leading-relaxed"><T>{body}</T></p>
+                  {cta && (
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#2563eb]">
+                      <T>{cta}</T> <ArrowRight className="w-4 h-4" />
+                    </span>
+                  )}
+                </>
+              );
+              return cta ? (
+                <button
+                  key={title}
+                  onClick={() => (onViewGroups ?? onEnter)()}
+                  className="text-left rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/40 p-7 hover:bg-[#2563eb]/20 hover:border-[#2563eb]/60 transition-colors"
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={title} className="rounded-2xl bg-white/5 border border-white/10 p-7">
+                  {content}
                 </div>
-                <h3 className="font-logo font-bold text-xl mb-2"><T>{title}</T></h3>
-                <p className="text-sm text-[#CBD5E1] leading-relaxed"><T>{body}</T></p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
