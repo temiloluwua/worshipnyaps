@@ -364,13 +364,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 </>
               )}
             </div>
-            {!isOwnProfile && (
-              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 leading-snug max-w-xs">
-                <span className="font-semibold text-gray-600 dark:text-gray-300">Follow</span> to see their public posts.{' '}
-                <span className="font-semibold text-gray-600 dark:text-gray-300">Connect</span> for mutual fellowship — message each other and see their private &amp; friends-only events.
-              </p>
-            )}
           </div>
+
+          {/* Full-width block below the avatar/buttons row — must NOT be a flex
+              child of that justify-between row or it squeezes into a sidebar. */}
+          {!isOwnProfile && (
+            <p className="-mt-2 mb-4 text-xs text-gray-500 dark:text-gray-400 leading-snug">
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Follow</span> to see their public posts.{' '}
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Connect</span> for mutual fellowship — message each other and see their private &amp; friends-only events.
+            </p>
+          )}
 
           <div className="mb-3">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-1.5">
