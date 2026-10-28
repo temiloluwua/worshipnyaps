@@ -326,6 +326,33 @@ export const useConnections = () => {
     }
   }, [user]);
 
+  // Keep connections fresh for BOTH parties. The request sender's connection
+  // row is created by a DB trigger when the *other* person accepts — an event
+  // their app never hears about locally, so their list/count (and isConnected)
+  // would stay stale until a cold reload. Refresh on realtime changes, and on
+  // app refocus as a guaranteed fallback if realtime isn't enabled.
+  useEffect(() => {
+    if (!user) return;
+    const refresh = () => { fetchConnections(); fetchConnectionRequests(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', refresh);
+
+    const channel = supabase
+      .channel(`connections:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'connections', filter: `user_id=eq.${user.id}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'connection_requests', filter: `from_user_id=eq.${user.id}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'connection_requests', filter: `to_user_id=eq.${user.id}` }, refresh)
+      .subscribe();
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', refresh);
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   // useConnections is per-instance, so a block from one place (e.g. the report
   // dialog) wouldn't update isBlocked() elsewhere. Sync every instance off the
   // shared broadcast so blocked users drop out of lists/chats immediately.

@@ -258,12 +258,20 @@ export const useTopics = () => {
     if (!user) return false;
 
     try {
+      // Map to real columns only. Spreading `updates` raw sent `bibleReference`
+      // (camelCase, not a column) and Postgres rejected the whole update — which
+      // is why editing a topic silently failed.
+      const payload: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (updates.title !== undefined) payload.title = updates.title;
+      if (updates.category !== undefined) payload.category = updates.category;
+      if (updates.content !== undefined) payload.content = updates.content;
+      if (updates.tags !== undefined) payload.tags = updates.tags;
+      if (updates.is_pinned !== undefined) payload.is_pinned = updates.is_pinned;
+      if (updates.bibleReference !== undefined) payload.bible_verse = updates.bibleReference;
+
       const { error } = await supabase
         .from('topics')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', topicId);
 
       if (error) throw error;
